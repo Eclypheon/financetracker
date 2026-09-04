@@ -4,36 +4,29 @@ A sleek, modern, privacy-focused Progressive Web Application (PWA) to track your
 
 ---
 
-## ✨ Features
+## ⚡ Fast 5-Second Local Deployment
 
-- **Neat Financial Snapshot Cards**:
-  - **Month/Year**: Auto-populated (`MM/YY`) and editable.
-  - **Banks Section**: Default fields for `OCBC`, `DBS`, plus a `+` button to add custom bank accounts (e.g., UOB, Citibank, etc.).
-  - **Stocks Section**: Default fields for `IBKR`, `SGX`, plus a `+` button to add custom brokerages (e.g., Tiger, Moomoo, FSMOne, etc.).
-  - **Liquid Assets Total**: Calculated automatically as `Banks Total + Stocks Total`.
-  - **CPF Section**: `Ordinary Account`, `Special Account`, `Medisave Account`, `Endowus`, plus calculated `CPF Total`.
-  - **Property Section**: `Cash`, `CPF`, plus calculated `Property Total`.
-  - **Non-liquid Assets Total**: Calculated automatically as `CPF Total + Property Total`.
-  - **Total Assets**: Calculated automatically as `Liquid Assets Total + Non-liquid Assets Total`.
+The app compiles locally in ~600ms and pushes pre-built static assets directly to GitHub Pages via the `gh-pages` branch, bypassing slow remote GitHub runner queues.
 
-- **Intuitive Layout**:
-  - **Top Center**: Featured Latest Month Card with active inline inputs and instant calculation updates.
-  - **Past Cards History**: Compact horizontal carousel right below the latest card, allowing quick browsing across past months.
-  - **Comparison & Delta Card**: Select any past month from the horizontal carousel to compare against the latest month. A 3rd **Delta Card** is automatically generated showing exact changes and percentages for:
-    1. Liquid Assets Total Delta
-    2. Non-liquid Assets Total Delta
-    3. Total Assets Delta
-  - **Historical Asset Graph**: Interactive time-series graph with toggleable lines:
-    - Total Assets line (**enabled by default**)
-    - Liquid Assets line (toggleable)
-    - Non-liquid Assets line (toggleable)
-    - Hover / touch tooltips with detailed breakdown.
+### To Deploy:
+```bash
+npm run deploy
+```
+That's it! It automatically builds your project and publishes the updated site to `gh-pages` in seconds.
 
-- **PWA & Offline-First**:
-  - Fully installable on iOS, Android, macOS, Windows, and Linux.
-  - Offline-first with Service Worker caching (`vite-plugin-pwa`).
-  - Safe, local-first data storage in your browser (`localStorage`).
-  - **JSON Export & Import**: One-click data backup and restore so your data always stays yours.
+---
+
+## ⚙️ One-Time GitHub Pages Setting
+
+In your GitHub repository:
+1. Go to **Settings** > **Pages**
+2. Under **Build and deployment**:
+   - **Source**: Select **Deploy from a branch**
+   - **Branch**: Select **`gh-pages`** and folder **`/ (root)`**
+   - Click **Save**
+
+Your site is instantly published at:
+🌐 **https://eclypheon.github.io/financetracker/**
 
 ---
 
@@ -50,51 +43,21 @@ A sleek, modern, privacy-focused Progressive Web Application (PWA) to track your
    ```
    Open your browser at `http://localhost:5173`.
 
-3. **Build production bundle**:
+3. **Build locally**:
    ```bash
    npm run build
    ```
 
 ---
 
-## 🌐 Hosting on GitHub Pages
+## ✨ Features
 
-### Method 1: Automatic Deployment via GitHub Actions (Recommended)
-
-This repository includes a pre-configured workflow in `.github/workflows/deploy.yml`.
-
-1. **Create a new repository on GitHub** (e.g. `financetracker`).
-2. **Push your code to GitHub**:
-   ```bash
-   git remote add origin https://github.com/<YOUR_USERNAME>/<REPO_NAME>.git
-   git branch -M main
-   git push -u origin main
-   ```
-3. In your GitHub repository:
-   - Go to **Settings** > **Pages**.
-   - Under **Build and deployment** > **Source**, select **GitHub Actions**.
-   - Your site will automatically build and publish at `https://<YOUR_USERNAME>.github.io/<REPO_NAME>/`!
-
-### Method 2: One-Click Deploy via `gh-pages`
-
-You can also deploy directly from your terminal:
-
-```bash
-npm run deploy
-```
-
-In your repository **Settings** > **Pages**, make sure the source is set to deploy from the `gh-pages` branch.
-
----
-
-## 📱 Installing as a PWA
-
-- **iOS / Safari**: Tap the **Share** button in Safari, then tap **"Add to Home Screen"**.
-- **Android / Chrome**: Tap the **Install App** button in the header or Chrome menu > **"Install application"**.
-- **Desktop (Chrome / Edge / Brave)**: Click the **Install** button in the top navigation bar or the browser's address bar.
-
----
-
-## 🔒 Privacy
-
-All financial data is stored purely on your local device. No external servers or tracking scripts are used.
+- **Compact Minimalist Cards**: Vertical rectangle proportions (~310px wide) with tight padding and clean micro-typography (`text-[10px]` / `text-[11px]`).
+- **Fully Customizable Fields**: Every single field features a trash icon (`🗑`) so you can delete any field you don't need.
+- **Dynamic Category Headers**: Use `+ Add Header` under Liquid or Non-Liquid assets to create custom sections (e.g. *Crypto*, *Bonds*, *Vehicles*, *Pensions*).
+- **Default Banks**: Strictly defaults to **OCBC** and **DBS** (use `+` to add more).
+- **No Number Arrows**: Stepper arrows are removed for keyboard-only input.
+- **Snug Past Cards Spread**: Compact horizontal carousel (`165px` height) with zero wasted space.
+- **Side-by-Side Comparison**: Compare any past month against the latest month with a generated 3rd **Delta Card**.
+- **Interactive Asset Timeline**: Toggleable lines for Total Assets, Liquid Total, and Non-liquid Total.
+- **PWA & Offline Capable**: Install to phone or desktop; stores data locally in your browser with JSON backup export/import.
