@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
 import { 
   PiggyBank, 
   Download, 
@@ -6,7 +7,10 @@ import {
   Plus, 
   RotateCcw, 
   DownloadCloud,
-  CheckCircle2
+  CheckCircle2,
+  Cloud,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -15,6 +19,9 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface HeaderProps {
+  currentUser: User | null;
+  onOpenAuth: () => void;
+  onSignOut: () => void;
   onAddNewBlankCard: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
@@ -22,6 +29,9 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentUser,
+  onOpenAuth,
+  onSignOut,
   onAddNewBlankCard,
   onExport,
   onImport,
@@ -31,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showNotification, setShowNotification] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -84,11 +95,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="p-1.5 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm shadow-emerald-950">
             <PiggyBank className="w-4 h-4" />
           </div>
-          <div>
-            <h1 className="text-xs font-bold text-white tracking-tight flex items-center gap-1">
-              <span>Finance Tracker</span>
-            </h1>
-          </div>
+          <h1 className="text-xs font-bold text-white tracking-tight">
+            Finance Tracker
+          </h1>
         </div>
 
         {/* Action Controls */}
@@ -102,6 +111,49 @@ export const Header: React.FC<HeaderProps> = ({
             <Plus className="w-3 h-3" />
             <span>+ Card</span>
           </button>
+
+          {/* Cloud Auth / User Profile Button */}
+          {currentUser ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[10px] font-medium"
+                title={`Signed in as ${currentUser.email}`}
+              >
+                <UserCheck className="w-3 h-3 text-emerald-400" />
+                <span className="truncate max-w-[70px]">
+                  {currentUser.email?.split('@')[0] || 'User'}
+                </span>
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-1 w-44 rounded-xl bg-slate-900 border border-slate-800 shadow-xl p-1 text-[10px] z-50 animate-fade-in">
+                  <div className="px-2 py-1 border-b border-slate-800 text-slate-400 truncate">
+                    {currentUser.email}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onSignOut();
+                    }}
+                    className="w-full mt-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-cyan-300 hover:text-white text-[10px] font-medium transition-all"
+              title="Sign in with Google or Email to sync across devices"
+            >
+              <Cloud className="w-3 h-3 text-cyan-400" />
+              <span>Sync</span>
+            </button>
+          )}
 
           {/* Export JSON */}
           <button
