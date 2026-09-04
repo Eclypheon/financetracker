@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FinanceCardData, CategoryKey, AssetCategory } from '../types/finance';
 import { calculateCardTotals } from '../utils/calculations';
 import { formatCurrency } from '../utils/formatters';
@@ -43,6 +43,11 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   const [isEditingMonth, setIsEditingMonth] = useState(false);
   const [monthInput, setMonthInput] = useState(card.monthYear);
   const [isExpanded, setIsExpanded] = useState(mode !== 'compact');
+  const [isConfirmingDeleteCard, setIsConfirmingDeleteCard] = useState(false);
+
+  useEffect(() => {
+    setIsConfirmingDeleteCard(false);
+  }, [card.id]);
 
   const totals = calculateCardTotals(card);
 
@@ -306,16 +311,49 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
               <span className="font-bold text-white text-[10px]">{formatCurrency(totals.totalAssets)}</span>
             )}
             {onDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="text-slate-600 hover:text-rose-400 p-0.5"
-                title="Delete card"
-              >
-                <Trash2 className="w-2.5 h-2.5" />
-              </button>
+              isConfirmingDeleteCard ? (
+                <div className="flex items-center gap-1 bg-rose-950/90 border border-rose-600/60 rounded px-1.5 py-0.5" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[9px] text-rose-300 font-medium">Del?</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setIsConfirmingDeleteCard(false);
+                      onDelete();
+                    }}
+                    className="text-rose-400 hover:text-rose-200 p-0.5"
+                    title="Confirm delete"
+                  >
+                    <Check className="w-2.5 h-2.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setIsConfirmingDeleteCard(false);
+                    }}
+                    className="text-slate-400 hover:text-white p-0.5"
+                    title="Cancel"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setIsConfirmingDeleteCard(true);
+                  }}
+                  className="text-slate-600 hover:text-rose-400 p-0.5 transition-colors"
+                  title="Delete card"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                </button>
+              )
             )}
           </div>
         </div>
@@ -563,13 +601,49 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           </div>
 
           {onDelete && (
-            <button
-              onClick={onDelete}
-              className="p-0.5 text-slate-500 hover:text-rose-400 rounded transition-colors"
-              title="Delete Card"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
+            isConfirmingDeleteCard ? (
+              <div className="flex items-center gap-1.5 bg-rose-950/90 border border-rose-600/60 rounded-lg px-2 py-0.5 shadow-sm" onClick={(e) => e.stopPropagation()}>
+                <span className="text-[10px] text-rose-300 font-medium">Delete?</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setIsConfirmingDeleteCard(false);
+                    onDelete();
+                  }}
+                  className="p-1 text-rose-400 hover:text-rose-200 rounded transition-colors"
+                  title="Confirm delete"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setIsConfirmingDeleteCard(false);
+                  }}
+                  className="p-1 text-slate-400 hover:text-white rounded transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsConfirmingDeleteCard(true);
+                }}
+                className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
+                title="Delete Card"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )
           )}
         </div>
       </div>
@@ -633,8 +707,13 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                   )}
                   {isEditable && (
                     <button
-                      onClick={() => handleDeleteHeaderCategory('liquid', cat.id)}
-                      className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteHeaderCategory('liquid', cat.id);
+                      }}
+                      className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                       title="Delete category"
                     >
                       <Trash2 className="w-2.5 h-2.5" />
@@ -676,8 +755,13 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                     <div className="flex items-center gap-1 min-w-0 flex-1">
                       {isEditable && (
                         <button
-                          onClick={() => handleDeleteCustomCategoryField('liquid', cat.id, f.id)}
-                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleDeleteCustomCategoryField('liquid', cat.id, f.id);
+                          }}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                           title="Delete field"
                         >
                           <Trash2 className="w-2.5 h-2.5" />
@@ -812,8 +896,13 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                   )}
                   {isEditable && (
                     <button
-                      onClick={() => handleDeleteHeaderCategory('nonLiquid', cat.id)}
-                      className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteHeaderCategory('nonLiquid', cat.id);
+                      }}
+                      className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                       title="Delete category"
                     >
                       <Trash2 className="w-2.5 h-2.5" />
@@ -855,8 +944,13 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                     <div className="flex items-center gap-1 min-w-0 flex-1">
                       {isEditable && (
                         <button
-                          onClick={() => handleDeleteCustomCategoryField('nonLiquid', cat.id, f.id)}
-                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleDeleteCustomCategoryField('nonLiquid', cat.id, f.id);
+                          }}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                           title="Delete field"
                         >
                           <Trash2 className="w-2.5 h-2.5" />
@@ -1081,7 +1175,12 @@ const CategorySection: React.FC<CategorySectionProps> = ({
             <div className="flex items-center gap-1 min-w-0 flex-1">
               {isEditable && (
                 <button
-                  onClick={() => onDeleteField(category, field.id)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onDeleteField(category, field.id);
+                  }}
                   className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                   title="Remove field"
                 >

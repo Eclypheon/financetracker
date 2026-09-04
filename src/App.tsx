@@ -22,7 +22,7 @@ import { PastCardsCarousel } from './components/PastCardsCarousel';
 import { CompareSection } from './components/CompareSection';
 import { AssetsChart } from './components/AssetsChart';
 import { AuthModal } from './components/AuthModal';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [cards, setCards] = useState<FinanceCardData[]>(() => loadStoredCards());
@@ -152,11 +152,18 @@ export const App: React.FC = () => {
       alert('You must keep at least one card in your tracker.');
       return;
     }
-    if (confirm('Delete this card?')) {
-      setCards((prev) => prev.filter((c) => c.id !== cardId));
-      if (currentUser) {
-        deleteCloudCard(cardId);
+    setCards((prev) => {
+      const updated = prev.filter((c) => c.id !== cardId);
+      if (selectedBaseCardId === cardId) {
+        setSelectedBaseCardId(updated[0]?.id || null);
       }
+      if (selectedCompareCardId === cardId) {
+        setSelectedCompareCardId(updated.length > 1 ? updated[1].id : updated[0]?.id || null);
+      }
+      return updated;
+    });
+    if (currentUser) {
+      deleteCloudCard(cardId);
     }
   };
 
@@ -396,6 +403,19 @@ export const App: React.FC = () => {
           id="screen-1"
           className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
         >
+          {/* Screen 1 Header: Current Month & + Card button */}
+          <div className="w-full flex items-center justify-between mb-1.5 px-1">
+            <span className="text-xs font-semibold text-slate-400">Current Month</span>
+            <button
+              onClick={handleAddNewBlankCard}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all shadow-sm shadow-emerald-950/40 cursor-pointer active:scale-95"
+              title="Add a new blank card"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Card</span>
+            </button>
+          </div>
+
           {latestCard ? (
             <FinanceCard
               card={latestCard}

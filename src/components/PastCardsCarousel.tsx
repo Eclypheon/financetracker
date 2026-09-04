@@ -235,7 +235,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
               title="Add a new blank card"
             >
               <Plus className="w-2.5 h-2.5" />
-              <span>+ Card</span>
+              <span>Card</span>
             </button>
           )}
 

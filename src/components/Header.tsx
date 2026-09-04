@@ -4,7 +4,6 @@ import {
   PiggyBank, 
   Download, 
   Upload, 
-  Plus, 
   RotateCcw, 
   CheckCircle2,
   Cloud,
@@ -22,7 +21,7 @@ interface HeaderProps {
   currentUser: User | null;
   onOpenAuth: () => void;
   onSignOut: () => void;
-  onAddNewBlankCard: () => void;
+  onAddNewBlankCard?: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
   onResetSample: () => void;
@@ -32,7 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenAuth,
   onSignOut,
-  onAddNewBlankCard,
   onExport,
   onImport,
   onResetSample,
@@ -139,16 +137,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Controls */}
           <div className="flex items-center gap-1.5">
-            {/* + Card Button */}
-            <button
-              onClick={onAddNewBlankCard}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition-all shadow-sm shadow-emerald-950/40"
-              title="Add a new blank card"
-            >
-              <Plus className="w-3 h-3" />
-              <span>+ Card</span>
-            </button>
-
             {/* Cloud Auth / User Profile Button with Hi, [Name] and status badge */}
             {currentUser ? (
               <div className="relative">
