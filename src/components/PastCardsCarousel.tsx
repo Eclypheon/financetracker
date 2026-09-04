@@ -32,7 +32,6 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
   // Pointer drag state
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const pointerStartRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const hasMovedRef = useRef(false);
 
   // Synchronize frontIndex with selectedCardId only on selection change (not on initial mount)
@@ -85,8 +84,12 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.overflow-y-auto')) {
-        return;
+      // Only allow vertical scrolling if target is inside an internal scrollable list inside the card
+      const scrollableChild = target.closest('.overflow-y-auto') as HTMLElement | null;
+      if (scrollableChild && el.contains(scrollableChild) && scrollableChild !== el) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          return;
+        }
       }
 
       const absX = Math.abs(e.deltaX);
@@ -116,7 +119,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       }, 160);
 
       const now = Date.now();
-      const THRESHOLD = 24; // Lower responsive threshold for instant feel
+      const THRESHOLD = 24; // Responsive threshold for instant feel
       const COOLDOWN_MS = 140; // Fast cooldown between card advances
 
       if (Math.abs(wheelAccumulatorRef.current) >= THRESHOLD) {
@@ -154,87 +157,163 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
     };
   }, [cards, onSelectCard]);
 
-  // Pointer event handlers for smooth 1:1 real-time drag (touch, mouse, trackpad)
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return; // Only primary button
-    // Don't intercept clicks inside inputs or buttons
+  // Robust Native Touch Event Handlers for Mobile Devices (iOS Safari, Android Chrome)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isHorizontalSwipe = false;
+    let isVerticalScroll = false;
+    let currentDrag = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isHorizontalSwipe = false;
+      isVerticalScroll = false;
+      currentDrag = 0;
+      hasMovedRef.current = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || isVerticalScroll) return;
+
+      const diffX = e.touches[0].clientX - touchStartX;
+      const diffY = e.touches[0].clientY - touchStartY;
+
+      if (!isHorizontalSwipe && !isVerticalScroll) {
+        // Distinguish horizontal card swipe from vertical screen scroll
+        if (Math.abs(diffX) > 5 && Math.abs(diffX) > Math.abs(diffY)) {
+          isHorizontalSwipe = true;
+          hasMovedRef.current = true;
+          setIsDragging(true);
+          // Blur any focused input during swipe
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+        } else if (Math.abs(diffY) > 7 && Math.abs(diffY) > Math.abs(diffX)) {
+          isVerticalScroll = true;
+          return;
+        }
+      }
+
+      if (isHorizontalSwipe) {
+        // Stop default browser scroll and iOS back/forward history swipe
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+
+        // Apply resistance at edges
+        let resisted = diffX;
+        if (
+          (frontIndex === 0 && diffX > 0) ||
+          (frontIndex === cards.length - 1 && diffX < 0)
+        ) {
+          resisted = diffX * 0.35;
+        }
+        currentDrag = resisted;
+        setDragOffset(resisted);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (isHorizontalSwipe) {
+        const SWIPE_THRESHOLD = 26;
+        if (currentDrag < -SWIPE_THRESHOLD && frontIndex < cards.length - 1) {
+          handleNext();
+        } else if (currentDrag > SWIPE_THRESHOLD && frontIndex > 0) {
+          handlePrev();
+        }
+      }
+
+      setIsDragging(false);
+      setDragOffset(0);
+
+      // Briefly keep hasMoved true to prevent accidental card click right after swipe
+      setTimeout(() => {
+        hasMovedRef.current = false;
+      }, 100);
+    };
+
+    const onTouchCancel = () => {
+      setIsDragging(false);
+      setDragOffset(0);
+      hasMovedRef.current = false;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchCancel);
+    };
+  }, [frontIndex, cards, onSelectCard]);
+
+  // Mouse Drag Handler for Desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (
       target.tagName === 'INPUT' || 
       target.tagName === 'BUTTON' || 
       target.closest('input') || 
-      target.closest('button') ||
-      target.closest('[data-no-drag]') ||
-      target.closest('.overflow-y-auto')
+      target.closest('button')
     ) {
       return;
     }
 
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    const startX = e.clientX;
     hasMovedRef.current = false;
     setIsDragging(true);
 
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Ignore if not supported
-    }
-  };
+    let moveDiff = 0;
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pointerStartRef.current || pointerStartRef.current.id !== e.pointerId) return;
-
-    const diffX = e.clientX - pointerStartRef.current.x;
-    const diffY = e.clientY - pointerStartRef.current.y;
-
-    if (!hasMovedRef.current) {
-      if (Math.abs(diffX) > 4 && Math.abs(diffX) > Math.abs(diffY)) {
+    const onMouseMove = (moveEvt: MouseEvent) => {
+      const diffX = moveEvt.clientX - startX;
+      if (Math.abs(diffX) > 4) {
         hasMovedRef.current = true;
-      } else if (Math.abs(diffY) > 8 && Math.abs(diffY) > Math.abs(diffX)) {
-        // User intent is vertical page scrolling; cancel drag
-        pointerStartRef.current = null;
-        setIsDragging(false);
-        setDragOffset(0);
-        return;
       }
-    }
-
-    if (hasMovedRef.current) {
-      // Apply rubber-banding resistance at ends
-      let resistedDiff = diffX;
+      let resisted = diffX;
       if (
         (frontIndex === 0 && diffX > 0) ||
         (frontIndex === cards.length - 1 && diffX < 0)
       ) {
-        resistedDiff = diffX * 0.3;
+        resisted = diffX * 0.35;
       }
-      setDragOffset(resistedDiff);
-    }
-  };
+      moveDiff = resisted;
+      setDragOffset(resisted);
+    };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!pointerStartRef.current || pointerStartRef.current.id !== e.pointerId) return;
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
 
-    if (hasMovedRef.current) {
-      const SWIPE_THRESHOLD = 32;
-      if (dragOffset < -SWIPE_THRESHOLD && frontIndex < cards.length - 1) {
-        handleNext();
-      } else if (dragOffset > SWIPE_THRESHOLD && frontIndex > 0) {
-        handlePrev();
+      if (hasMovedRef.current) {
+        const SWIPE_THRESHOLD = 30;
+        if (moveDiff < -SWIPE_THRESHOLD && frontIndex < cards.length - 1) {
+          handleNext();
+        } else if (moveDiff > SWIPE_THRESHOLD && frontIndex > 0) {
+          handlePrev();
+        }
       }
-    }
 
-    pointerStartRef.current = null;
-    hasMovedRef.current = false;
-    setIsDragging(false);
-    setDragOffset(0);
-  };
+      setIsDragging(false);
+      setDragOffset(0);
+      setTimeout(() => {
+        hasMovedRef.current = false;
+      }, 100);
+    };
 
-  const handlePointerCancel = () => {
-    pointerStartRef.current = null;
-    hasMovedRef.current = false;
-    setIsDragging(false);
-    setDragOffset(0);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   };
 
   return (
@@ -293,10 +372,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       ) : (
         <div
           ref={containerRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
+          onMouseDown={handleMouseDown}
           style={{
             overscrollBehavior: 'none',
             overscrollBehaviorX: 'none',

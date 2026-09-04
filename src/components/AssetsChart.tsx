@@ -251,19 +251,6 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
           <h2 className="text-xs font-bold text-white tracking-wide shrink-0">
             Graph Over Time
           </h2>
-          {periodGain && (
-            <span
-              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold border shrink-0 ${
-                periodGain.diff >= 0
-                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                  : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-              }`}
-              title={`Period Change: ${periodGain.diff >= 0 ? '+' : ''}${formatCurrency(periodGain.diff)}`}
-            >
-              {periodGain.diff >= 0 ? '+' : ''}
-              {periodGain.percent.toFixed(1)}%
-            </span>
-          )}
         </div>
 
         {/* Minimalist Line Toggles */}
@@ -311,7 +298,22 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
       {/* Time Period Options: Past Year, YTD, Past 3 years, Past 5 Years, All Time */}
       <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 text-[8px]">
-        <span className="text-slate-500 text-[8px] uppercase tracking-wider font-semibold">Period:</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-slate-500 text-[8px] uppercase tracking-wider font-semibold">Period:</span>
+          {periodGain && (
+            <span
+              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-mono-num font-bold border ${
+                periodGain.diff >= 0
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+              }`}
+              title={`Period Change: ${periodGain.diff >= 0 ? '+' : ''}${formatCurrency(periodGain.diff)}`}
+            >
+              {periodGain.diff >= 0 ? '+' : ''}
+              {periodGain.percent.toFixed(1)}%
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {timePeriodOptions.map((opt) => (
             <button
