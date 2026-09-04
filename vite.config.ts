@@ -16,8 +16,8 @@ export default defineConfig({
         name: 'Finance Tracker PWA',
         short_name: 'FinanceTracker',
         description: 'Track liquid, non-liquid and total assets over time',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#020617',
+        background_color: '#020617',
         display: 'standalone',
         start_url: './',
         icons: [

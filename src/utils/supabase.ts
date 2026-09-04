@@ -8,12 +8,21 @@ export interface SupabaseConfig {
   anonKey: string;
 }
 
+// =========================================================================
+// HARDCODED SUPABASE PROJECT CREDENTIALS
+// =========================================================================
+export const HARDCODED_SUPABASE_URL = 'https://wwzqpatllqneldjqrcku.supabase.co';
+export const HARDCODED_SUPABASE_ANON_KEY = 'sb_publishable_j-GTdoAgYQYQXHbnGHXolw_sIBYymq_';
+
 export const getStoredSupabaseConfig = (): SupabaseConfig => {
   const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-  if (envUrl && envKey) {
-    return { url: envUrl, anonKey: envKey };
+  const url = HARDCODED_SUPABASE_URL || envUrl;
+  const anonKey = HARDCODED_SUPABASE_ANON_KEY || envKey;
+
+  if (url && anonKey) {
+    return { url, anonKey };
   }
 
   try {

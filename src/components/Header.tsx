@@ -123,7 +123,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-slate-950/85 border-b border-slate-800/80 transition-all">
+      <header 
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        className="sticky top-0 z-30 w-full backdrop-blur-xl bg-slate-950/85 border-b border-slate-800/80 transition-all"
+      >
         <div className="max-w-[500px] mx-auto px-3 py-2 flex items-center justify-between gap-2">
           {/* Brand */}
           <div className="flex items-center gap-1.5 flex-shrink-0">

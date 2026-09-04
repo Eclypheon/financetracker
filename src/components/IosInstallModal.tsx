@@ -10,7 +10,13 @@ export const IosInstallModal: React.FC<IosInstallModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div 
+      style={{
+        paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm animate-fade-in"
+    >
       <div className="relative w-full max-w-[340px] rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 text-slate-100 space-y-3.5">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-800">

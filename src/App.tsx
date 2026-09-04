@@ -333,26 +333,25 @@ export const App: React.FC = () => {
         }
       }
 
+      e.preventDefault();
       wheelAccum += e.deltaY;
       if (wheelTimer) clearTimeout(wheelTimer);
       wheelTimer = setTimeout(() => {
         wheelAccum = 0;
-      }, 150);
+      }, 200);
 
-      const THRESHOLD = 28;
+      const WHEEL_THRESHOLD = 90;
 
-      if (Math.abs(wheelAccum) >= THRESHOLD) {
+      if (Math.abs(wheelAccum) >= WHEEL_THRESHOLD) {
         if (wheelAccum > 0) {
           // Scroll down -> Jump to next screen
           if (activeScreenIndex < 2) {
-            e.preventDefault();
             wheelAccum = 0;
             scrollToScreen(activeScreenIndex + 1);
           }
         } else if (wheelAccum < 0) {
           // Scroll up -> Jump to previous screen
           if (activeScreenIndex > 0) {
-            e.preventDefault();
             wheelAccum = 0;
             scrollToScreen(activeScreenIndex - 1);
           }
@@ -404,12 +403,14 @@ export const App: React.FC = () => {
       const currentY = e.changedTouches[0].clientY;
       const deltaY = touchStartY - currentY; // > 0 is scroll down
 
+      const TOUCH_SWIPE_THRESHOLD = 95;
+
       // If user started already at bottom and swiped up significantly: jump to next screen
-      if (deltaY > 45 && touchStartedAtBottom) {
+      if (deltaY > TOUCH_SWIPE_THRESHOLD && touchStartedAtBottom) {
         if (activeScreenIndex < 2) {
           scrollToScreen(activeScreenIndex + 1);
         }
-      } else if (deltaY < -45 && touchStartedAtTop) {
+      } else if (deltaY < -TOUCH_SWIPE_THRESHOLD && touchStartedAtTop) {
         if (activeScreenIndex > 0) {
           scrollToScreen(activeScreenIndex - 1);
         }
@@ -490,7 +491,7 @@ export const App: React.FC = () => {
   return (
     <div 
       ref={scrollContainerRef}
-      style={{ scrollPaddingTop: '46px' }}
+      style={{ scrollPaddingTop: 'calc(46px + env(safe-area-inset-top, 0px))' }}
       className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300 relative"
     >
       {/* Header with Cloud Sync (sticky at top) */}
@@ -535,7 +536,8 @@ export const App: React.FC = () => {
         <section
           ref={screen1Ref}
           id="screen-1"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
+          style={{ minHeight: 'calc(100dvh - 46px - env(safe-area-inset-top, 0px))' }}
+          className="snap-start w-full flex flex-col items-center justify-center py-2 relative"
         >
           {/* Screen 1 Header: Current Month & + Card button */}
           <div className="w-full flex items-center justify-between mb-1.5 px-1">
@@ -579,7 +581,8 @@ export const App: React.FC = () => {
         <section
           ref={screen2Ref}
           id="screen-2"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
+          style={{ minHeight: 'calc(100dvh - 46px - env(safe-area-inset-top, 0px))' }}
+          className="snap-start w-full flex flex-col items-center justify-center py-2 relative"
         >
           {/* Navigation text: just above the past cards container */}
           <div className="w-full flex justify-center mb-1.5">
@@ -640,7 +643,8 @@ export const App: React.FC = () => {
         <section
           ref={screen3Ref}
           id="screen-3"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
+          style={{ minHeight: 'calc(100dvh - 46px - env(safe-area-inset-top, 0px))' }}
+          className="snap-start w-full flex flex-col items-center justify-center py-2 relative"
         >
           {/* Navigation text: just above the graph container */}
           <div className="w-full flex justify-center mb-1.5">
@@ -660,7 +664,10 @@ export const App: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <footer className="w-full border-t border-slate-900 bg-slate-950/80 py-2.5 text-center text-[9px] text-slate-500 mt-2">
+          <footer 
+            style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
+            className="w-full border-t border-slate-900 bg-slate-950/80 py-2.5 text-center text-[9px] text-slate-500 mt-2"
+          >
             <div className="flex items-center justify-between">
               <span>Finance Tracker PWA</span>
               <span>github.com/Eclypheon/financetracker</span>
