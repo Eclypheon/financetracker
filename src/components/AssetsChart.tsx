@@ -9,7 +9,7 @@ interface AssetsChartProps {
 }
 
 export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
-  // Requirement: "By default, it should only show the total assets line."
+  // Default: only show total assets line
   const [showTotal, setShowTotal] = useState<boolean>(true);
   const [showLiquid, setShowLiquid] = useState<boolean>(false);
   const [showNonLiquid, setShowNonLiquid] = useState<boolean>(false);
@@ -35,9 +35,11 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
       });
   }, [cards]);
 
-  // Compute scale boundaries
+  // Requirement: "on the y axis, the lowest value should always be 0 it should not auto fit the graph"
   const { minVal, maxVal } = useMemo(() => {
-    if (chartData.length === 0) return { minVal: 0, maxVal: 100000 };
+    const min = 0; // Always strictly 0!
+
+    if (chartData.length === 0) return { minVal: min, maxVal: 100000 };
 
     let allValues: number[] = [];
     chartData.forEach((d) => {
@@ -50,15 +52,15 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
       allValues = chartData.map((d) => d.totalAssets);
     }
 
-    const min = Math.max(0, Math.min(...allValues) * 0.9);
-    const max = Math.max(...allValues) * 1.1 || 100000;
+    const peak = Math.max(...allValues, 10000);
+    const max = peak * 1.15;
     return { minVal: min, maxVal: max };
   }, [chartData, showTotal, showLiquid, showNonLiquid]);
 
-  // SVG Chart dimensions - compact and minimalist
-  const width = 760;
-  const height = 240;
-  const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+  // SVG Chart dimensions - compact and half width (~480px)
+  const width = 460;
+  const height = 210;
+  const padding = { top: 15, right: 15, bottom: 25, left: 52 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
@@ -84,7 +86,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     }, '');
   };
 
-  // Generate Area Path for gentle gradient fill
+  // Generate Area Path for gradient fill
   const generateAreaPath = (dataKey: 'totalAssets') => {
     if (chartData.length === 0) return '';
     const linePath = generateLinePath(dataKey);
@@ -94,7 +96,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
   };
 
-  // Y-axis ticks (3 ticks)
+  // Y-axis ticks starting strictly from 0
   const yTicks = [0, 0.5, 1].map((ratio) => {
     const value = minVal + ratio * (maxVal - minVal);
     const y = padding.top + innerHeight - ratio * innerHeight;
@@ -104,65 +106,57 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const activeHoverData = hoveredPointIndex !== null ? chartData[hoveredPointIndex] : null;
 
   return (
-    <section className="w-full max-w-4xl mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-4 shadow-md space-y-3">
+    <section className="w-full max-w-[480px] mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-3 shadow-md space-y-2">
       {/* Header & Line Toggles */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1.5 border-b border-slate-800">
+        <div className="flex items-center gap-1">
           <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <TrendingUp className="w-3.5 h-3.5" />
+            <TrendingUp className="w-3 h-3" />
           </div>
-          <div>
-            <h2 className="text-xs sm:text-sm font-bold text-white tracking-wide">
-              Assets Over Time
-            </h2>
-            <p className="text-[10px] text-slate-400">
-              Toggle lines below. Hover to view snapshot details.
-            </p>
-          </div>
+          <h2 className="text-xs font-bold text-white tracking-wide">
+            Assets Over Time
+          </h2>
         </div>
 
         {/* Minimalist Toggle Buttons */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Total Assets Toggle */}
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setShowTotal(!showTotal)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
               showTotal
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showTotal ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Total Assets</span>
+            {showTotal ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+            <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+            <span>Total</span>
           </button>
 
-          {/* Liquid Assets Toggle */}
           <button
             onClick={() => setShowLiquid(!showLiquid)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
               showLiquid
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showLiquid ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-            <span>Liquid Total</span>
+            {showLiquid ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+            <span className="w-1 h-1 rounded-full bg-cyan-400"></span>
+            <span>Liquid</span>
           </button>
 
-          {/* Non-liquid Assets Toggle */}
           <button
             onClick={() => setShowNonLiquid(!showNonLiquid)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
               showNonLiquid
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showNonLiquid ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-            <span>Non-liquid Total</span>
+            {showNonLiquid ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+            <span className="w-1 h-1 rounded-full bg-purple-400"></span>
+            <span>Non-liquid</span>
           </button>
         </div>
       </div>
@@ -170,24 +164,24 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
       {/* SVG Chart Graphic */}
       <div className="relative w-full overflow-hidden">
         {chartData.length === 0 ? (
-          <div className="h-44 flex items-center justify-center text-slate-500 text-xs">
-            Not enough data to plot graph. Add month cards to see graph.
+          <div className="h-32 flex items-center justify-center text-slate-500 text-[10px]">
+            Not enough data to plot.
           </div>
         ) : (
           <div className="w-full overflow-x-auto no-scrollbar">
             <svg
               viewBox={`0 0 ${width} ${height}`}
               className="w-full h-auto select-none"
-              style={{ maxHeight: '250px' }}
+              style={{ maxHeight: '220px' }}
             >
               <defs>
-                <linearGradient id="totalGradientMini" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="totalGradientMini2" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
                   <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
-              {/* Grid Lines */}
+              {/* Grid Lines - Lowest value is strictly 0 */}
               {yTicks.map((tick, i) => (
                 <g key={i}>
                   <line
@@ -196,17 +190,17 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                     x2={width - padding.right}
                     y2={tick.y}
                     stroke="rgba(51, 65, 85, 0.3)"
-                    strokeDasharray="3 3"
+                    strokeDasharray="2 2"
                   />
                   <text
-                    x={padding.left - 8}
+                    x={padding.left - 6}
                     y={tick.y + 3}
                     textAnchor="end"
                     fill="#64748b"
-                    fontSize="10"
+                    fontSize="9"
                     fontFamily="monospace"
                   >
-                    {formatCurrency(tick.value, { compact: true })}
+                    {tick.value === 0 ? '$0' : formatCurrency(tick.value, { compact: true })}
                   </text>
                 </g>
               ))}
@@ -223,7 +217,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
               {/* Area Under Total Assets */}
               {showTotal && (
-                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradientMini)" />
+                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradientMini2)" />
               )}
 
               {/* Liquid Assets Line */}
@@ -232,7 +226,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('liquidTotal')}
                   fill="none"
                   stroke="#06b6d4"
-                  strokeWidth="2.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -244,7 +238,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('nonLiquidTotal')}
                   fill="none"
                   stroke="#a855f7"
-                  strokeWidth="2.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -256,7 +250,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('totalAssets')}
                   fill="none"
                   stroke="#10b981"
-                  strokeWidth="2.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -285,7 +279,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                       <circle
                         cx={x}
                         cy={getY(d.liquidTotal)}
-                        r={isHovered ? 4.5 : 3}
+                        r={isHovered ? 4 : 2.5}
                         fill="#06b6d4"
                         stroke="#0f172a"
                         strokeWidth="1.5"
@@ -296,7 +290,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                       <circle
                         cx={x}
                         cy={getY(d.nonLiquidTotal)}
-                        r={isHovered ? 4.5 : 3}
+                        r={isHovered ? 4 : 2.5}
                         fill="#a855f7"
                         stroke="#0f172a"
                         strokeWidth="1.5"
@@ -307,7 +301,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                       <circle
                         cx={x}
                         cy={getY(d.totalAssets)}
-                        r={isHovered ? 5 : 3.5}
+                        r={isHovered ? 4.5 : 3}
                         fill="#10b981"
                         stroke="#0f172a"
                         strokeWidth="1.5"
@@ -316,10 +310,10 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
                     <text
                       x={x}
-                      y={padding.top + innerHeight + 18}
+                      y={padding.top + innerHeight + 16}
                       textAnchor="middle"
                       fill={isHovered ? '#34d399' : '#94a3b8'}
-                      fontSize="10"
+                      fontSize="9"
                       fontWeight={isHovered ? '700' : '500'}
                       fontFamily="monospace"
                     >
@@ -343,36 +337,32 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
           </div>
         )}
 
-        {/* Minimalist Hover Tooltip */}
+        {/* Hover Snapshot */}
         {activeHoverData && (
-          <div className="mt-2 p-2 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-200 font-mono-num font-bold text-[10px]">
+          <div className="mt-1.5 p-1.5 rounded-lg bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
+            <div className="flex items-center gap-1">
+              <span className="px-1 py-0.2 rounded bg-slate-800 text-slate-200 font-mono-num font-bold text-[9px]">
                 {activeHoverData.monthYear}
               </span>
-              <span className="text-slate-400">Snapshot:</span>
             </div>
 
-            <div className="flex items-center gap-3 font-mono-num text-[11px]">
+            <div className="flex items-center gap-2 font-mono-num text-[10px]">
               {showTotal && (
-                <div className="flex items-center gap-1">
-                  <Wallet className="w-3 h-3 text-emerald-400" />
-                  <span className="text-slate-400">Total:</span>
+                <div className="flex items-center gap-0.5">
+                  <Wallet className="w-2.5 h-2.5 text-emerald-400" />
                   <span className="text-emerald-400 font-bold">{formatCurrency(activeHoverData.totalAssets)}</span>
                 </div>
               )}
               {showLiquid && (
-                <div className="flex items-center gap-1">
-                  <Coins className="w-3 h-3 text-cyan-400" />
-                  <span className="text-slate-400">Liquid:</span>
-                  <span className="text-cyan-400 font-bold">{formatCurrency(activeHoverData.liquidTotal)}</span>
+                <div className="flex items-center gap-0.5">
+                  <Coins className="w-2.5 h-2.5 text-cyan-400" />
+                  <span className="text-cyan-400">{formatCurrency(activeHoverData.liquidTotal)}</span>
                 </div>
               )}
               {showNonLiquid && (
-                <div className="flex items-center gap-1">
-                  <Landmark className="w-3 h-3 text-purple-400" />
-                  <span className="text-slate-400">Non-liquid:</span>
-                  <span className="text-purple-400 font-bold">{formatCurrency(activeHoverData.nonLiquidTotal)}</span>
+                <div className="flex items-center gap-0.5">
+                  <Landmark className="w-2.5 h-2.5 text-purple-400" />
+                  <span className="text-purple-400">{formatCurrency(activeHoverData.nonLiquidTotal)}</span>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { FinanceCardData } from '../types/finance';
-import { calculateCardTotals, calculateDelta } from '../utils/calculations';
+import { calculateCardTotals, calculateDelta, getTopAssetDeltas } from '../utils/calculations';
 import { formatCurrency, formatDeltaNumber, formatPercent } from '../utils/formatters';
 import { 
   ArrowRightLeft, 
@@ -12,7 +12,8 @@ import {
   Landmark, 
   Wallet,
   Sparkles,
-  Layers
+  Layers,
+  Zap
 } from 'lucide-react';
 
 interface CompareSectionProps {
@@ -40,6 +41,7 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
   const baseTotals = calculateCardTotals(baseCard);
   const compareTotals = calculateCardTotals(compareCard);
   const delta = calculateDelta(baseCard, compareCard);
+  const topAssetDeltas = getTopAssetDeltas(baseCard, compareCard, 4);
 
   const renderDeltaBox = (
     label: string,
@@ -56,13 +58,13 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
     }[color];
 
     return (
-      <div className={`p-2 rounded-lg border ${themeBorder} space-y-1`}>
+      <div className={`p-1.5 rounded-lg border ${themeBorder} space-y-0.5`}>
         <div className="flex items-center justify-between text-[10px] font-semibold text-slate-300">
           <div className="flex items-center gap-1">
             {icon}
             <span>{label}</span>
           </div>
-          <span className={`flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold ${formatted.colorClass} ${formatted.bgClass}`}>
+          <span className={`flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold ${formatted.colorClass} ${formatted.bgClass}`}>
             {formatted.isPositive ? (
               <TrendingUp className="w-2.5 h-2.5" />
             ) : formatted.isNeutral ? (
@@ -76,7 +78,7 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
 
         <div className="flex items-baseline justify-between pt-0.5">
           <span className="text-[9px] text-slate-400">Delta:</span>
-          <span className={`text-xs font-bold font-mono-num ${formatted.colorClass}`}>
+          <span className={`text-[11px] font-bold font-mono-num ${formatted.colorClass}`}>
             {formatted.text}
           </span>
         </div>
@@ -91,21 +93,12 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
   };
 
   return (
-    <section className="w-full space-y-2 flex flex-col items-center">
+    <section className="w-full max-w-[480px] mx-auto space-y-2 flex flex-col items-center">
       {/* Section Header */}
-      <div className="w-full max-w-4xl flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1.5 border-b border-slate-800">
-        <div className="flex items-center gap-1.5">
-          <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            <ArrowRightLeft className="w-3 h-3" />
-          </div>
-          <div>
-            <h2 className="text-xs font-bold text-white tracking-wide">
-              Compare Cards & Delta
-            </h2>
-            <p className="text-[9px] text-slate-400">
-              Comparing {baseCard.monthYear} with past {compareCard.monthYear}
-            </p>
-          </div>
+      <div className="w-full flex items-center justify-between gap-1.5 pb-1 border-b border-slate-800">
+        <div className="flex items-center gap-1 text-cyan-400">
+          <ArrowRightLeft className="w-3 h-3" />
+          <h2 className="text-xs font-bold text-white tracking-wide">Compare</h2>
         </div>
 
         {/* Dropdowns */}
@@ -121,7 +114,7 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
               </option>
             ))}
           </select>
-          <span className="text-slate-500">vs</span>
+          <span className="text-slate-500 text-[9px]">vs</span>
           <select
             value={compareCard.id}
             onChange={(e) => onSelectCompareCard(e.target.value)}
@@ -136,184 +129,159 @@ export const CompareSection: React.FC<CompareSectionProps> = ({
         </div>
       </div>
 
-      {/* 3 Small Vertical Rectangle Cards Side-by-Side */}
-      <div className="w-full flex flex-wrap lg:flex-nowrap justify-center gap-2.5 pt-1">
+      {/* 3 Small Side-by-Side Cards (Horizontal Scroll within ~480px width) */}
+      <div className="w-full flex items-stretch gap-2 overflow-x-auto pb-2 custom-scrollbar">
         {/* CARD 1: Latest Card Snapshot */}
-        <div className="w-[280px] sm:w-[290px] rounded-xl bg-slate-900 border border-slate-800 p-2.5 flex flex-col justify-between shadow-md">
+        <div className="w-[230px] flex-shrink-0 rounded-xl bg-slate-900 border border-slate-800 p-2 flex flex-col justify-between shadow-md">
           <div>
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
-              <div className="flex items-center gap-1 text-[11px] font-bold font-mono-num text-emerald-400">
-                <Calendar className="w-3 h-3" />
-                <span>Month: {baseCard.monthYear}</span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px]">
+              <div className="flex items-center gap-1 font-bold font-mono-num text-emerald-400">
+                <Calendar className="w-2.5 h-2.5" />
+                <span>{baseCard.monthYear}</span>
               </div>
-              <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[8px] font-bold uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
                 Latest
               </span>
             </div>
 
-            <div className="my-2 p-2 rounded-lg bg-slate-950/80 border border-slate-800/80">
-              <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Total Assets</span>
-              <div className="text-base font-bold font-mono-num text-white mt-0.5">
-                {formatCurrency(baseTotals.totalAssets)}
+            <div className="my-1.5 p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 flex items-center justify-between text-[10px]">
+              <span className="text-[9px] text-slate-400 font-semibold">Total:</span>
+              <span className="font-bold font-mono-num text-white">{formatCurrency(baseTotals.totalAssets)}</span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="p-1 rounded bg-cyan-950/20 border border-cyan-900/30 flex justify-between text-[9px]">
+                <span className="text-cyan-300 flex items-center gap-0.5"><Coins className="w-2 h-2" /> Liquid:</span>
+                <span className="font-mono-num font-bold text-cyan-200">{formatCurrency(baseTotals.liquidTotal)}</span>
+              </div>
+              <div className="p-1 rounded bg-purple-950/20 border border-purple-900/30 flex justify-between text-[9px]">
+                <span className="text-purple-300 flex items-center gap-0.5"><Landmark className="w-2 h-2" /> Non-liquid:</span>
+                <span className="font-mono-num font-bold text-purple-200">{formatCurrency(baseTotals.nonLiquidTotal)}</span>
               </div>
             </div>
 
-            {/* Breakdown */}
-            <div className="space-y-1.5">
-              <div className="p-1.5 rounded-lg bg-cyan-950/20 border border-cyan-900/30">
-                <div className="flex items-center justify-between text-[10px] font-semibold text-cyan-300">
-                  <span className="flex items-center gap-1"><Coins className="w-2.5 h-2.5 text-cyan-400" /> Liquid Total:</span>
-                  <span className="font-mono-num font-bold">{formatCurrency(baseTotals.liquidTotal)}</span>
-                </div>
-                <div className="mt-1 pt-0.5 border-t border-cyan-950/60 text-[9px] text-slate-400 flex justify-between">
-                  <span>Banks: {formatCurrency(baseTotals.banksTotal, { compact: true })}</span>
-                  <span>Stocks: {formatCurrency(baseTotals.stocksTotal, { compact: true })}</span>
-                </div>
+            {/* "Largest delta" section showing top 4 assets */}
+            <div className="mt-1.5 p-1.5 rounded-lg bg-slate-950/50 border border-slate-800/60 text-[9px] space-y-0.5 text-slate-400">
+              <div className="text-[8px] uppercase tracking-wider font-semibold text-slate-500 flex items-center gap-1">
+                <Zap className="w-2 h-2 text-amber-400" />
+                <span>Largest delta</span>
               </div>
-
-              <div className="p-1.5 rounded-lg bg-purple-950/20 border border-purple-900/30">
-                <div className="flex items-center justify-between text-[10px] font-semibold text-purple-300">
-                  <span className="flex items-center gap-1"><Landmark className="w-2.5 h-2.5 text-purple-400" /> Non-liquid:</span>
-                  <span className="font-mono-num font-bold">{formatCurrency(baseTotals.nonLiquidTotal)}</span>
+              {topAssetDeltas.map((item) => (
+                <div key={item.name} className="flex justify-between items-center pt-0.5">
+                  <span className="truncate max-w-[120px] text-slate-300" title={item.name}>{item.name}:</span>
+                  <span className="font-mono-num text-slate-200">{formatCurrency(item.baseVal)}</span>
                 </div>
-                <div className="mt-1 pt-0.5 border-t border-purple-950/60 text-[9px] text-slate-400 flex justify-between">
-                  <span>CPF: {formatCurrency(baseTotals.cpfTotal, { compact: true })}</span>
-                  <span>Prop: {formatCurrency(baseTotals.propertyTotal, { compact: true })}</span>
-                </div>
-              </div>
-
-              <div className="p-1.5 rounded-lg bg-slate-950/40 border border-slate-800/60 text-[9px] space-y-0.5 text-slate-400">
-                <div className="text-[8px] uppercase tracking-wider font-semibold text-slate-500">Key Assets</div>
-                {baseCard.banks.slice(0, 2).map((b) => (
-                  <div key={b.id} className="flex justify-between">
-                    <span>{b.name}</span>
-                    <span className="font-mono-num text-slate-300">{formatCurrency(b.value)}</span>
-                  </div>
-                ))}
-                {baseCard.stocks.slice(0, 2).map((s) => (
-                  <div key={s.id} className="flex justify-between">
-                    <span>{s.name}</span>
-                    <span className="font-mono-num text-slate-300">{formatCurrency(s.value)}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
 
-          <div className="pt-1.5 border-t border-slate-800 text-[9px] text-slate-500 text-center">
-            Baseline Card
+          <div className="pt-1 border-t border-slate-800 text-[8px] text-slate-500 text-center">
+            Baseline
           </div>
         </div>
 
         {/* CARD 2: Compared Past Card */}
-        <div className="w-[280px] sm:w-[290px] rounded-xl bg-slate-900 border border-slate-800 p-2.5 flex flex-col justify-between shadow-md">
+        <div className="w-[230px] flex-shrink-0 rounded-xl bg-slate-900 border border-slate-800 p-2 flex flex-col justify-between shadow-md">
           <div>
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
-              <div className="flex items-center gap-1 text-[11px] font-bold font-mono-num text-cyan-400">
-                <Calendar className="w-3 h-3" />
-                <span>Month: {compareCard.monthYear}</span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px]">
+              <div className="flex items-center gap-1 font-bold font-mono-num text-cyan-400">
+                <Calendar className="w-2.5 h-2.5" />
+                <span>{compareCard.monthYear}</span>
               </div>
-              <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                Selected Past
+              <span className="text-[8px] font-bold uppercase px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">
+                Compare
               </span>
             </div>
 
-            <div className="my-2 p-2 rounded-lg bg-slate-950/80 border border-slate-800/80">
-              <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Total Assets</span>
-              <div className="text-base font-bold font-mono-num text-white mt-0.5">
-                {formatCurrency(compareTotals.totalAssets)}
+            <div className="my-1.5 p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 flex items-center justify-between text-[10px]">
+              <span className="text-[9px] text-slate-400 font-semibold">Total:</span>
+              <span className="font-bold font-mono-num text-white">{formatCurrency(compareTotals.totalAssets)}</span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="p-1 rounded bg-cyan-950/20 border border-cyan-900/30 flex justify-between text-[9px]">
+                <span className="text-cyan-300 flex items-center gap-0.5"><Coins className="w-2 h-2" /> Liquid:</span>
+                <span className="font-mono-num font-bold text-cyan-200">{formatCurrency(compareTotals.liquidTotal)}</span>
+              </div>
+              <div className="p-1 rounded bg-purple-950/20 border border-purple-900/30 flex justify-between text-[9px]">
+                <span className="text-purple-300 flex items-center gap-0.5"><Landmark className="w-2 h-2" /> Non-liquid:</span>
+                <span className="font-mono-num font-bold text-purple-200">{formatCurrency(compareTotals.nonLiquidTotal)}</span>
               </div>
             </div>
 
-            {/* Breakdown */}
-            <div className="space-y-1.5">
-              <div className="p-1.5 rounded-lg bg-cyan-950/20 border border-cyan-900/30">
-                <div className="flex items-center justify-between text-[10px] font-semibold text-cyan-300">
-                  <span className="flex items-center gap-1"><Coins className="w-2.5 h-2.5 text-cyan-400" /> Liquid Total:</span>
-                  <span className="font-mono-num font-bold">{formatCurrency(compareTotals.liquidTotal)}</span>
-                </div>
-                <div className="mt-1 pt-0.5 border-t border-cyan-950/60 text-[9px] text-slate-400 flex justify-between">
-                  <span>Banks: {formatCurrency(compareTotals.banksTotal, { compact: true })}</span>
-                  <span>Stocks: {formatCurrency(compareTotals.stocksTotal, { compact: true })}</span>
-                </div>
+            {/* "Largest delta" section showing top 4 assets in Compare Card */}
+            <div className="mt-1.5 p-1.5 rounded-lg bg-slate-950/50 border border-slate-800/60 text-[9px] space-y-0.5 text-slate-400">
+              <div className="text-[8px] uppercase tracking-wider font-semibold text-slate-500 flex items-center gap-1">
+                <Zap className="w-2 h-2 text-amber-400" />
+                <span>Largest delta</span>
               </div>
-
-              <div className="p-1.5 rounded-lg bg-purple-950/20 border border-purple-900/30">
-                <div className="flex items-center justify-between text-[10px] font-semibold text-purple-300">
-                  <span className="flex items-center gap-1"><Landmark className="w-2.5 h-2.5 text-purple-400" /> Non-liquid:</span>
-                  <span className="font-mono-num font-bold">{formatCurrency(compareTotals.nonLiquidTotal)}</span>
+              {topAssetDeltas.map((item) => (
+                <div key={item.name} className="flex justify-between items-center pt-0.5">
+                  <span className="truncate max-w-[120px] text-slate-300" title={item.name}>{item.name}:</span>
+                  <span className="font-mono-num text-slate-200">{formatCurrency(item.compareVal)}</span>
                 </div>
-                <div className="mt-1 pt-0.5 border-t border-purple-950/60 text-[9px] text-slate-400 flex justify-between">
-                  <span>CPF: {formatCurrency(compareTotals.cpfTotal, { compact: true })}</span>
-                  <span>Prop: {formatCurrency(compareTotals.propertyTotal, { compact: true })}</span>
-                </div>
-              </div>
-
-              <div className="p-1.5 rounded-lg bg-slate-950/40 border border-slate-800/60 text-[9px] space-y-0.5 text-slate-400">
-                <div className="text-[8px] uppercase tracking-wider font-semibold text-slate-500">Key Assets</div>
-                {compareCard.banks.slice(0, 2).map((b) => (
-                  <div key={b.id} className="flex justify-between">
-                    <span>{b.name}</span>
-                    <span className="font-mono-num text-slate-300">{formatCurrency(b.value)}</span>
-                  </div>
-                ))}
-                {compareCard.stocks.slice(0, 2).map((s) => (
-                  <div key={s.id} className="flex justify-between">
-                    <span>{s.name}</span>
-                    <span className="font-mono-num text-slate-300">{formatCurrency(s.value)}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
 
-          <div className="pt-1.5 border-t border-slate-800 text-[9px] text-slate-500 text-center">
+          <div className="pt-1 border-t border-slate-800 text-[8px] text-slate-500 text-center">
             Comparison Target
           </div>
         </div>
 
         {/* CARD 3: Third Generated DELTA Card */}
-        <div className="w-[280px] sm:w-[290px] rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-emerald-500/40 p-2.5 flex flex-col justify-between shadow-lg shadow-emerald-950/30">
+        <div className="w-[230px] flex-shrink-0 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-emerald-500/40 p-2 flex flex-col justify-between shadow-lg shadow-emerald-950/30">
           <div>
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-300">
-                <Sparkles className="w-3 h-3" />
-                <span>Delta Card</span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px]">
+              <div className="flex items-center gap-1 font-bold text-emerald-300">
+                <Sparkles className="w-2.5 h-2.5" />
+                <span>Delta</span>
               </div>
-              <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[8px] font-bold uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
                 {baseCard.monthYear} vs {compareCard.monthYear}
               </span>
             </div>
 
-            <div className="space-y-1.5 mt-2">
-              {/* Total Assets Delta */}
+            <div className="space-y-1 mt-1.5">
               {renderDeltaBox(
-                'Total Assets Delta',
-                <Wallet className="w-2.5 h-2.5 text-emerald-400" />,
+                'Total Assets',
+                <Wallet className="w-2 h-2 text-emerald-400" />,
                 delta.total,
                 'emerald'
               )}
-
-              {/* Liquid Assets Total Delta */}
               {renderDeltaBox(
-                'Liquid Assets Delta',
-                <Coins className="w-2.5 h-2.5 text-cyan-400" />,
+                'Liquid Total',
+                <Coins className="w-2 h-2 text-cyan-400" />,
                 delta.liquid,
                 'cyan'
               )}
-
-              {/* Non-liquid Assets Total Delta */}
               {renderDeltaBox(
-                'Non-liquid Delta',
-                <Layers className="w-2.5 h-2.5 text-purple-400" />,
+                'Non-liquid',
+                <Layers className="w-2 h-2 text-purple-400" />,
                 delta.nonLiquid,
                 'purple'
               )}
             </div>
+
+            {/* Delta values for top 4 assets */}
+            <div className="mt-1.5 p-1 rounded-lg bg-slate-950/60 border border-slate-800/80 text-[8px] space-y-0.5">
+              <div className="text-[8px] font-semibold text-slate-400">Asset Deltas:</div>
+              {topAssetDeltas.slice(0, 3).map((item) => {
+                const isPos = item.diff > 0;
+                const isZero = item.diff === 0;
+                return (
+                  <div key={item.name} className="flex justify-between items-center text-[8px]">
+                    <span className="truncate max-w-[100px] text-slate-400">{item.name}:</span>
+                    <span className={`font-mono-num font-semibold ${isPos ? 'text-emerald-400' : isZero ? 'text-slate-400' : 'text-rose-400'}`}>
+                      {isPos ? '+' : ''}{formatCurrency(item.diff, { compact: true })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Bottom Summary */}
-          <div className="pt-2 border-t border-slate-800/80 text-center text-[10px]">
+          <div className="pt-1 border-t border-slate-800/80 text-center text-[9px]">
             {delta.total.diff >= 0 ? (
               <span className="text-emerald-400 font-semibold font-mono-num">
                 +{formatCurrency(delta.total.diff)} (+{delta.total.percent.toFixed(1)}%)

@@ -6,14 +6,14 @@ import {
   Plus, 
   Trash2, 
   Calendar, 
-  Wallet, 
-  Coins, 
   Landmark, 
   Home, 
   TrendingUp, 
   Check, 
   X,
-  FolderPlus
+  FolderPlus,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface FinanceCardProps {
@@ -41,6 +41,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   const [newHeaderName, setNewHeaderName] = useState('');
   const [isEditingMonth, setIsEditingMonth] = useState(false);
   const [monthInput, setMonthInput] = useState(card.monthYear);
+  const [isExpanded, setIsExpanded] = useState(mode !== 'compact');
 
   const totals = calculateCardTotals(card);
 
@@ -124,7 +125,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     setAddingCategory(null);
   };
 
-  // Delete field from standard category (Every field has trash icon now)
+  // Delete field from standard category
   const handleDeleteField = (category: CategoryKey, fieldId: string) => {
     if (!onUpdate) return;
     onUpdate({
@@ -170,7 +171,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     setIsAddingHeaderSection(null);
   };
 
-  // Delete entire custom header category
+  // Delete custom header category
   const handleDeleteHeaderCategory = (sectionType: 'liquid' | 'nonLiquid', catId: string) => {
     if (!onUpdate) return;
     const key = sectionType === 'liquid' ? 'customLiquidCategories' : 'customNonLiquidCategories';
@@ -192,156 +193,271 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     setIsEditingMonth(false);
   };
 
-  // Compact Mode (for past cards horizontal carousel - now short and snug!)
+  // =========================================================================
+  // COMPACT MODE (for carousel cards: short, compact, and expandable to edit!)
+  // =========================================================================
   if (mode === 'compact') {
     return (
       <div
-        onClick={onSelect}
-        className={`group relative flex-shrink-0 w-[185px] h-[165px] rounded-xl border transition-all duration-200 p-2.5 flex flex-col justify-between cursor-pointer select-none text-left ${
+        className={`group relative flex-shrink-0 transition-all duration-200 rounded-xl border p-2 flex flex-col justify-between text-left ${
+          isExpanded ? 'w-[280px] max-h-[500px]' : 'w-[175px] h-[135px]'
+        } ${
           isSelected
             ? 'bg-slate-900 border-emerald-500 shadow-md shadow-emerald-950/40 ring-1 ring-emerald-500/30'
             : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
         }`}
       >
-        <div>
-          {/* Top Bar */}
-          <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-            <div className="flex items-center gap-1 text-[10px] font-bold font-mono-num text-slate-300">
-              <Calendar className="w-2.5 h-2.5 text-emerald-400" />
-              <span>{card.monthYear}</span>
-            </div>
-            {isSelected && (
-              <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Selected
-              </span>
-            )}
-          </div>
-
-          {/* Total Assets */}
-          <div className="my-1.5 p-1.5 rounded-lg bg-slate-950/70 border border-slate-800/70">
-            <div className="text-[8px] text-slate-400 uppercase tracking-wider">Total Assets</div>
-            <div className="text-sm font-bold font-mono-num text-white group-hover:text-emerald-300 transition-colors">
-              {formatCurrency(totals.totalAssets)}
-            </div>
-          </div>
-
-          {/* Mini Liquid & Non-liquid totals */}
-          <div className="space-y-1 text-[9px] font-mono-num">
-            <div className="flex justify-between items-center text-cyan-300">
-              <span className="text-slate-400">Liquid:</span>
-              <span>{formatCurrency(totals.liquidTotal, { compact: true })}</span>
-            </div>
-            <div className="flex justify-between items-center text-purple-300">
-              <span className="text-slate-400">Non-liquid:</span>
-              <span>{formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="pt-1 border-t border-slate-800 text-[8px] text-slate-500 flex items-center justify-between">
-          <span>Compare snapshot</span>
-          <span className="text-emerald-400">&rarr;</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Vertical Rectangle Card (now compact, reduced vertical height, tight padding, smaller fonts)
-  return (
-    <div
-      className={`w-[290px] sm:w-[310px] max-h-[580px] rounded-2xl border transition-all duration-300 shadow-xl flex flex-col justify-between ${
-        mode === 'featured'
-          ? 'bg-slate-900/95 border-slate-800 shadow-emerald-950/20 ring-1 ring-emerald-500/10'
-          : 'bg-slate-900 border-slate-800 shadow-md'
-      }`}
-    >
-      {/* 1. Header (Month/Year + Total Assets) */}
-      <div className="p-2.5 border-b border-slate-800/90 bg-slate-950/50 rounded-t-2xl">
-        <div className="flex items-center justify-between gap-1 mb-1.5">
-          {/* Month/Year */}
+        {/* Single-line Top Header: MM/YY on left, Total on right */}
+        <div className="flex items-center justify-between pb-1 border-b border-slate-800/80 text-[10px]">
           <div className="flex items-center gap-1">
             {isEditingMonth ? (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="text"
                   value={monthInput}
                   onChange={(e) => setMonthInput(e.target.value)}
                   placeholder="MM/YY"
-                  className="w-14 px-1 py-0.2 text-[10px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none"
+                  className="w-12 px-1 py-0.2 text-[9px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none"
                   autoFocus
                 />
                 <button
                   onClick={handleSaveMonthYear}
                   className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white"
-                  title="Save Month"
                 >
-                  <Check className="w-2.5 h-2.5" />
+                  <Check className="w-2 h-2" />
                 </button>
               </div>
             ) : (
               <div
-                onClick={() => isEditable && setIsEditingMonth(true)}
-                className={`flex items-center gap-1 text-[11px] font-bold text-slate-200 font-mono-num ${
-                  isEditable ? 'cursor-pointer hover:text-emerald-400 group/m' : ''
-                }`}
-                title={isEditable ? 'Click to edit Month/Year' : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isEditable) setIsEditingMonth(true);
+                }}
+                className="flex items-center gap-0.5 font-bold font-mono-num text-slate-300 hover:text-emerald-400 cursor-pointer"
+                title="Click to edit MM/YY"
               >
-                <Calendar className="w-3 h-3 text-emerald-400" />
-                <span>Month/Year = {card.monthYear}</span>
-                {isEditable && (
-                  <span className="text-[8px] font-normal text-slate-500 group-hover/m:text-emerald-400">
-                    ✎
-                  </span>
-                )}
+                <Calendar className="w-2.5 h-2.5 text-emerald-400" />
+                <span>{card.monthYear}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
-            {mode === 'featured' && (
-              <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Latest
-              </span>
-            )}
+          <div className="flex items-center gap-1 font-mono-num">
+            <span className="text-slate-400 text-[9px]">Total:</span>
+            <span className="font-bold text-white text-[10px]">{formatCurrency(totals.totalAssets)}</span>
             {onDelete && (
               <button
-                onClick={onDelete}
-                className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                title="Delete Card"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-slate-600 hover:text-rose-400 p-0.5"
+                title="Delete"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Total Assets Display */}
-        <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
-          <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-            <Wallet className="w-3 h-3 text-emerald-400" />
-            <span>Total Assets:</span>
+        {/* When Collapsed: Snug summary without empty space */}
+        {!isExpanded ? (
+          <div className="flex-1 flex flex-col justify-between py-1 cursor-pointer" onClick={onSelect}>
+            <div className="space-y-0.5 text-[9px] font-mono-num">
+              <div className="flex justify-between items-center text-cyan-300">
+                <span className="text-slate-400">Liquid:</span>
+                <span>{formatCurrency(totals.liquidTotal, { compact: true })}</span>
+              </div>
+              <div className="flex justify-between items-center text-purple-300">
+                <span className="text-slate-400">Non-liquid:</span>
+                <span>{formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[8px]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                }}
+                className="text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5"
+              >
+                <span>Edit details</span>
+                <ChevronDown className="w-2.5 h-2.5" />
+              </button>
+              {isSelected ? (
+                <span className="text-emerald-400 font-bold">Selected</span>
+              ) : (
+                <span className="text-slate-500">Click to select</span>
+              )}
+            </div>
           </div>
-          <div className="text-sm sm:text-base font-bold font-mono-num text-white tracking-tight">
-            {formatCurrency(totals.totalAssets)}
+        ) : (
+          /* When Expanded: Full details breakdown, editable in place! */
+          <div className="flex-1 flex flex-col justify-between overflow-hidden pt-1.5 space-y-1.5">
+            <div className="overflow-y-auto custom-scrollbar space-y-1.5 max-h-[360px] pr-1">
+              {/* Banks */}
+              <CategorySection
+                title="Banks"
+                icon={<Landmark className="w-2 h-2 text-cyan-400" />}
+                category="banks"
+                fields={card.banks}
+                isEditable={isEditable}
+                addingCategory={addingCategory}
+                newFieldName={newFieldName}
+                setAddingCategory={setAddingCategory}
+                setNewFieldName={setNewFieldName}
+                onFieldValueChange={handleFieldValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+
+              {/* Stocks */}
+              <CategorySection
+                title="Stocks"
+                icon={<TrendingUp className="w-2 h-2 text-blue-400" />}
+                category="stocks"
+                fields={card.stocks}
+                isEditable={isEditable}
+                addingCategory={addingCategory}
+                newFieldName={newFieldName}
+                setAddingCategory={setAddingCategory}
+                setNewFieldName={setNewFieldName}
+                onFieldValueChange={handleFieldValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+
+              {/* CPF */}
+              <CategorySection
+                title="CPF"
+                icon={<Landmark className="w-2 h-2 text-purple-400" />}
+                category="cpf"
+                fields={card.cpf}
+                isEditable={isEditable}
+                addingCategory={addingCategory}
+                newFieldName={newFieldName}
+                setAddingCategory={setAddingCategory}
+                setNewFieldName={setNewFieldName}
+                onFieldValueChange={handleFieldValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+
+              {/* Property */}
+              <CategorySection
+                title="Property"
+                icon={<Home className="w-2 h-2 text-indigo-400" />}
+                category="property"
+                fields={card.property}
+                isEditable={isEditable}
+                addingCategory={addingCategory}
+                newFieldName={newFieldName}
+                setAddingCategory={setAddingCategory}
+                setNewFieldName={setNewFieldName}
+                onFieldValueChange={handleFieldValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+            </div>
+
+            <div className="pt-1 border-t border-slate-800 flex items-center justify-between text-[8px]">
+              <div className="flex items-center gap-1.5 font-mono-num text-[9px]">
+                <span className="text-cyan-300">L: {formatCurrency(totals.liquidTotal, { compact: true })}</span>
+                <span className="text-purple-300">NL: {formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                }}
+                className="text-slate-400 hover:text-white flex items-center gap-0.5"
+              >
+                <span>Collapse</span>
+                <ChevronUp className="w-2.5 h-2.5" />
+              </button>
+            </div>
           </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // FEATURED / MAIN CARD (Vertical Rectangle with single-line header and no redundant banners)
+  // =========================================================================
+  return (
+    <div
+      className={`w-[280px] sm:w-[290px] rounded-2xl border transition-all duration-300 shadow-xl flex flex-col justify-between ${
+        mode === 'featured'
+          ? 'bg-slate-900/95 border-slate-800 shadow-emerald-950/20 ring-1 ring-emerald-500/10'
+          : 'bg-slate-900 border-slate-800 shadow-md'
+      }`}
+    >
+      {/* Single-line Top Header: MM/YY on left, Total: $... on right */}
+      <div className="px-2.5 py-2 border-b border-slate-800/90 bg-slate-950/50 rounded-t-2xl flex items-center justify-between text-[11px]">
+        {/* Left: MM/YY without "Month/Year =" text */}
+        <div className="flex items-center gap-1">
+          {isEditingMonth ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={monthInput}
+                onChange={(e) => setMonthInput(e.target.value)}
+                placeholder="MM/YY"
+                className="w-14 px-1 py-0.2 text-[10px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveMonthYear}
+                className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white"
+                title="Save Month"
+              >
+                <Check className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => isEditable && setIsEditingMonth(true)}
+              className={`flex items-center gap-1 font-bold text-slate-200 font-mono-num ${
+                isEditable ? 'cursor-pointer hover:text-emerald-400 group/m' : ''
+              }`}
+              title={isEditable ? 'Click to edit MM/YY' : undefined}
+            >
+              <Calendar className="w-3 h-3 text-emerald-400" />
+              <span>{card.monthYear}</span>
+              {isEditable && (
+                <span className="text-[8px] font-normal text-slate-500 group-hover/m:text-emerald-400">
+                  ✎
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: "Total: $..." on the SAME line with smaller font */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 font-mono-num">
+            <span className="text-[10px] text-slate-400">Total:</span>
+            <span className="text-xs font-bold text-white">{formatCurrency(totals.totalAssets)}</span>
+          </div>
+
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="p-0.5 text-slate-500 hover:text-rose-400 rounded transition-colors"
+              title="Delete Card"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 2. Scrollable Body: Categories and fields */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
+      {/* 2. Scrollable Body: Categories and fields (redundant section total headers removed) */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1.5 max-h-[460px]">
         {/* ================= LIQUID ASSETS SECTION ================= */}
         <div className="rounded-xl bg-slate-950/60 p-2 border border-cyan-950/70 ring-1 ring-cyan-500/10 space-y-1.5">
-          {/* Liquid Header & Total */}
-          <div className="flex items-center justify-between pb-1 border-b border-cyan-900/30">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
-              <Coins className="w-2.5 h-2.5" /> Liquid Assets Total:
-            </span>
-            <span className="text-[11px] font-bold font-mono-num text-cyan-300">
-              {formatCurrency(totals.liquidTotal)}
-            </span>
-          </div>
-
           {/* Banks Category */}
           <CategorySection
             title="Banks"
@@ -378,9 +494,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           {(card.customLiquidCategories || []).map((cat) => (
             <div key={cat.id} className="pt-1 border-t border-slate-800/60">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-cyan-300">
-                  <span>{cat.name}</span>
-                </div>
+                <span className="text-[10px] font-bold text-cyan-300">{cat.name}</span>
                 <div className="flex items-center gap-1">
                   {isEditable && (
                     <button
@@ -401,7 +515,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                     <button
                       onClick={() => handleDeleteHeaderCategory('liquid', cat.id)}
                       className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
-                      title="Delete category header"
+                      title="Delete category"
                     >
                       <Trash2 className="w-2.5 h-2.5" />
                     </button>
@@ -409,7 +523,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 </div>
               </div>
 
-              {/* Add field to this custom category */}
               {addingCategory === cat.id && (
                 <div className="flex items-center gap-1 p-1 rounded bg-slate-800 border border-slate-700 my-1">
                   <input
@@ -434,7 +547,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 </div>
               )}
 
-              {/* Custom Category Field rows */}
               <div className="space-y-0.5 mt-1">
                 {cat.fields.map((f) => (
                   <div
@@ -478,14 +590,14 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             </div>
           ))}
 
-          {/* Button to add a different Header under Liquid */}
+          {/* Add different header under Liquid */}
           {isEditable && (
-            <div className="pt-1">
+            <div className="pt-0.5">
               {isAddingHeaderSection === 'liquid' ? (
                 <div className="flex items-center gap-1 p-1 rounded bg-slate-800/90 border border-cyan-500/40">
                   <input
                     type="text"
-                    placeholder="New header name (e.g. Crypto, Bonds)..."
+                    placeholder="New header (e.g. Crypto)..."
                     value={newHeaderName}
                     onChange={(e) => setNewHeaderName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddHeaderCategory('liquid')}
@@ -521,16 +633,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
 
         {/* ================= NON-LIQUID ASSETS SECTION ================= */}
         <div className="rounded-xl bg-slate-950/60 p-2 border border-purple-950/70 ring-1 ring-purple-500/10 space-y-1.5">
-          {/* Non-liquid Header & Total */}
-          <div className="flex items-center justify-between pb-1 border-b border-purple-900/30">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
-              <Landmark className="w-2.5 h-2.5" /> Non-liquid Assets Total:
-            </span>
-            <span className="text-[11px] font-bold font-mono-num text-purple-300">
-              {formatCurrency(totals.nonLiquidTotal)}
-            </span>
-          </div>
-
           {/* CPF Category */}
           <CategorySection
             title="CPF"
@@ -571,9 +673,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           {(card.customNonLiquidCategories || []).map((cat) => (
             <div key={cat.id} className="pt-1 border-t border-slate-800/60">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-300">
-                  <span>{cat.name}</span>
-                </div>
+                <span className="text-[10px] font-bold text-purple-300">{cat.name}</span>
                 <div className="flex items-center gap-1">
                   {isEditable && (
                     <button
@@ -594,7 +694,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                     <button
                       onClick={() => handleDeleteHeaderCategory('nonLiquid', cat.id)}
                       className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
-                      title="Delete category header"
+                      title="Delete category"
                     >
                       <Trash2 className="w-2.5 h-2.5" />
                     </button>
@@ -602,7 +702,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 </div>
               </div>
 
-              {/* Add field to custom non-liquid category */}
               {addingCategory === cat.id && (
                 <div className="flex items-center gap-1 p-1 rounded bg-slate-800 border border-slate-700 my-1">
                   <input
@@ -627,7 +726,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 </div>
               )}
 
-              {/* Field rows */}
               <div className="space-y-0.5 mt-1">
                 {cat.fields.map((f) => (
                   <div
@@ -671,14 +769,14 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             </div>
           ))}
 
-          {/* Button to add a different Header under Non-Liquid */}
+          {/* Add different header under Non-Liquid */}
           {isEditable && (
-            <div className="pt-1">
+            <div className="pt-0.5">
               {isAddingHeaderSection === 'nonLiquid' ? (
                 <div className="flex items-center gap-1 p-1 rounded bg-slate-800/90 border border-purple-500/40">
                   <input
                     type="text"
-                    placeholder="New header name (e.g. Vehicles, Pensions)..."
+                    placeholder="New header (e.g. Vehicles)..."
                     value={newHeaderName}
                     onChange={(e) => setNewHeaderName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddHeaderCategory('nonLiquid')}
@@ -713,16 +811,16 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         </div>
       </div>
 
-      {/* 3. Compact Footer Summary */}
+      {/* 3. Bottom Footer Summary (Already displays Liquid & Non-liquid totals) */}
       <div className="p-1.5 border-t border-slate-800/80 bg-slate-950/40 rounded-b-2xl flex items-center justify-between text-[9px]">
         <div className="flex items-center gap-1 text-cyan-400">
           <span>Liquid:</span>
-          <span className="font-mono-num font-semibold">{formatCurrency(totals.liquidTotal, { compact: true })}</span>
+          <span className="font-mono-num font-semibold">{formatCurrency(totals.liquidTotal)}</span>
         </div>
         <div className="text-slate-600">+</div>
         <div className="flex items-center gap-1 text-purple-400">
           <span>Non-liquid:</span>
-          <span className="font-mono-num font-semibold">{formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
+          <span className="font-mono-num font-semibold">{formatCurrency(totals.nonLiquidTotal)}</span>
         </div>
       </div>
     </div>
@@ -819,7 +917,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         </div>
       )}
 
-      {/* Field rows - EVERY field now has a trash icon! */}
+      {/* Field rows - EVERY field has a trash icon! */}
       <div className="space-y-0.5">
         {fields.map((field) => (
           <div
@@ -862,7 +960,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         ))}
       </div>
 
-      {/* Sub-total row (e.g. CPF Total or Property Total) */}
+      {/* Optional sub-total row (e.g. CPF Total or Property Total) */}
       {subTotalLabel && subTotalValue !== undefined && (
         <div className="flex items-center justify-between px-1.5 py-0.2 text-[9px] text-slate-400">
           <span>{subTotalLabel}:</span>

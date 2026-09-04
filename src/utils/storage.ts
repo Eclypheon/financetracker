@@ -31,6 +31,36 @@ export const getDefaultTemplate = (monthYear: string = getCurrentMonthYear()): F
   };
 };
 
+export const createNewBlankCard = (): FinanceCardData => {
+  const currentMY = getCurrentMonthYear();
+  const timestamp = Date.now();
+  return {
+    id: `card_${timestamp}`,
+    monthYear: currentMY,
+    createdAt: timestamp,
+    banks: [
+      { id: `ocbc_${timestamp}`, name: 'OCBC', value: 0, isCustom: false },
+      { id: `dbs_${timestamp}`, name: 'DBS', value: 0, isCustom: false },
+    ],
+    stocks: [
+      { id: `ibkr_${timestamp}`, name: 'IBKR', value: 0, isCustom: false },
+      { id: `sgx_${timestamp}`, name: 'SGX', value: 0, isCustom: false },
+    ],
+    cpf: [
+      { id: `oa_${timestamp}`, name: 'Ordinary Account', value: 0, isCustom: false },
+      { id: `sa_${timestamp}`, name: 'Special Account', value: 0, isCustom: false },
+      { id: `ma_${timestamp}`, name: 'Medisave Account', value: 0, isCustom: false },
+      { id: `endowus_${timestamp}`, name: 'Endowus', value: 0, isCustom: false },
+    ],
+    property: [
+      { id: `prop_cash_${timestamp}`, name: 'Cash', value: 0, isCustom: false },
+      { id: `prop_cpf_${timestamp}`, name: 'CPF', value: 0, isCustom: false },
+    ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
+  };
+};
+
 export const sampleInitialCards: FinanceCardData[] = [
   {
     id: 'sample_0926',
@@ -163,24 +193,6 @@ export const loadStoredCards = (): FinanceCardData[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Check if old key exists and migrate, removing any extraneous default fields
-      const oldRaw = localStorage.getItem('financetracker_data_v1');
-      if (oldRaw) {
-        try {
-          const parsedOld = JSON.parse(oldRaw);
-          if (Array.isArray(parsedOld)) {
-            // Filter out default UOB if present in old sample
-            const migrated = parsedOld.map((card: FinanceCardData) => ({
-              ...card,
-              banks: card.banks.filter((b) => b.name !== 'UOB' || !b.isCustom),
-            }));
-            saveStoredCards(migrated);
-            return migrated;
-          }
-        } catch {
-          // Ignore
-        }
-      }
       saveStoredCards(sampleInitialCards);
       return sampleInitialCards;
     }
@@ -201,34 +213,6 @@ export const saveStoredCards = (cards: FinanceCardData[]): void => {
   } catch (err) {
     console.error('Failed to save cards to storage', err);
   }
-};
-
-export const createNextCardFromPrevious = (prevCard?: FinanceCardData): FinanceCardData => {
-  const currentMY = getCurrentMonthYear();
-  
-  if (prevCard) {
-    return {
-      id: `card_${Date.now()}`,
-      monthYear: currentMY,
-      createdAt: Date.now(),
-      banks: prevCard.banks.map((b) => ({ ...b, id: `${b.id}_${Date.now()}` })),
-      stocks: prevCard.stocks.map((s) => ({ ...s, id: `${s.id}_${Date.now()}` })),
-      cpf: prevCard.cpf.map((c) => ({ ...c, id: `${c.id}_${Date.now()}` })),
-      property: prevCard.property.map((p) => ({ ...p, id: `${p.id}_${Date.now()}` })),
-      customLiquidCategories: (prevCard.customLiquidCategories || []).map((cat) => ({
-        ...cat,
-        id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        fields: cat.fields.map((f) => ({ ...f, id: `${f.id}_${Date.now()}` })),
-      })),
-      customNonLiquidCategories: (prevCard.customNonLiquidCategories || []).map((cat) => ({
-        ...cat,
-        id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        fields: cat.fields.map((f) => ({ ...f, id: `${f.id}_${Date.now()}` })),
-      })),
-    };
-  }
-
-  return getDefaultTemplate(currentMY);
 };
 
 export const exportCardsToJson = (cards: FinanceCardData[]): void => {

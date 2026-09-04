@@ -58,6 +58,59 @@ export const calculateDelta = (baseCard: FinanceCardData, compareCard: FinanceCa
   };
 };
 
+export interface AssetDeltaItem {
+  name: string;
+  baseVal: number;
+  compareVal: number;
+  diff: number;
+  absDiff: number;
+}
+
+export const getTopAssetDeltas = (
+  baseCard: FinanceCardData,
+  compareCard: FinanceCardData,
+  limit = 4
+): AssetDeltaItem[] => {
+  const baseFieldsMap = new Map<string, number>();
+  const compareFieldsMap = new Map<string, number>();
+
+  const extractFields = (card: FinanceCardData, map: Map<string, number>) => {
+    const all = [
+      ...card.banks,
+      ...card.stocks,
+      ...card.cpf,
+      ...card.property,
+      ...(card.customLiquidCategories || []).flatMap((c) => c.fields),
+      ...(card.customNonLiquidCategories || []).flatMap((c) => c.fields),
+    ];
+    all.forEach((f) => {
+      const key = f.name.trim();
+      map.set(key, (map.get(key) || 0) + (Number(f.value) || 0));
+    });
+  };
+
+  extractFields(baseCard, baseFieldsMap);
+  extractFields(compareCard, compareFieldsMap);
+
+  const allNames = Array.from(new Set([...baseFieldsMap.keys(), ...compareFieldsMap.keys()]));
+
+  const items: AssetDeltaItem[] = allNames.map((name) => {
+    const baseVal = baseFieldsMap.get(name) || 0;
+    const compareVal = compareFieldsMap.get(name) || 0;
+    const diff = baseVal - compareVal;
+    return {
+      name,
+      baseVal,
+      compareVal,
+      diff,
+      absDiff: Math.abs(diff),
+    };
+  });
+
+  items.sort((a, b) => b.absDiff - a.absDiff);
+  return items.slice(0, limit);
+};
+
 export const getCurrentMonthYear = (): string => {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');

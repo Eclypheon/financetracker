@@ -4,7 +4,7 @@ import {
   loadStoredCards, 
   saveStoredCards, 
   sampleInitialCards, 
-  createNextCardFromPrevious, 
+  createNewBlankCard, 
   exportCardsToJson, 
   importCardsFromJson 
 } from './utils/storage';
@@ -49,11 +49,11 @@ export const App: React.FC = () => {
     setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
   };
 
-  // Add new month handler
-  const handleAddNewMonth = () => {
-    const newCard = createNextCardFromPrevious(latestCard);
-    setCards((prev) => [newCard, ...prev]);
-    setSelectedBaseCardId(newCard.id);
+  // Add new BLANK card handler
+  const handleAddNewBlankCard = () => {
+    const blankCard = createNewBlankCard();
+    setCards((prev) => [blankCard, ...prev]);
+    setSelectedBaseCardId(blankCard.id);
     if (latestCard) {
       setSelectedCompareCardId(latestCard.id);
     }
@@ -65,7 +65,7 @@ export const App: React.FC = () => {
       alert('You must keep at least one card in your tracker.');
       return;
     }
-    if (confirm('Are you sure you want to delete this month record?')) {
+    if (confirm('Delete this card?')) {
       setCards((prev) => prev.filter((c) => c.id !== cardId));
     }
   };
@@ -84,7 +84,7 @@ export const App: React.FC = () => {
         setSelectedCompareCardId(imported[1].id);
       }
     } catch (err) {
-      alert('Could not import backup file. Please ensure it is a valid JSON export.');
+      alert('Could not import backup file.');
     }
   };
 
@@ -99,30 +99,20 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
-      {/* Top Header / App Bar */}
+      {/* Header */}
       <Header
-        onAddNewMonth={handleAddNewMonth}
+        onAddNewBlankCard={handleAddNewBlankCard}
         onExport={handleExport}
         onImport={handleImport}
         onResetSample={handleResetSample}
       />
 
-      {/* Main Content Dashboard */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-4 py-6 space-y-8">
+      {/* Main Content Dashboard: Container is half width (max-w-[500px]) */}
+      <main className="flex-1 max-w-[500px] w-full mx-auto px-3 py-4 space-y-6">
         {/* ====================================================================
-            SECTION 1: TOP CENTER LATEST CARD (VERTICAL RECTANGLE)
-            "The main page would have the latest card at the top center of the page"
+            SECTION 1: TOP CENTER LATEST CARD
             ==================================================================== */}
         <section className="w-full flex flex-col items-center">
-          <div className="text-center mb-3">
-            <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
-              Latest Month Card
-            </h2>
-            <p className="text-[10px] text-slate-400">
-              Interactive snapshot. All totals calculate live.
-            </p>
-          </div>
-
           {latestCard ? (
             <FinanceCard
               card={latestCard}
@@ -135,26 +125,21 @@ export const App: React.FC = () => {
         </section>
 
         {/* ====================================================================
-            SECTION 2: PAST CARDS SPREAD HORIZONTALLY
-            "with the past cards smaller and below it spread out horizontally."
+            SECTION 2: PAST CARDS SPREAD HORIZONTALLY (HALF WIDTH CONTAINER)
             ==================================================================== */}
         <section className="w-full">
           <PastCardsCarousel
             cards={pastCards}
             selectedCardId={selectedCompareCardId}
             onSelectCard={(id) => setSelectedCompareCardId(id)}
-            onAddNewMonth={handleAddNewMonth}
+            onAddNewBlankCard={handleAddNewBlankCard}
+            onUpdateCard={handleUpdateCard}
             onDeleteCard={handleDeleteCard}
           />
         </section>
 
         {/* ====================================================================
-            SECTION 3: COMPARE DIFFERENT CARDS WITH DELTA CARD
-            "Further down the page, I want the feature to compare different cards, 
-            so it should by default have the first card as the latest one, and then 
-            to the right of that one card can be selected from the above horizontal 
-            spread of cards. Finally, a third card is generated that shows the delta 
-            for Liquid assets total, Non liquid assets total and total assets."
+            SECTION 3: COMPARE SECTION WITH "LARGEST DELTA" (TOP 4 ASSETS)
             ==================================================================== */}
         {latestCard && (
           <section className="w-full">
@@ -169,21 +154,17 @@ export const App: React.FC = () => {
         )}
 
         {/* ====================================================================
-            SECTION 4: GRAPH OVER TIME
-            "Further down on the page I want a graph over time. This graph should have 
-            the following lines: Liquid assets total, Non liquid assets total, total Assets. 
-            Each of these lines are toggleable to be on or off. By default, it should only 
-            show the total assets line."
+            SECTION 4: GRAPH OVER TIME (Y-AXIS LOWEST IS STRICTLY 0)
             ==================================================================== */}
         <section className="w-full">
           <AssetsChart cards={cards} />
         </section>
       </main>
 
-      {/* Minimalist Footer */}
-      <footer className="w-full border-t border-slate-900 bg-slate-950 py-4 text-center text-[10px] text-slate-500">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
-          <span>Finance Tracker PWA · Offline Capable · Local Storage</span>
+      {/* Footer */}
+      <footer className="w-full border-t border-slate-900 bg-slate-950 py-3 text-center text-[9px] text-slate-500">
+        <div className="max-w-[500px] mx-auto px-3 flex items-center justify-between">
+          <span>Finance Tracker PWA</span>
           <span>github.com/Eclypheon/financetracker</span>
         </div>
       </footer>
