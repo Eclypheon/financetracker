@@ -21,6 +21,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
   onDeleteCard,
 }) => {
   const [frontIndex, setFrontIndex] = useState<number>(0);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Wheel accumulator state
@@ -46,6 +47,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
   const handlePrev = () => {
     if (cards.length === 0) return;
+    setExpandedCardId(null);
     const newIdx = Math.max(0, frontIndex - 1);
     setFrontIndex(newIdx);
     onSelectCard(cards[newIdx].id);
@@ -53,6 +55,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
   const handleNext = () => {
     if (cards.length === 0) return;
+    setExpandedCardId(null);
     const newIdx = Math.min(cards.length - 1, frontIndex + 1);
     setFrontIndex(newIdx);
     onSelectCard(cards[newIdx].id);
@@ -64,6 +67,11 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.overflow-y-auto')) {
+        return;
+      }
+
       const absX = Math.abs(e.deltaX);
       const absY = Math.abs(e.deltaY);
 
@@ -139,7 +147,8 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       target.tagName === 'BUTTON' || 
       target.closest('input') || 
       target.closest('button') ||
-      target.closest('[data-no-drag]')
+      target.closest('[data-no-drag]') ||
+      target.closest('.overflow-y-auto')
     ) {
       return;
     }
@@ -276,7 +285,11 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
           }}
-          className={`relative w-full h-[185px] overflow-hidden flex items-center justify-center pt-1 ${
+          className={`relative w-full ${
+            expandedCardId ? 'h-[445px]' : 'h-[185px]'
+          } transition-[height] duration-300 ease-out overflow-hidden flex ${
+            expandedCardId ? 'items-start pt-1' : 'items-center pt-1'
+          } justify-center ${
             isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
@@ -303,6 +316,9 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
                   if (!hasMovedRef.current) {
                     setFrontIndex(idx);
                     onSelectCard(card.id);
+                    if (expandedCardId && expandedCardId !== card.id) {
+                      setExpandedCardId(null);
+                    }
                   }
                 }}
                 style={{
@@ -322,10 +338,17 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
                   card={card}
                   mode="compact"
                   isSelected={card.id === selectedCardId}
+                  isExpanded={expandedCardId === card.id}
+                  onToggleExpand={(expanded) => {
+                    setExpandedCardId(expanded ? card.id : null);
+                  }}
                   onSelect={() => {
                     if (!hasMovedRef.current) {
                       setFrontIndex(idx);
                       onSelectCard(card.id);
+                      if (expandedCardId && expandedCardId !== card.id) {
+                        setExpandedCardId(null);
+                      }
                     }
                   }}
                   onUpdate={onUpdateCard}
@@ -344,6 +367,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
             <button
               key={c.id}
               onClick={() => {
+                setExpandedCardId(null);
                 setFrontIndex(idx);
                 onSelectCard(c.id);
               }}

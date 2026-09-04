@@ -22,6 +22,8 @@ interface FinanceCardProps {
   mode?: 'featured' | 'compact' | 'comparison';
   isEditable?: boolean;
   isSelected?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: (expanded: boolean) => void;
   onUpdate?: (updated: FinanceCardData) => void;
   onDelete?: () => void;
   onSelect?: () => void;
@@ -32,6 +34,8 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   mode = 'featured',
   isEditable = true,
   isSelected = false,
+  isExpanded: controlledExpanded,
+  onToggleExpand,
   onUpdate,
   onDelete,
   onSelect,
@@ -42,8 +46,16 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   const [newHeaderName, setNewHeaderName] = useState('');
   const [isEditingMonth, setIsEditingMonth] = useState(false);
   const [monthInput, setMonthInput] = useState(card.monthYear);
-  const [isExpanded, setIsExpanded] = useState(mode !== 'compact');
+  const [internalExpanded, setInternalExpanded] = useState(mode !== 'compact');
   const [isConfirmingDeleteCard, setIsConfirmingDeleteCard] = useState(false);
+
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  const handleToggleExpand = (nextExpanded: boolean) => {
+    setInternalExpanded(nextExpanded);
+    if (onToggleExpand) {
+      onToggleExpand(nextExpanded);
+    }
+  };
 
   useEffect(() => {
     setIsConfirmingDeleteCard(false);
@@ -256,7 +268,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     return (
       <div
         className={`group relative flex-shrink-0 transition-all duration-200 rounded-xl border p-2 flex flex-col justify-between text-left ${
-          isExpanded ? 'w-[280px] max-h-[500px]' : 'w-[190px] h-[145px]'
+          isExpanded ? 'w-[280px] sm:w-[290px] h-[420px]' : 'w-[190px] h-[145px]'
         } ${
           isSelected
             ? 'bg-slate-900 border-emerald-500 shadow-lg shadow-emerald-950/50 ring-1 ring-emerald-500/40'
@@ -441,9 +453,10 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[8px]">
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsExpanded(true);
+                  handleToggleExpand(true);
                 }}
                 className="text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5"
               >
@@ -474,8 +487,8 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           </div>
         ) : (
           /* When Expanded: Full details breakdown, editable in place! */
-          <div className="flex-1 flex flex-col justify-between overflow-hidden pt-1.5 space-y-1.5">
-            <div className="overflow-y-auto custom-scrollbar space-y-1.5 max-h-[360px] pr-1 overscroll-y-contain">
+          <div className="flex-1 flex flex-col justify-between overflow-hidden pt-1.5 space-y-1.5 min-h-0">
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1 overscroll-y-contain">
               {/* Banks */}
               <CategorySection
                 title="Banks"
@@ -541,17 +554,18 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
               />
             </div>
 
-            <div className="pt-1 border-t border-slate-800 flex items-center justify-between text-[8px]">
+            <div className="pt-1 border-t border-slate-800 flex items-center justify-between text-[8px] flex-shrink-0">
               <div className="flex items-center gap-1.5 font-mono-num text-[9px]">
                 <span className="text-cyan-300">L: {formatCurrency(totals.liquidTotal, { compact: true })}</span>
                 <span className="text-purple-300">NL: {formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
               </div>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsExpanded(false);
+                  handleToggleExpand(false);
                 }}
-                className="text-slate-400 hover:text-white flex items-center gap-0.5"
+                className="text-slate-400 hover:text-white flex items-center gap-0.5 p-0.5 rounded hover:bg-slate-800"
               >
                 <span>Collapse</span>
                 <ChevronUp className="w-2.5 h-2.5" />
