@@ -230,6 +230,58 @@ export const saveStoredCards = (cards: FinanceCardData[]): void => {
   }
 };
 
+const ENTRY_CARD_STORAGE_KEY = 'financetracker_entry_card_v1';
+
+export const loadStoredEntryCard = (fallbackCard?: FinanceCardData): FinanceCardData => {
+  const currentMY = getCurrentMonthYear();
+  try {
+    const raw = localStorage.getItem(ENTRY_CARD_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.banks)) {
+        return {
+          ...parsed,
+          monthYear: currentMY, // Auto-populate with current MM/YY on page load
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load entry card from storage', err);
+  }
+
+  if (fallbackCard) {
+    return {
+      ...fallbackCard,
+      id: `entry_${Date.now()}`,
+      monthYear: currentMY,
+      createdAt: Date.now(),
+      banks: fallbackCard.banks.map((b) => ({ ...b })),
+      stocks: fallbackCard.stocks.map((s) => ({ ...s })),
+      cpf: fallbackCard.cpf.map((c) => ({ ...c })),
+      property: fallbackCard.property.map((p) => ({ ...p })),
+      others: (fallbackCard.others || []).map((o) => ({ ...o })),
+      customLiquidCategories: (fallbackCard.customLiquidCategories || []).map((cat) => ({
+        ...cat,
+        fields: cat.fields.map((f) => ({ ...f })),
+      })),
+      customNonLiquidCategories: (fallbackCard.customNonLiquidCategories || []).map((cat) => ({
+        ...cat,
+        fields: cat.fields.map((f) => ({ ...f })),
+      })),
+    };
+  }
+
+  return getDefaultTemplate(currentMY);
+};
+
+export const saveStoredEntryCard = (card: FinanceCardData): void => {
+  try {
+    localStorage.setItem(ENTRY_CARD_STORAGE_KEY, JSON.stringify(card));
+  } catch (err) {
+    console.error('Failed to save entry card to storage', err);
+  }
+};
+
 // Helper to escape CSV cell value
 const escapeCsvCell = (str: string | number): string => {
   const val = String(str ?? '');

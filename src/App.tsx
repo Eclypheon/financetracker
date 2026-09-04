@@ -4,6 +4,8 @@ import { FinanceCardData } from './types/finance';
 import { 
   loadStoredCards, 
   saveStoredCards, 
+  loadStoredEntryCard,
+  saveStoredEntryCard,
   sampleInitialCards, 
   createNewBlankCard, 
   exportCardsToCsv, 
@@ -22,10 +24,17 @@ import { PastCardsCarousel } from './components/PastCardsCarousel';
 import { CompareSection } from './components/CompareSection';
 import { AssetsChart } from './components/AssetsChart';
 import { AuthModal } from './components/AuthModal';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Save, CheckCircle2 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [cards, setCards] = useState<FinanceCardData[]>(() => loadStoredCards());
+  const [savedCards, setSavedCards] = useState<FinanceCardData[]>(() => loadStoredCards());
+  const [entryCard, setEntryCard] = useState<FinanceCardData>(() => {
+    const initialSaved = loadStoredCards();
+    return loadStoredEntryCard(initialSaved[0]);
+  });
+  const [showCardSavedModal, setShowCardSavedModal] = useState(false);
+  const cardSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [selectedBaseCardId, setSelectedBaseCardId] = useState<string | null>(null);
   const [selectedCompareCardId, setSelectedCompareCardId] = useState<string | null>(() => {
     const loaded = loadStoredCards();
@@ -61,7 +70,7 @@ export const App: React.FC = () => {
     try {
       const cloudCards = await fetchCloudCards();
       if (cloudCards && cloudCards.length > 0) {
-        setCards(cloudCards);
+        setSavedCards(cloudCards);
         saveStoredCards(cloudCards);
         if (cloudCards.length > 1) {
           setSelectedCompareCardId(cloudCards[1].id);
@@ -103,31 +112,89 @@ export const App: React.FC = () => {
     };
   }, [loadCloudData]);
 
-  // Always save to localStorage for offline access
+  // Always save savedCards to localStorage for offline access
   useEffect(() => {
-    saveStoredCards(cards);
-  }, [cards]);
+    saveStoredCards(savedCards);
+  }, [savedCards]);
 
-  // Latest Card is always cards[0]
-  const latestCard = cards[0];
-  // Past cards are cards[1...]
-  const pastCards = cards.slice(1);
+  // Always save entryCard to localStorage for offline access
+  useEffect(() => {
+    saveStoredEntryCard(entryCard);
+  }, [entryCard]);
+
+  // Cleanup modal timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cardSavedTimerRef.current) {
+        clearTimeout(cardSavedTimerRef.current);
+      }
+    };
+  }, []);
 
   // Active base card for comparison
-  const activeBaseCardId = (selectedBaseCardId && cards.some((c) => c.id === selectedBaseCardId))
+  const activeBaseCardId = (selectedBaseCardId && savedCards.some((c) => c.id === selectedBaseCardId))
     ? selectedBaseCardId
-    : latestCard?.id || '';
+    : savedCards[0]?.id || '';
 
   // Ensure valid compare selection
   useEffect(() => {
-    if (cards.length > 1 && (!selectedCompareCardId || !cards.some((c) => c.id === selectedCompareCardId))) {
-      setSelectedCompareCardId(cards[1].id);
+    if (savedCards.length > 1 && (!selectedCompareCardId || !savedCards.some((c) => c.id === selectedCompareCardId))) {
+      setSelectedCompareCardId(savedCards[1].id);
     }
-  }, [cards, selectedCompareCardId]);
+  }, [savedCards, selectedCompareCardId]);
 
-  // Update card handler (syncs locally and to cloud if logged in)
+  // Update entry card handler (Screen 1)
+  const handleUpdateEntryCard = (updated: FinanceCardData) => {
+    setEntryCard(updated);
+  };
+
+  // Save entry card handler (Screen 1 -> Saved Cards Carousel)
+  const handleSaveCard = () => {
+    const newCardId = `card_${Date.now()}`;
+    const newSavedCard: FinanceCardData = {
+      ...entryCard,
+      id: newCardId,
+      createdAt: Date.now(),
+      banks: entryCard.banks.map((b) => ({ ...b })),
+      stocks: entryCard.stocks.map((s) => ({ ...s })),
+      cpf: entryCard.cpf.map((c) => ({ ...c })),
+      property: entryCard.property.map((p) => ({ ...p })),
+      others: (entryCard.others || []).map((o) => ({ ...o })),
+      customLiquidCategories: (entryCard.customLiquidCategories || []).map((cat) => ({
+        ...cat,
+        fields: cat.fields.map((f) => ({ ...f })),
+      })),
+      customNonLiquidCategories: (entryCard.customNonLiquidCategories || []).map((cat) => ({
+        ...cat,
+        fields: cat.fields.map((f) => ({ ...f })),
+      })),
+    };
+
+    // Prepend to saved cards so it becomes the latest card in the carousel
+    setSavedCards((prev) => [newSavedCard, ...prev]);
+    setSelectedBaseCardId(newSavedCard.id);
+    if (!selectedCompareCardId && savedCards.length > 0) {
+      setSelectedCompareCardId(savedCards[0].id);
+    }
+
+    if (currentUser) {
+      saveCloudCard(newSavedCard, currentUser);
+    }
+
+    // Show temporary "Card Saved" modal
+    setShowCardSavedModal(true);
+    if (cardSavedTimerRef.current) {
+      clearTimeout(cardSavedTimerRef.current);
+    }
+    cardSavedTimerRef.current = setTimeout(() => {
+      setShowCardSavedModal(false);
+      cardSavedTimerRef.current = null;
+    }, 1600);
+  };
+
+  // Update card in saved cards (carousel / past cards)
   const handleUpdateCard = (updatedCard: FinanceCardData) => {
-    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
+    setSavedCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
     if (currentUser) {
       saveCloudCard(updatedCard, currentUser);
     }
@@ -136,10 +203,10 @@ export const App: React.FC = () => {
   // Add new BLANK card handler
   const handleAddNewBlankCard = () => {
     const blankCard = createNewBlankCard();
-    setCards((prev) => [blankCard, ...prev]);
+    setSavedCards((prev) => [blankCard, ...prev]);
     setSelectedBaseCardId(blankCard.id);
-    if (latestCard) {
-      setSelectedCompareCardId(latestCard.id);
+    if (savedCards.length > 0) {
+      setSelectedCompareCardId(savedCards[0].id);
     }
     if (currentUser) {
       saveCloudCard(blankCard, currentUser);
@@ -148,11 +215,11 @@ export const App: React.FC = () => {
 
   // Delete card handler
   const handleDeleteCard = (cardId: string) => {
-    if (cards.length <= 1) {
+    if (savedCards.length <= 1) {
       alert('You must keep at least one card in your tracker.');
       return;
     }
-    setCards((prev) => {
+    setSavedCards((prev) => {
       const updated = prev.filter((c) => c.id !== cardId);
       if (selectedBaseCardId === cardId) {
         setSelectedBaseCardId(updated[0]?.id || null);
@@ -178,14 +245,14 @@ export const App: React.FC = () => {
 
   // Export handler
   const handleExport = () => {
-    exportCardsToCsv(cards);
+    exportCardsToCsv(savedCards);
   };
 
   // Import handler
   const handleImport = async (file: File) => {
     try {
       const imported = await importCardsFromFile(file);
-      setCards(imported);
+      setSavedCards(imported);
       if (imported.length > 1) {
         setSelectedCompareCardId(imported[1].id);
       }
@@ -199,7 +266,7 @@ export const App: React.FC = () => {
 
   // Reset to sample handler
   const handleResetSample = () => {
-    setCards(sampleInitialCards);
+    setSavedCards(sampleInitialCards);
     setSelectedBaseCardId(sampleInitialCards[0].id);
     if (sampleInitialCards.length > 1) {
       setSelectedCompareCardId(sampleInitialCards[1].id);
@@ -511,7 +578,7 @@ export const App: React.FC = () => {
         aria-label="Screen Navigation"
       >
         {[
-          { index: 0, label: 'Latest Month' },
+          { index: 0, label: 'New Entry' },
           { index: 1, label: 'Past Cards & Compare' },
           { index: 2, label: 'Asset Graph' },
         ].map((item) => (
@@ -531,7 +598,7 @@ export const App: React.FC = () => {
       {/* Main Content: 3 Snapping Screens */}
       <main className="flex-1 max-w-[500px] w-full mx-auto px-3">
         {/* ============================================================ */}
-        {/* SCREEN 1: TOP OF THE PAGE (LATEST MONTH CARD)                */}
+        {/* SCREEN 1: TOP OF THE PAGE (NEW ENTRY DRAFT CARD)             */}
         {/* ============================================================ */}
         <section
           ref={screen1Ref}
@@ -539,28 +606,24 @@ export const App: React.FC = () => {
           style={{ minHeight: 'calc(100dvh - 46px - env(safe-area-inset-top, 0px))' }}
           className="snap-start w-full flex flex-col items-center justify-center py-2 relative"
         >
-          {/* Screen 1 Header: Current Month & + Card button */}
-          <div className="w-full flex items-center justify-between mb-1.5 px-1">
-            <span className="text-xs font-semibold text-slate-400">Current Month</span>
+          {/* Screen 1 Header: Save Card button */}
+          <div className="w-full flex items-center justify-end mb-1.5 px-1">
             <button
-              onClick={handleAddNewBlankCard}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all shadow-sm shadow-emerald-950/40 cursor-pointer active:scale-95"
-              title="Add a new blank card"
+              onClick={handleSaveCard}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all shadow-sm shadow-emerald-950/40 cursor-pointer active:scale-95"
+              title="Save Card"
             >
-              <Plus className="w-3 h-3" />
+              <Save className="w-3.5 h-3.5" />
               <span>Card</span>
             </button>
           </div>
 
-          {latestCard ? (
-            <FinanceCard
-              card={latestCard}
-              mode="featured"
-              isEditable={true}
-              onUpdate={handleUpdateCard}
-              onDelete={cards.length > 1 ? () => handleDeleteCard(latestCard.id) : undefined}
-            />
-          ) : null}
+          <FinanceCard
+            card={entryCard}
+            mode="featured"
+            isEditable={true}
+            onUpdate={handleUpdateEntryCard}
+          />
 
           {/* Navigation text: just below the card container */}
           <div className="w-full flex justify-center mt-2.5">
@@ -589,10 +652,10 @@ export const App: React.FC = () => {
             <button
               onClick={() => scrollToScreen(0)}
               className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
-              title="Jump up to Latest Card"
+              title="Jump up to New Entry"
             >
               <ChevronUp className="w-3 h-3" />
-              <span>Latest Card</span>
+              <span>New Entry</span>
             </button>
           </div>
 
@@ -601,7 +664,7 @@ export const App: React.FC = () => {
             {/* Part A: Past Cards Carousel (Deck) */}
             <div className="w-full">
               <PastCardsCarousel
-                cards={pastCards}
+                cards={savedCards}
                 selectedCardId={selectedCompareCardId}
                 onSelectCard={(id) => setSelectedCompareCardId(id)}
                 onAddNewBlankCard={handleAddNewBlankCard}
@@ -611,10 +674,10 @@ export const App: React.FC = () => {
             </div>
 
             {/* Part B: Compare Cards Section (3 Columns) */}
-            {latestCard && (
+            {savedCards.length > 0 && (
               <div className="w-full">
                 <CompareSection
-                  cards={cards}
+                  cards={savedCards}
                   baseCardId={activeBaseCardId}
                   compareCardId={selectedCompareCardId}
                   onSelectBaseCard={(id) => setSelectedBaseCardId(id)}
@@ -660,7 +723,7 @@ export const App: React.FC = () => {
 
           {/* Assets Chart */}
           <div className="w-full">
-            <AssetsChart cards={cards} />
+            <AssetsChart cards={savedCards} />
           </div>
 
           {/* Footer */}
@@ -696,6 +759,27 @@ export const App: React.FC = () => {
           }
         }}
       />
+
+      {/* Temporary "Card Saved" Modal */}
+      {showCardSavedModal && (
+        <div 
+          onClick={() => setShowCardSavedModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900/95 border border-emerald-500/50 shadow-2xl shadow-emerald-950/80 rounded-2xl p-6 flex flex-col items-center gap-3 text-center max-w-[280px] w-full animate-in fade-in zoom-in-95 duration-200"
+          >
+            <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-inner">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white tracking-wide">Card Saved</h3>
+              <p className="text-[11px] text-slate-400">Added to past cards carousel</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
