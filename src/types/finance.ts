@@ -22,6 +22,10 @@ export interface FinanceCardData {
   property: AssetField[];
   customLiquidCategories?: AssetCategory[];
   customNonLiquidCategories?: AssetCategory[];
+  // Manual overrides for past data without itemized breakdown:
+  manualLiquidTotal?: number;
+  manualNonLiquidTotal?: number;
+  manualTotalAssets?: number;
 }
 
 export interface CalculatedTotals {

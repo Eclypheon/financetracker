@@ -11,7 +11,8 @@ export const calculateCardTotals = (card: FinanceCardData): CalculatedTotals => 
     (acc, cat) => acc + sumFields(cat.fields),
     0
   );
-  const liquidTotal = banksTotal + stocksTotal + customLiquidTotal;
+  const calculatedLiquid = banksTotal + stocksTotal + customLiquidTotal;
+  const liquidTotal = card.manualLiquidTotal !== undefined ? Number(card.manualLiquidTotal) : calculatedLiquid;
 
   const cpfTotal = sumFields(card.cpf);
   const propertyTotal = sumFields(card.property);
@@ -19,9 +20,10 @@ export const calculateCardTotals = (card: FinanceCardData): CalculatedTotals => 
     (acc, cat) => acc + sumFields(cat.fields),
     0
   );
-  const nonLiquidTotal = cpfTotal + propertyTotal + customNonLiquidTotal;
+  const calculatedNonLiquid = cpfTotal + propertyTotal + customNonLiquidTotal;
+  const nonLiquidTotal = card.manualNonLiquidTotal !== undefined ? Number(card.manualNonLiquidTotal) : calculatedNonLiquid;
 
-  const totalAssets = liquidTotal + nonLiquidTotal;
+  const totalAssets = card.manualTotalAssets !== undefined ? Number(card.manualTotalAssets) : (liquidTotal + nonLiquidTotal);
 
   return {
     banksTotal,

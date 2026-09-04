@@ -10,10 +10,11 @@ import {
   Home, 
   TrendingUp, 
   Check, 
-  X,
-  FolderPlus,
-  ChevronDown,
-  ChevronUp
+  X, 
+  FolderPlus, 
+  ChevronDown, 
+  ChevronUp,
+  RotateCcw
 } from 'lucide-react';
 
 interface FinanceCardProps {
@@ -79,6 +80,46 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     onUpdate({
       ...card,
       [key]: updated,
+    });
+  };
+
+  // Manual Direct Overrides for Liquid, Non-Liquid, and Total Assets (for missing past breakdowns)
+  const handleManualLiquidChange = (valStr: string) => {
+    if (!onUpdate) return;
+    const numeric = valStr.trim() === '' ? undefined : parseFloat(valStr.replace(/[^0-9.-]+/g, '')) || 0;
+    onUpdate({
+      ...card,
+      manualLiquidTotal: numeric,
+      manualTotalAssets: undefined, // auto sum with non-liquid
+    });
+  };
+
+  const handleManualNonLiquidChange = (valStr: string) => {
+    if (!onUpdate) return;
+    const numeric = valStr.trim() === '' ? undefined : parseFloat(valStr.replace(/[^0-9.-]+/g, '')) || 0;
+    onUpdate({
+      ...card,
+      manualNonLiquidTotal: numeric,
+      manualTotalAssets: undefined, // auto sum with liquid
+    });
+  };
+
+  const handleManualTotalChange = (valStr: string) => {
+    if (!onUpdate) return;
+    const numeric = valStr.trim() === '' ? undefined : parseFloat(valStr.replace(/[^0-9.-]+/g, '')) || 0;
+    onUpdate({
+      ...card,
+      manualTotalAssets: numeric,
+    });
+  };
+
+  const handleResetManualOverrides = () => {
+    if (!onUpdate) return;
+    onUpdate({
+      ...card,
+      manualLiquidTotal: undefined,
+      manualNonLiquidTotal: undefined,
+      manualTotalAssets: undefined,
     });
   };
 
@@ -193,22 +234,28 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     setIsEditingMonth(false);
   };
 
+  const hasManualOverrides =
+    card.manualLiquidTotal !== undefined ||
+    card.manualNonLiquidTotal !== undefined ||
+    card.manualTotalAssets !== undefined;
+
   // =========================================================================
-  // COMPACT MODE (for carousel cards: short, compact, and expandable to edit!)
+  // COMPACT MODE (for carousel cards: direct editable totals for missing past data!)
   // =========================================================================
   if (mode === 'compact') {
     return (
       <div
         className={`group relative flex-shrink-0 transition-all duration-200 rounded-xl border p-2 flex flex-col justify-between text-left ${
-          isExpanded ? 'w-[280px] max-h-[500px]' : 'w-[175px] h-[135px]'
+          isExpanded ? 'w-[280px] max-h-[500px]' : 'w-[190px] h-[145px]'
         } ${
           isSelected
-            ? 'bg-slate-900 border-emerald-500 shadow-md shadow-emerald-950/40 ring-1 ring-emerald-500/30'
-            : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+            ? 'bg-slate-900 border-emerald-500 shadow-lg shadow-emerald-950/50 ring-1 ring-emerald-500/40'
+            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
         }`}
       >
         {/* Single-line Top Header: MM/YY on left, Total on right */}
         <div className="flex items-center justify-between pb-1 border-b border-slate-800/80 text-[10px]">
+          {/* Left: MM/YY */}
           <div className="flex items-center gap-1">
             {isEditingMonth ? (
               <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
@@ -242,9 +289,22 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-1 font-mono-num">
+          {/* Right: Total with Direct Input for unitemized past data */}
+          <div className="flex items-center gap-1 font-mono-num" onClick={(e) => e.stopPropagation()}>
             <span className="text-slate-400 text-[9px]">Total:</span>
-            <span className="font-bold text-white text-[10px]">{formatCurrency(totals.totalAssets)}</span>
+            {isEditable ? (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={totals.totalAssets === 0 ? '' : totals.totalAssets}
+                placeholder="0"
+                onChange={(e) => handleManualTotalChange(e.target.value)}
+                className="w-16 text-right font-mono-num font-bold text-white text-[10px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                title="Direct edit Total Assets"
+              />
+            ) : (
+              <span className="font-bold text-white text-[10px]">{formatCurrency(totals.totalAssets)}</span>
+            )}
             {onDelete && (
               <button
                 onClick={(e) => {
@@ -252,7 +312,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                   onDelete();
                 }}
                 className="text-slate-600 hover:text-rose-400 p-0.5"
-                title="Delete"
+                title="Delete card"
               >
                 <Trash2 className="w-2.5 h-2.5" />
               </button>
@@ -260,17 +320,50 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           </div>
         </div>
 
-        {/* When Collapsed: Snug summary without empty space */}
+        {/* When Collapsed: Direct editable inputs for Liquid & Non-liquid totals */}
         {!isExpanded ? (
-          <div className="flex-1 flex flex-col justify-between py-1 cursor-pointer" onClick={onSelect}>
-            <div className="space-y-0.5 text-[9px] font-mono-num">
+          <div className="flex-1 flex flex-col justify-between py-1" onClick={onSelect}>
+            <div className="space-y-1 text-[9px] font-mono-num" onClick={(e) => e.stopPropagation()}>
+              {/* Direct edit Liquid */}
               <div className="flex justify-between items-center text-cyan-300">
                 <span className="text-slate-400">Liquid:</span>
-                <span>{formatCurrency(totals.liquidTotal, { compact: true })}</span>
+                <div className="flex items-center gap-0.5">
+                  <span className="text-slate-500">$</span>
+                  {isEditable ? (
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={totals.liquidTotal === 0 ? '' : totals.liquidTotal}
+                      placeholder="0"
+                      onChange={(e) => handleManualLiquidChange(e.target.value)}
+                      className="w-16 text-right font-mono-num text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 text-cyan-300 focus:border-cyan-500 focus:outline-none font-semibold"
+                      title="Direct edit Liquid Assets Total"
+                    />
+                  ) : (
+                    <span>{formatCurrency(totals.liquidTotal, { compact: true })}</span>
+                  )}
+                </div>
               </div>
+
+              {/* Direct edit Non-liquid */}
               <div className="flex justify-between items-center text-purple-300">
                 <span className="text-slate-400">Non-liquid:</span>
-                <span>{formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
+                <div className="flex items-center gap-0.5">
+                  <span className="text-slate-500">$</span>
+                  {isEditable ? (
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={totals.nonLiquidTotal === 0 ? '' : totals.nonLiquidTotal}
+                      placeholder="0"
+                      onChange={(e) => handleManualNonLiquidChange(e.target.value)}
+                      className="w-16 text-right font-mono-num text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 text-purple-300 focus:border-purple-500 focus:outline-none font-semibold"
+                      title="Direct edit Non-liquid Assets Total"
+                    />
+                  ) : (
+                    <span>{formatCurrency(totals.nonLiquidTotal, { compact: true })}</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -282,9 +375,24 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 }}
                 className="text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5"
               >
-                <span>Edit details</span>
+                <span>Edit breakdown</span>
                 <ChevronDown className="w-2.5 h-2.5" />
               </button>
+
+              {hasManualOverrides && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetManualOverrides();
+                  }}
+                  className="text-slate-500 hover:text-cyan-400 flex items-center gap-0.5"
+                  title="Reset to calculated breakdown sum"
+                >
+                  <RotateCcw className="w-2 h-2" />
+                  <span>Calc</span>
+                </button>
+              )}
+
               {isSelected ? (
                 <span className="text-emerald-400 font-bold">Selected</span>
               ) : (
@@ -384,7 +492,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   }
 
   // =========================================================================
-  // FEATURED / MAIN CARD (Vertical Rectangle with single-line header and no redundant banners)
+  // FEATURED / MAIN CARD (Vertical Rectangle with single-line header and direct totals)
   // =========================================================================
   return (
     <div
@@ -394,9 +502,9 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           : 'bg-slate-900 border-slate-800 shadow-md'
       }`}
     >
-      {/* Single-line Top Header: MM/YY on left, Total: $... on right */}
+      {/* Single-line Top Header: MM/YY on left, Total on right */}
       <div className="px-2.5 py-2 border-b border-slate-800/90 bg-slate-950/50 rounded-t-2xl flex items-center justify-between text-[11px]">
-        {/* Left: MM/YY without "Month/Year =" text */}
+        {/* Left: MM/YY */}
         <div className="flex items-center gap-1">
           {isEditingMonth ? (
             <div className="flex items-center gap-1">
@@ -435,11 +543,23 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           )}
         </div>
 
-        {/* Right: "Total: $..." on the SAME line with smaller font */}
+        {/* Right: "Total: $..." on the SAME line */}
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 font-mono-num">
             <span className="text-[10px] text-slate-400">Total:</span>
-            <span className="text-xs font-bold text-white">{formatCurrency(totals.totalAssets)}</span>
+            {isEditable ? (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={totals.totalAssets === 0 ? '' : totals.totalAssets}
+                placeholder="0"
+                onChange={(e) => handleManualTotalChange(e.target.value)}
+                className="w-20 text-right font-mono-num text-xs font-bold text-white px-1 py-0.2 rounded bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                title="Direct edit Total Assets"
+              />
+            ) : (
+              <span className="text-xs font-bold text-white">{formatCurrency(totals.totalAssets)}</span>
+            )}
           </div>
 
           {onDelete && (
@@ -454,7 +574,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         </div>
       </div>
 
-      {/* 2. Scrollable Body: Categories and fields (redundant section total headers removed) */}
+      {/* 2. Scrollable Body: Categories and fields */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1.5 max-h-[460px]">
         {/* ================= LIQUID ASSETS SECTION ================= */}
         <div className="rounded-xl bg-slate-950/60 p-2 border border-cyan-950/70 ring-1 ring-cyan-500/10 space-y-1.5">
@@ -811,16 +931,50 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         </div>
       </div>
 
-      {/* 3. Bottom Footer Summary (Already displays Liquid & Non-liquid totals) */}
+      {/* 3. Bottom Footer Summary with Direct Inputs */}
       <div className="p-1.5 border-t border-slate-800/80 bg-slate-950/40 rounded-b-2xl flex items-center justify-between text-[9px]">
         <div className="flex items-center gap-1 text-cyan-400">
           <span>Liquid:</span>
-          <span className="font-mono-num font-semibold">{formatCurrency(totals.liquidTotal)}</span>
+          {isEditable ? (
+            <input
+              type="text"
+              inputMode="decimal"
+              value={totals.liquidTotal === 0 ? '' : totals.liquidTotal}
+              placeholder="0"
+              onChange={(e) => handleManualLiquidChange(e.target.value)}
+              className="w-16 text-right font-mono-num font-semibold text-cyan-300 text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:outline-none"
+              title="Direct edit Liquid Assets Total"
+            />
+          ) : (
+            <span className="font-mono-num font-semibold">{formatCurrency(totals.liquidTotal)}</span>
+          )}
         </div>
-        <div className="text-slate-600">+</div>
+
+        {hasManualOverrides && (
+          <button
+            onClick={handleResetManualOverrides}
+            className="text-slate-500 hover:text-slate-300 text-[8px] flex items-center gap-0.5"
+            title="Reset direct totals to sum of itemized breakdown"
+          >
+            <RotateCcw className="w-2 h-2" />
+          </button>
+        )}
+
         <div className="flex items-center gap-1 text-purple-400">
           <span>Non-liquid:</span>
-          <span className="font-mono-num font-semibold">{formatCurrency(totals.nonLiquidTotal)}</span>
+          {isEditable ? (
+            <input
+              type="text"
+              inputMode="decimal"
+              value={totals.nonLiquidTotal === 0 ? '' : totals.nonLiquidTotal}
+              placeholder="0"
+              onChange={(e) => handleManualNonLiquidChange(e.target.value)}
+              className="w-16 text-right font-mono-num font-semibold text-purple-300 text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 focus:border-purple-500 focus:outline-none"
+              title="Direct edit Non-liquid Assets Total"
+            />
+          ) : (
+            <span className="font-mono-num font-semibold">{formatCurrency(totals.nonLiquidTotal)}</span>
+          )}
         </div>
       </div>
     </div>
@@ -960,7 +1114,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         ))}
       </div>
 
-      {/* Optional sub-total row (e.g. CPF Total or Property Total) */}
+      {/* Sub-total row (e.g. CPF Total or Property Total) */}
       {subTotalLabel && subTotalValue !== undefined && (
         <div className="flex items-center justify-between px-1.5 py-0.2 text-[9px] text-slate-400">
           <span>{subTotalLabel}:</span>

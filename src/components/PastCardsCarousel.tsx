@@ -20,8 +20,8 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
   onUpdateCard,
   onDeleteCard,
 }) => {
-  // Track which card index is in front
   const [frontIndex, setFrontIndex] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
   // Synchronize frontIndex with selectedCardId
@@ -48,16 +48,50 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
     onSelectCard(cards[newIdx].id);
   };
 
-  // Wheel scroll handler (no scrollbar, wheel shifts front card)
-  const handleWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaX) > 20 || Math.abs(e.deltaY) > 20) {
-      if (e.deltaX > 20 || e.deltaY > 20) {
-        handleNext();
-      } else {
-        handlePrev();
+  // NON-PASSIVE wheel event listener to PREVENT BROWSER BACK/FORWARD GESTURE!
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const onWheel = (e: WheelEvent) => {
+      // Crucial: prevent browser from interpreting horizontal swipe as history back/forward!
+      if (Math.abs(e.deltaX) > 4 || Math.abs(e.deltaY) > 10) {
+        e.preventDefault();
       }
-    }
-  };
+
+      if (debounceTimer) return;
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+      }, 140);
+
+      if (e.deltaX > 15 || e.deltaY > 15) {
+        if (cards.length > 0) {
+          setFrontIndex((prev) => {
+            const next = Math.min(cards.length - 1, prev + 1);
+            onSelectCard(cards[next].id);
+            return next;
+          });
+        }
+      } else if (e.deltaX < -15 || e.deltaY < -15) {
+        if (cards.length > 0) {
+          setFrontIndex((prev) => {
+            const next = Math.max(0, prev - 1);
+            onSelectCard(cards[next].id);
+            return next;
+          });
+        }
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [cards, onSelectCard]);
 
   // Touch handlers for mobile swipe
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -67,7 +101,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartXRef.current === null) return;
     const diff = touchStartXRef.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 30) {
+    if (Math.abs(diff) > 25) {
       if (diff > 0) {
         handleNext();
       } else {
@@ -125,26 +159,31 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
         </div>
       </div>
 
-      {/* Overlapping Deck Container - Zero scrollbar, all cards fit within width */}
+      {/* Overlapping Deck Container - with overscroll containment and non-passive wheel prevention */}
       {cards.length === 0 ? (
         <div className="text-center py-4 px-3 rounded-xl bg-slate-900/40 border border-dashed border-slate-800">
           <p className="text-[11px] text-slate-400">No past cards yet.</p>
         </div>
       ) : (
         <div
-          onWheel={handleWheel}
+          ref={containerRef}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="relative w-full h-[180px] overflow-hidden flex items-center justify-center pt-1"
+          style={{
+            overscrollBehavior: 'none',
+            overscrollBehaviorX: 'none',
+            touchAction: 'pan-y',
+          }}
+          className="relative w-full h-[185px] overflow-hidden flex items-center justify-center pt-1"
         >
           {cards.map((card, idx) => {
             const offset = idx - frontIndex;
             const isFront = offset === 0;
-            // Only render cards close to front to keep DOM clean
+            // Only render cards close to front to keep DOM light and smooth
             if (Math.abs(offset) > 3) return null;
 
-            // Horizontal overlap offset calculation
-            const translateX = offset * 45; // 45px peek per card
+            // Horizontal peek & 3D stack calculation
+            const translateX = offset * 46;
             const scale = Math.max(0.78, 1 - Math.abs(offset) * 0.08);
             const zIndex = 30 - Math.abs(offset);
             const opacity = Math.max(0.4, 1 - Math.abs(offset) * 0.25);
