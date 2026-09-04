@@ -91,11 +91,11 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     return { diff, percent };
   }, [chartData]);
 
-  // Lowest value on Y-axis is strictly 0!
+  // Dynamic vs Zero-based Y-axis:
+  // Strictly start from 0 ONLY for 'ALL' (All Time).
+  // For all other time periods ('1Y', 'YTD', '3Y', '5Y'), dynamically adjust for a better fit!
   const { minVal, maxVal } = useMemo(() => {
-    const min = 0; // Always strictly 0!
-
-    if (chartData.length === 0) return { minVal: min, maxVal: 100000 };
+    if (chartData.length === 0) return { minVal: 0, maxVal: 100000 };
 
     let allValues: number[] = [];
     chartData.forEach((d) => {
@@ -108,10 +108,36 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
       allValues = chartData.map((d) => d.totalAssets);
     }
 
-    const peak = Math.max(...allValues, 10000);
-    const max = peak * 1.15;
-    return { minVal: min, maxVal: max };
-  }, [chartData, showTotal, showLiquid, showNonLiquid]);
+    if (timePeriod === 'ALL') {
+      const peak = Math.max(...allValues, 10000);
+      const targetMax = peak * 1.15;
+      const roundStep = targetMax > 100000 ? 10000 : targetMax > 20000 ? 5000 : 1000;
+      const roundedMax = Math.ceil(targetMax / roundStep) * roundStep;
+      return { minVal: 0, maxVal: roundedMax };
+    }
+
+    // Dynamic fit for non-ALL periods (1Y, YTD, 3Y, 5Y)
+    const peak = Math.max(...allValues, 1000);
+    const trough = Math.min(...allValues);
+    const delta = peak - trough;
+
+    if (delta <= 0) {
+      const min = Math.max(0, trough * 0.9);
+      const max = peak > 0 ? peak * 1.1 : 10000;
+      return { minVal: min, maxVal: max };
+    }
+
+    // Add 10% breathing room above and below
+    const margin = delta * 0.1;
+    const targetMin = Math.max(0, trough - margin);
+    const targetMax = peak + margin;
+
+    const roundStep = delta > 100000 ? 10000 : delta > 20000 ? 5000 : delta > 5000 ? 1000 : 500;
+    const roundedMin = Math.max(0, Math.floor(targetMin / roundStep) * roundStep);
+    const roundedMax = Math.ceil(targetMax / roundStep) * roundStep;
+
+    return { minVal: roundedMin, maxVal: roundedMax };
+  }, [chartData, showTotal, showLiquid, showNonLiquid, timePeriod]);
 
   // SVG Chart dimensions - compact and half width (~460px)
   const width = 460;
