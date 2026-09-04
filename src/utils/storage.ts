@@ -1,4 +1,4 @@
-import { FinanceCardData } from '../types/finance';
+import { FinanceCardData, AssetField } from '../types/finance';
 import { getCurrentMonthYear } from './calculations';
 
 const STORAGE_KEY = 'financetracker_data_v2';
@@ -205,9 +205,14 @@ export const loadStoredCards = (): FinanceCardData[] => {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((card) => ({
+      return (parsed as FinanceCardData[]).map((card) => ({
         ...card,
-        others: Array.isArray(card.others) ? card.others : [],
+        others: Array.isArray(card.others)
+          ? card.others.map((o: AssetField) => ({
+              ...o,
+              assetType: o.assetType === 'liquid' ? 'liquid' : 'nonLiquid',
+            }))
+          : [],
       }));
     }
     return sampleInitialCards;
@@ -264,7 +269,8 @@ export const exportCardsToCsv = (cards: FinanceCardData[]): void => {
 
     // Others
     card.others?.forEach((o) => {
-      rows.push([my, 'Others', o.name, String(o.value)]);
+      const catLabel = o.assetType === 'liquid' ? 'Others (Liquid)' : 'Others (Non-Liquid)';
+      rows.push([my, catLabel, o.name, String(o.value)]);
     });
 
     // Custom Liquid Categories
@@ -459,8 +465,15 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
               card.cpf.push({ id: `cpf_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
             } else if (catLower === 'property') {
               card.property.push({ id: `prop_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
-            } else if (catLower === 'others' || catLower === 'other') {
-              card.others!.push({ id: `other_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else if (catLower === 'others' || catLower === 'other' || catLower.startsWith('other')) {
+              const isLiquid = catLower.includes('liquid') && !catLower.includes('non');
+              card.others!.push({
+                id: `other_${Date.now()}_${Math.random()}`,
+                name: entry.item,
+                value: val,
+                isCustom: false,
+                assetType: isLiquid ? 'liquid' : 'nonLiquid',
+              });
             } else {
               // Custom category
               const isLiquid = catLower.includes('(liquid)') || catLower.includes('liquid');

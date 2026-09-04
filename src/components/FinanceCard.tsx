@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FinanceCardData, CategoryKey, AssetCategory } from '../types/finance';
+import { FinanceCardData, CategoryKey, AssetCategory, AssetField } from '../types/finance';
 import { calculateCardTotals } from '../utils/calculations';
 import { formatCurrency } from '../utils/formatters';
 import { 
@@ -145,13 +145,14 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   };
 
   // Add field to standard category
-  const handleAddField = (category: CategoryKey) => {
+  const handleAddField = (category: CategoryKey, assetType: 'liquid' | 'nonLiquid' = 'liquid') => {
     if (!newFieldName.trim() || !onUpdate) return;
-    const newField = {
+    const newField: AssetField = {
       id: `field_${Date.now()}`,
       name: newFieldName.trim(),
       value: 0,
       isCustom: true,
+      ...(category === 'others' ? { assetType } : {}),
     };
     const currentList = card[category] || [];
     onUpdate({
@@ -160,6 +161,22 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
     });
     setNewFieldName('');
     setAddingCategory(null);
+  };
+
+  const handleFieldAssetTypeChange = (
+    category: CategoryKey,
+    fieldId: string,
+    assetType: 'liquid' | 'nonLiquid'
+  ) => {
+    if (!onUpdate) return;
+    const currentList = card[category] || [];
+    const updatedCategory = currentList.map((item) =>
+      item.id === fieldId ? { ...item, assetType } : item
+    );
+    onUpdate({
+      ...card,
+      [category]: updatedCategory,
+    });
   };
 
   // Add field to custom category
@@ -571,6 +588,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 onFieldValueChange={handleFieldValueChange}
                 onAddField={handleAddField}
                 onDeleteField={handleDeleteField}
+                onFieldAssetTypeChange={handleFieldAssetTypeChange}
               />
             </div>
 
@@ -964,24 +982,6 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             onDeleteField={handleDeleteField}
           />
 
-          {/* Others Category */}
-          <CategorySection
-            title="Others"
-            subTotalLabel="Others Total"
-            subTotalValue={totals.othersTotal}
-            icon={<Coins className="w-2.5 h-2.5 text-amber-400" />}
-            category="others"
-            fields={card.others || []}
-            isEditable={isEditable}
-            addingCategory={addingCategory}
-            newFieldName={newFieldName}
-            setAddingCategory={setAddingCategory}
-            setNewFieldName={setNewFieldName}
-            onFieldValueChange={handleFieldValueChange}
-            onAddField={handleAddField}
-            onDeleteField={handleDeleteField}
-          />
-
           {/* Custom Non-Liquid Categories */}
           {(card.customNonLiquidCategories || []).map((cat) => (
             <div key={cat.id} className="pt-1 border-t border-slate-800/60">
@@ -1132,6 +1132,31 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             </div>
           )}
         </div>
+
+        {/* ================= OTHERS ASSETS SECTION ================= */}
+        <div className="rounded-xl bg-slate-950/60 p-2 border border-amber-950/70 ring-1 ring-amber-500/10 space-y-1.5">
+          <CategorySection
+            title="Others"
+            subTotalLabel={
+              totals.othersLiquidTotal > 0 && totals.othersNonLiquidTotal > 0
+                ? `Others Total (L: ${formatCurrency(totals.othersLiquidTotal, { compact: true })}, NL: ${formatCurrency(totals.othersNonLiquidTotal, { compact: true })})`
+                : 'Others Total'
+            }
+            subTotalValue={totals.othersTotal}
+            icon={<Coins className="w-2.5 h-2.5 text-amber-400" />}
+            category="others"
+            fields={card.others || []}
+            isEditable={isEditable}
+            addingCategory={addingCategory}
+            newFieldName={newFieldName}
+            setAddingCategory={setAddingCategory}
+            setNewFieldName={setNewFieldName}
+            onFieldValueChange={handleFieldValueChange}
+            onAddField={handleAddField}
+            onDeleteField={handleDeleteField}
+            onFieldAssetTypeChange={handleFieldAssetTypeChange}
+          />
+        </div>
       </div>
 
       {/* 3. Bottom Footer Summary with Direct Inputs */}
@@ -1188,7 +1213,7 @@ interface CategorySectionProps {
   title: string;
   icon: React.ReactNode;
   category: CategoryKey;
-  fields: { id: string; name: string; value: number; isCustom?: boolean }[];
+  fields: { id: string; name: string; value: number; isCustom?: boolean; assetType?: 'liquid' | 'nonLiquid' }[];
   isEditable: boolean;
   subTotalLabel?: string;
   subTotalValue?: number;
@@ -1197,8 +1222,9 @@ interface CategorySectionProps {
   setAddingCategory: (cat: string | null) => void;
   setNewFieldName: (name: string) => void;
   onFieldValueChange: (cat: CategoryKey, fieldId: string, val: string) => void;
-  onAddField: (cat: CategoryKey) => void;
+  onAddField: (cat: CategoryKey, assetType?: 'liquid' | 'nonLiquid') => void;
   onDeleteField: (cat: CategoryKey, fieldId: string) => void;
+  onFieldAssetTypeChange?: (cat: CategoryKey, fieldId: string, assetType: 'liquid' | 'nonLiquid') => void;
 }
 
 const CategorySection: React.FC<CategorySectionProps> = ({
@@ -1216,7 +1242,10 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   onFieldValueChange,
   onAddField,
   onDeleteField,
+  onFieldAssetTypeChange,
 }) => {
+  const [newFieldAssetType, setNewFieldAssetType] = useState<'liquid' | 'nonLiquid'>('liquid');
+
   return (
     <div className="space-y-1">
       {/* Category Header */}
@@ -1234,6 +1263,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
               } else {
                 setAddingCategory(category);
                 setNewFieldName('');
+                setNewFieldAssetType('liquid');
               }
             }}
             className="flex items-center justify-center w-4 h-4 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-medium text-slate-300 hover:text-white transition-colors border border-slate-700"
@@ -1252,21 +1282,38 @@ const CategorySection: React.FC<CategorySectionProps> = ({
             placeholder="Field name..."
             value={newFieldName}
             onChange={(e) => setNewFieldName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onAddField(category)}
+            onKeyDown={(e) =>
+              e.key === 'Enter' &&
+              onAddField(category, category === 'others' ? newFieldAssetType : undefined)
+            }
             autoFocus
-            className="flex-1 px-1.5 py-0.5 text-[10px] rounded bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="flex-1 px-1.5 py-0.5 text-[10px] rounded bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-w-0"
           />
+          {category === 'others' && (
+            <button
+              type="button"
+              onClick={() => setNewFieldAssetType((prev) => (prev === 'liquid' ? 'nonLiquid' : 'liquid'))}
+              className={`px-1.5 py-0.5 text-[8px] font-bold rounded border transition-colors flex-shrink-0 ${
+                newFieldAssetType === 'liquid'
+                  ? 'bg-cyan-950 text-cyan-300 border-cyan-700 hover:bg-cyan-900'
+                  : 'bg-purple-950 text-purple-300 border-purple-700 hover:bg-purple-900'
+              }`}
+              title="Click to toggle Liquid / Non-liquid"
+            >
+              {newFieldAssetType === 'liquid' ? 'Liquid' : 'Non-Liq'}
+            </button>
+          )}
           <button
-            onClick={() => onAddField(category)}
+            onClick={() => onAddField(category, category === 'others' ? newFieldAssetType : undefined)}
             disabled={!newFieldName.trim()}
-            className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white"
+            className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white flex-shrink-0"
             title="Save"
           >
             <Check className="w-2.5 h-2.5" />
           </button>
           <button
             onClick={() => setAddingCategory(null)}
-            className="p-0.5 rounded text-slate-400 hover:text-white"
+            className="p-0.5 rounded text-slate-400 hover:text-white flex-shrink-0"
             title="Cancel"
           >
             <X className="w-2.5 h-2.5" />
@@ -1290,7 +1337,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
                     e.preventDefault();
                     onDeleteField(category, field.id);
                   }}
-                  className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
+                  className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors flex-shrink-0"
                   title="Remove field"
                 >
                   <Trash2 className="w-2.5 h-2.5" />
@@ -1299,6 +1346,38 @@ const CategorySection: React.FC<CategorySectionProps> = ({
               <span className="font-medium text-slate-300 truncate" title={field.name}>
                 {field.name}:
               </span>
+              {category === 'others' && (
+                isEditable ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      const nextType = field.assetType === 'liquid' ? 'nonLiquid' : 'liquid';
+                      onFieldAssetTypeChange?.(category, field.id, nextType);
+                    }}
+                    className={`px-1 py-0.2 rounded text-[7.5px] font-bold uppercase transition-all tracking-wider border flex-shrink-0 ${
+                      field.assetType === 'liquid'
+                        ? 'bg-cyan-950/90 text-cyan-300 border-cyan-700/70 hover:bg-cyan-900 hover:border-cyan-400'
+                        : 'bg-purple-950/90 text-purple-300 border-purple-700/70 hover:bg-purple-900 hover:border-purple-400'
+                    }`}
+                    title={`Currently ${field.assetType === 'liquid' ? 'Liquid (added to Liquid Assets)' : 'Non-liquid (added to Non-Liquid Assets)'}. Click to toggle.`}
+                  >
+                    {field.assetType === 'liquid' ? 'L' : 'NL'}
+                  </button>
+                ) : (
+                  <span
+                    className={`px-1 py-0.2 rounded text-[7.5px] font-bold uppercase tracking-wider border flex-shrink-0 ${
+                      field.assetType === 'liquid'
+                        ? 'bg-cyan-950/90 text-cyan-300 border-cyan-700/70'
+                        : 'bg-purple-950/90 text-purple-300 border-purple-700/70'
+                    }`}
+                    title={field.assetType === 'liquid' ? 'Liquid Asset' : 'Non-liquid Asset'}
+                  >
+                    {field.assetType === 'liquid' ? 'L' : 'NL'}
+                  </span>
+                )
+              )}
             </div>
 
             <div className="flex items-center gap-0.5">

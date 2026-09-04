@@ -95,7 +95,12 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
         id: row.id,
         monthYear: row.month_year,
         createdAt: Number(row.created_at) || Date.now(),
-        others: Array.isArray(cardData.others) ? cardData.others : [],
+        others: Array.isArray(cardData.others)
+          ? cardData.others.map((o) => ({
+              ...o,
+              assetType: o.assetType === 'liquid' ? 'liquid' : 'nonLiquid',
+            }))
+          : [],
       };
     });
   }

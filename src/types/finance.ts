@@ -3,6 +3,7 @@ export interface AssetField {
   name: string;
   value: number;
   isCustom?: boolean;
+  assetType?: 'liquid' | 'nonLiquid';
 }
 
 export interface AssetCategory {
@@ -33,9 +34,11 @@ export interface CalculatedTotals {
   banksTotal: number;
   stocksTotal: number;
   customLiquidTotal: number;
+  othersLiquidTotal: number;
   liquidTotal: number;
   cpfTotal: number;
   propertyTotal: number;
+  othersNonLiquidTotal: number;
   othersTotal: number;
   customNonLiquidTotal: number;
   nonLiquidTotal: number;
