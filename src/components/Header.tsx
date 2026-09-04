@@ -4,7 +4,6 @@ import {
   PiggyBank, 
   Download, 
   Upload, 
-  RotateCcw, 
   CheckCircle2,
   Cloud,
   LogOut,
@@ -24,7 +23,6 @@ interface HeaderProps {
   onAddNewBlankCard?: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
-  onResetSample: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,7 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onExport,
   onImport,
-  onResetSample,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -231,20 +228,6 @@ export const Header: React.FC<HeaderProps> = ({
               title="Import CSV (or JSON backup)"
             >
               <Upload className="w-3 h-3 text-purple-400" />
-            </button>
-
-            {/* Reset to sample data */}
-            <button
-              onClick={() => {
-                if (confirm('Reset to sample data? Unsaved custom data will be replaced.')) {
-                  onResetSample();
-                  triggerToast('Reset to demo sample data.');
-                }
-              }}
-              className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/70 text-slate-400 hover:text-rose-300 transition-colors"
-              title="Reset to demo sample"
-            >
-              <RotateCcw className="w-3 h-3" />
             </button>
 
             {/* PWA Install Button with Smartphone Icon */}

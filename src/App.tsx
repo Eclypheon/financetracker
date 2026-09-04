@@ -6,7 +6,6 @@ import {
   saveStoredCards, 
   loadStoredEntryCard,
   saveStoredEntryCard,
-  sampleInitialCards, 
   createNewBlankCard, 
   exportCardsToCsv, 
   importCardsFromFile 
@@ -293,18 +292,6 @@ export const App: React.FC = () => {
       }
     } catch {
       alert('Could not import file. Please check that it is a valid CSV or JSON file.');
-    }
-  };
-
-  // Reset to sample handler
-  const handleResetSample = () => {
-    setSavedCards(sampleInitialCards);
-    setSelectedBaseCardId(sampleInitialCards[0].id);
-    if (sampleInitialCards.length > 1) {
-      setSelectedCompareCardId(sampleInitialCards[1].id);
-    }
-    if (currentUser) {
-      syncAllCardsToCloud(sampleInitialCards, currentUser);
     }
   };
 
@@ -601,7 +588,6 @@ export const App: React.FC = () => {
         onAddNewBlankCard={handleAddNewBlankCard}
         onExport={handleExport}
         onImport={handleImport}
-        onResetSample={handleResetSample}
       />
 
       {/* Floating Screen Navigation Indicator (Right Edge) */}
