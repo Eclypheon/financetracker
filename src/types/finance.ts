@@ -5,6 +5,13 @@ export interface AssetField {
   isCustom?: boolean;
 }
 
+export interface AssetCategory {
+  id: string;
+  name: string;
+  isRemovable?: boolean;
+  fields: AssetField[];
+}
+
 export interface FinanceCardData {
   id: string; // e.g. "2026-09"
   monthYear: string; // "MM/YY" format, e.g. "09/26"
@@ -13,14 +20,18 @@ export interface FinanceCardData {
   stocks: AssetField[];
   cpf: AssetField[];
   property: AssetField[];
+  customLiquidCategories?: AssetCategory[];
+  customNonLiquidCategories?: AssetCategory[];
 }
 
 export interface CalculatedTotals {
   banksTotal: number;
   stocksTotal: number;
+  customLiquidTotal: number;
   liquidTotal: number;
   cpfTotal: number;
   propertyTotal: number;
+  customNonLiquidTotal: number;
   nonLiquidTotal: number;
   totalAssets: number;
 }

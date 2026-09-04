@@ -1,26 +1,36 @@
 import { FinanceCardData, CalculatedTotals, ComparisonDelta } from '../types/finance';
 
-export const sumFields = (fields: { value: number }[]): number => {
+export const sumFields = (fields: { value: number }[] = []): number => {
   return fields.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
 };
 
 export const calculateCardTotals = (card: FinanceCardData): CalculatedTotals => {
   const banksTotal = sumFields(card.banks);
   const stocksTotal = sumFields(card.stocks);
-  const liquidTotal = banksTotal + stocksTotal;
+  const customLiquidTotal = (card.customLiquidCategories || []).reduce(
+    (acc, cat) => acc + sumFields(cat.fields),
+    0
+  );
+  const liquidTotal = banksTotal + stocksTotal + customLiquidTotal;
 
   const cpfTotal = sumFields(card.cpf);
   const propertyTotal = sumFields(card.property);
-  const nonLiquidTotal = cpfTotal + propertyTotal;
+  const customNonLiquidTotal = (card.customNonLiquidCategories || []).reduce(
+    (acc, cat) => acc + sumFields(cat.fields),
+    0
+  );
+  const nonLiquidTotal = cpfTotal + propertyTotal + customNonLiquidTotal;
 
   const totalAssets = liquidTotal + nonLiquidTotal;
 
   return {
     banksTotal,
     stocksTotal,
+    customLiquidTotal,
     liquidTotal,
     cpfTotal,
     propertyTotal,
+    customNonLiquidTotal,
     nonLiquidTotal,
     totalAssets,
   };
@@ -48,9 +58,6 @@ export const calculateDelta = (baseCard: FinanceCardData, compareCard: FinanceCa
   };
 };
 
-/**
- * Returns current month and year in MM/YY format (e.g. "09/26")
- */
 export const getCurrentMonthYear = (): string => {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -58,9 +65,6 @@ export const getCurrentMonthYear = (): string => {
   return `${month}/${year}`;
 };
 
-/**
- * Parses MM/YY string to sortable timestamp or numeric value
- */
 export const parseMonthYear = (my: string): { month: number; year: number; timestamp: number } => {
   const parts = my.split('/');
   if (parts.length !== 2) {
@@ -68,7 +72,6 @@ export const parseMonthYear = (my: string): { month: number; year: number; times
   }
   const month = parseInt(parts[0], 10) || 1;
   let year = parseInt(parts[1], 10) || 0;
-  // Convert 2-digit year to 4-digit year (e.g. 26 -> 2026)
   if (year < 100) {
     year = 2000 + year;
   }

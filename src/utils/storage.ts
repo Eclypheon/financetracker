@@ -1,7 +1,7 @@
 import { FinanceCardData } from '../types/finance';
 import { getCurrentMonthYear } from './calculations';
 
-const STORAGE_KEY = 'financetracker_data_v1';
+const STORAGE_KEY = 'financetracker_data_v2';
 
 export const getDefaultTemplate = (monthYear: string = getCurrentMonthYear()): FinanceCardData => {
   return {
@@ -26,6 +26,8 @@ export const getDefaultTemplate = (monthYear: string = getCurrentMonthYear()): F
       { id: 'prop_cash', name: 'Cash', value: 0, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 0, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   };
 };
 
@@ -37,7 +39,6 @@ export const sampleInitialCards: FinanceCardData[] = [
     banks: [
       { id: 'ocbc', name: 'OCBC', value: 24500, isCustom: false },
       { id: 'dbs', name: 'DBS', value: 18200, isCustom: false },
-      { id: 'uob', name: 'UOB', value: 8500, isCustom: true },
     ],
     stocks: [
       { id: 'ibkr', name: 'IBKR', value: 68500, isCustom: false },
@@ -53,6 +54,8 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 85000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 145000, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   },
   {
     id: 'sample_0826',
@@ -61,7 +64,6 @@ export const sampleInitialCards: FinanceCardData[] = [
     banks: [
       { id: 'ocbc', name: 'OCBC', value: 22800, isCustom: false },
       { id: 'dbs', name: 'DBS', value: 16500, isCustom: false },
-      { id: 'uob', name: 'UOB', value: 7200, isCustom: true },
     ],
     stocks: [
       { id: 'ibkr', name: 'IBKR', value: 64200, isCustom: false },
@@ -77,6 +79,8 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 82000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 142000, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   },
   {
     id: 'sample_0726',
@@ -85,7 +89,6 @@ export const sampleInitialCards: FinanceCardData[] = [
     banks: [
       { id: 'ocbc', name: 'OCBC', value: 21500, isCustom: false },
       { id: 'dbs', name: 'DBS', value: 15400, isCustom: false },
-      { id: 'uob', name: 'UOB', value: 6000, isCustom: true },
     ],
     stocks: [
       { id: 'ibkr', name: 'IBKR', value: 59800, isCustom: false },
@@ -101,6 +104,8 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 79000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 139000, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   },
   {
     id: 'sample_0626',
@@ -109,7 +114,6 @@ export const sampleInitialCards: FinanceCardData[] = [
     banks: [
       { id: 'ocbc', name: 'OCBC', value: 19800, isCustom: false },
       { id: 'dbs', name: 'DBS', value: 14900, isCustom: false },
-      { id: 'uob', name: 'UOB', value: 5000, isCustom: true },
     ],
     stocks: [
       { id: 'ibkr', name: 'IBKR', value: 55400, isCustom: false },
@@ -125,6 +129,8 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 76000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 136000, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   },
   {
     id: 'sample_0526',
@@ -133,7 +139,6 @@ export const sampleInitialCards: FinanceCardData[] = [
     banks: [
       { id: 'ocbc', name: 'OCBC', value: 18500, isCustom: false },
       { id: 'dbs', name: 'DBS', value: 14000, isCustom: false },
-      { id: 'uob', name: 'UOB', value: 4500, isCustom: true },
     ],
     stocks: [
       { id: 'ibkr', name: 'IBKR', value: 51200, isCustom: false },
@@ -149,6 +154,8 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 73000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 133000, isCustom: false },
     ],
+    customLiquidCategories: [],
+    customNonLiquidCategories: [],
   },
 ];
 
@@ -156,6 +163,24 @@ export const loadStoredCards = (): FinanceCardData[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
+      // Check if old key exists and migrate, removing any extraneous default fields
+      const oldRaw = localStorage.getItem('financetracker_data_v1');
+      if (oldRaw) {
+        try {
+          const parsedOld = JSON.parse(oldRaw);
+          if (Array.isArray(parsedOld)) {
+            // Filter out default UOB if present in old sample
+            const migrated = parsedOld.map((card: FinanceCardData) => ({
+              ...card,
+              banks: card.banks.filter((b) => b.name !== 'UOB' || !b.isCustom),
+            }));
+            saveStoredCards(migrated);
+            return migrated;
+          }
+        } catch {
+          // Ignore
+        }
+      }
       saveStoredCards(sampleInitialCards);
       return sampleInitialCards;
     }
@@ -181,7 +206,6 @@ export const saveStoredCards = (cards: FinanceCardData[]): void => {
 export const createNextCardFromPrevious = (prevCard?: FinanceCardData): FinanceCardData => {
   const currentMY = getCurrentMonthYear();
   
-  // If we have a previous card, copy the custom field structures and names, but set values to previous or 0
   if (prevCard) {
     return {
       id: `card_${Date.now()}`,
@@ -191,6 +215,16 @@ export const createNextCardFromPrevious = (prevCard?: FinanceCardData): FinanceC
       stocks: prevCard.stocks.map((s) => ({ ...s, id: `${s.id}_${Date.now()}` })),
       cpf: prevCard.cpf.map((c) => ({ ...c, id: `${c.id}_${Date.now()}` })),
       property: prevCard.property.map((p) => ({ ...p, id: `${p.id}_${Date.now()}` })),
+      customLiquidCategories: (prevCard.customLiquidCategories || []).map((cat) => ({
+        ...cat,
+        id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        fields: cat.fields.map((f) => ({ ...f, id: `${f.id}_${Date.now()}` })),
+      })),
+      customNonLiquidCategories: (prevCard.customNonLiquidCategories || []).map((cat) => ({
+        ...cat,
+        id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        fields: cat.fields.map((f) => ({ ...f, id: `${f.id}_${Date.now()}` })),
+      })),
     };
   }
 
