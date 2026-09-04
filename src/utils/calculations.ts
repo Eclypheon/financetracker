@@ -16,11 +16,12 @@ export const calculateCardTotals = (card: FinanceCardData): CalculatedTotals => 
 
   const cpfTotal = sumFields(card.cpf);
   const propertyTotal = sumFields(card.property);
+  const othersTotal = sumFields(card.others || []);
   const customNonLiquidTotal = (card.customNonLiquidCategories || []).reduce(
     (acc, cat) => acc + sumFields(cat.fields),
     0
   );
-  const calculatedNonLiquid = cpfTotal + propertyTotal + customNonLiquidTotal;
+  const calculatedNonLiquid = cpfTotal + propertyTotal + othersTotal + customNonLiquidTotal;
   const nonLiquidTotal = card.manualNonLiquidTotal !== undefined ? Number(card.manualNonLiquidTotal) : calculatedNonLiquid;
 
   const totalAssets = card.manualTotalAssets !== undefined ? Number(card.manualTotalAssets) : (liquidTotal + nonLiquidTotal);
@@ -32,6 +33,7 @@ export const calculateCardTotals = (card: FinanceCardData): CalculatedTotals => 
     liquidTotal,
     cpfTotal,
     propertyTotal,
+    othersTotal,
     customNonLiquidTotal,
     nonLiquidTotal,
     totalAssets,
@@ -82,6 +84,7 @@ export const getTopAssetDeltas = (
       ...card.stocks,
       ...card.cpf,
       ...card.property,
+      ...(card.others || []),
       ...(card.customLiquidCategories || []).flatMap((c) => c.fields),
       ...(card.customNonLiquidCategories || []).flatMap((c) => c.fields),
     ];

@@ -88,12 +88,16 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
   }
 
   if (data && Array.isArray(data)) {
-    return data.map((row) => ({
-      ...(row.data as FinanceCardData),
-      id: row.id,
-      monthYear: row.month_year,
-      createdAt: Number(row.created_at) || Date.now(),
-    }));
+    return data.map((row) => {
+      const cardData = row.data as FinanceCardData;
+      return {
+        ...cardData,
+        id: row.id,
+        monthYear: row.month_year,
+        createdAt: Number(row.created_at) || Date.now(),
+        others: Array.isArray(cardData.others) ? cardData.others : [],
+      };
+    });
   }
 
   return [];

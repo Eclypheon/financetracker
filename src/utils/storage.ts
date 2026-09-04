@@ -26,6 +26,7 @@ export const getDefaultTemplate = (monthYear: string = getCurrentMonthYear()): F
       { id: 'prop_cash', name: 'Cash', value: 0, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 0, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   };
@@ -56,6 +57,7 @@ export const createNewBlankCard = (): FinanceCardData => {
       { id: `prop_cash_${timestamp}`, name: 'Cash', value: 0, isCustom: false },
       { id: `prop_cpf_${timestamp}`, name: 'CPF', value: 0, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   };
@@ -84,6 +86,7 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 85000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 145000, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   },
@@ -109,6 +112,7 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 82000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 142000, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   },
@@ -134,6 +138,7 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 79000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 139000, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   },
@@ -159,6 +164,7 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 76000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 136000, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   },
@@ -184,6 +190,7 @@ export const sampleInitialCards: FinanceCardData[] = [
       { id: 'prop_cash', name: 'Cash', value: 73000, isCustom: false },
       { id: 'prop_cpf', name: 'CPF', value: 133000, isCustom: false },
     ],
+    others: [],
     customLiquidCategories: [],
     customNonLiquidCategories: [],
   },
@@ -198,7 +205,10 @@ export const loadStoredCards = (): FinanceCardData[] => {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      return parsed.map((card) => ({
+        ...card,
+        others: Array.isArray(card.others) ? card.others : [],
+      }));
     }
     return sampleInitialCards;
   } catch (err) {
@@ -250,6 +260,11 @@ export const exportCardsToCsv = (cards: FinanceCardData[]): void => {
     // Property
     card.property?.forEach((p) => {
       rows.push([my, 'Property', p.name, String(p.value)]);
+    });
+
+    // Others
+    card.others?.forEach((o) => {
+      rows.push([my, 'Others', o.name, String(o.value)]);
     });
 
     // Custom Liquid Categories
@@ -420,6 +435,7 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
             stocks: [],
             cpf: [],
             property: [],
+            others: [],
             customLiquidCategories: [],
             customNonLiquidCategories: [],
           };
@@ -443,6 +459,8 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
               card.cpf.push({ id: `cpf_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
             } else if (catLower === 'property') {
               card.property.push({ id: `prop_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else if (catLower === 'others' || catLower === 'other') {
+              card.others!.push({ id: `other_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
             } else {
               // Custom category
               const isLiquid = catLower.includes('(liquid)') || catLower.includes('liquid');

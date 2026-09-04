@@ -20,6 +20,7 @@ export interface FinanceCardData {
   stocks: AssetField[];
   cpf: AssetField[];
   property: AssetField[];
+  others?: AssetField[];
   customLiquidCategories?: AssetCategory[];
   customNonLiquidCategories?: AssetCategory[];
   // Manual overrides for past data without itemized breakdown:
@@ -35,6 +36,7 @@ export interface CalculatedTotals {
   liquidTotal: number;
   cpfTotal: number;
   propertyTotal: number;
+  othersTotal: number;
   customNonLiquidTotal: number;
   nonLiquidTotal: number;
   totalAssets: number;
@@ -61,4 +63,4 @@ export interface ComparisonDelta {
   };
 }
 
-export type CategoryKey = 'banks' | 'stocks' | 'cpf' | 'property';
+export type CategoryKey = 'banks' | 'stocks' | 'cpf' | 'property' | 'others';

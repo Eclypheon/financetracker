@@ -14,7 +14,8 @@ import {
   FolderPlus, 
   ChevronDown, 
   ChevronUp,
-  RotateCcw
+  RotateCcw,
+  Coins
 } from 'lucide-react';
 
 interface FinanceCardProps {
@@ -69,7 +70,8 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   const handleFieldValueChange = (category: CategoryKey, fieldId: string, valStr: string) => {
     if (!onUpdate) return;
     const numeric = parseFloat(valStr.replace(/[^0-9.-]+/g, '')) || 0;
-    const updatedCategory = card[category].map((item) =>
+    const currentList = card[category] || [];
+    const updatedCategory = currentList.map((item) =>
       item.id === fieldId ? { ...item, value: numeric } : item
     );
     onUpdate({
@@ -151,9 +153,10 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
       value: 0,
       isCustom: true,
     };
+    const currentList = card[category] || [];
     onUpdate({
       ...card,
-      [category]: [...card[category], newField],
+      [category]: [...currentList, newField],
     });
     setNewFieldName('');
     setAddingCategory(null);
@@ -188,9 +191,10 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   // Delete field from standard category
   const handleDeleteField = (category: CategoryKey, fieldId: string) => {
     if (!onUpdate) return;
+    const currentList = card[category] || [];
     onUpdate({
       ...card,
-      [category]: card[category].filter((item) => item.id !== fieldId),
+      [category]: currentList.filter((item) => item.id !== fieldId),
     });
   };
 
@@ -543,6 +547,22 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                 icon={<Home className="w-2 h-2 text-indigo-400" />}
                 category="property"
                 fields={card.property}
+                isEditable={isEditable}
+                addingCategory={addingCategory}
+                newFieldName={newFieldName}
+                setAddingCategory={setAddingCategory}
+                setNewFieldName={setNewFieldName}
+                onFieldValueChange={handleFieldValueChange}
+                onAddField={handleAddField}
+                onDeleteField={handleDeleteField}
+              />
+
+              {/* Others */}
+              <CategorySection
+                title="Others"
+                icon={<Coins className="w-2 h-2 text-amber-400" />}
+                category="others"
+                fields={card.others || []}
                 isEditable={isEditable}
                 addingCategory={addingCategory}
                 newFieldName={newFieldName}
@@ -934,6 +954,24 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
             icon={<Home className="w-2.5 h-2.5 text-indigo-400" />}
             category="property"
             fields={card.property}
+            isEditable={isEditable}
+            addingCategory={addingCategory}
+            newFieldName={newFieldName}
+            setAddingCategory={setAddingCategory}
+            setNewFieldName={setNewFieldName}
+            onFieldValueChange={handleFieldValueChange}
+            onAddField={handleAddField}
+            onDeleteField={handleDeleteField}
+          />
+
+          {/* Others Category */}
+          <CategorySection
+            title="Others"
+            subTotalLabel="Others Total"
+            subTotalValue={totals.othersTotal}
+            icon={<Coins className="w-2.5 h-2.5 text-amber-400" />}
+            category="others"
+            fields={card.others || []}
             isEditable={isEditable}
             addingCategory={addingCategory}
             newFieldName={newFieldName}
