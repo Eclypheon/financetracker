@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   getSupabaseClient, 
   getStoredSupabaseConfig, 
@@ -15,23 +15,33 @@ import {
   KeyRound, 
   Link,
   Copy,
-  Check
+  Check,
+  Globe
 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthSuccess: () => void;
+  initialError?: string | null;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess, initialError }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'magic' | 'config'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError || null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [copiedSiteUrl, setCopiedSiteUrl] = useState(false);
+  const [copiedRedirectUrl, setCopiedRedirectUrl] = useState(false);
+
+  useEffect(() => {
+    if (initialError) {
+      setErrorMsg(initialError);
+    }
+  }, [initialError]);
 
   // Config fields
   const currentConfig = getStoredSupabaseConfig();
@@ -39,6 +49,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
   const [supabaseAnonKey, setSupabaseAnonKey] = useState(currentConfig.anonKey);
 
   const isConfigured = Boolean(currentConfig.url && currentConfig.anonKey);
+
+  // Helper to compute clean redirect URL
+  const getCleanRedirectUrl = () => {
+    const origin = window.location.origin;
+    let pathname = window.location.pathname.replace(/\/index\.html$/, '');
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+    return origin + pathname;
+  };
+
+  const cleanSiteUrl = getCleanRedirectUrl();
+  const wildcardRedirectUrl = `${cleanSiteUrl}**`;
 
   if (!isOpen) return null;
 
@@ -54,7 +77,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     setLoading(true);
     setErrorMsg(null);
 
-    const redirectUrl = window.location.origin + window.location.pathname;
+    const redirectUrl = getCleanRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -129,7 +152,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const redirectUrl = window.location.origin + window.location.pathname;
+    const redirectUrl = getCleanRedirectUrl();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -189,9 +212,21 @@ create policy "Users can only access their own cards"
     setTimeout(() => setCopiedSql(false), 2500);
   };
 
+  const copySiteUrl = () => {
+    navigator.clipboard.writeText(cleanSiteUrl);
+    setCopiedSiteUrl(true);
+    setTimeout(() => setCopiedSiteUrl(false), 2500);
+  };
+
+  const copyRedirectUrl = () => {
+    navigator.clipboard.writeText(wildcardRedirectUrl);
+    setCopiedRedirectUrl(true);
+    setTimeout(() => setCopiedRedirectUrl(false), 2500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-[360px] rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 text-slate-100 space-y-3">
+      <div className="relative w-full max-w-[370px] max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 text-slate-100 space-y-3">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
           <div className="flex items-center gap-1.5">
@@ -277,6 +312,9 @@ create policy "Users can only access their own cards"
               </svg>
               <span>Continue with Google</span>
             </button>
+            <div className="text-[8px] text-slate-500 text-center">
+              Requires Google provider & URL configured in your Supabase project
+            </div>
 
             <div className="flex items-center gap-2 text-slate-600 text-[9px] uppercase font-bold tracking-wider">
               <div className="flex-1 h-px bg-slate-800"></div>
@@ -423,6 +461,52 @@ create policy "Users can only access their own cards"
                   onChange={(e) => setSupabaseAnonKey(e.target.value)}
                   className="w-full mt-0.5 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-white text-[10px] font-mono focus:border-cyan-500 focus:outline-none"
                 />
+              </div>
+            </div>
+
+            {/* Supabase URL Configuration box (Fixes localhost:3000 error) */}
+            <div className="p-2 rounded-xl bg-slate-950/90 border border-slate-800 text-[9px] space-y-1.5">
+              <div className="font-semibold text-slate-200 flex items-center gap-1">
+                <Globe className="w-3 h-3 text-cyan-400" />
+                <span>Redirect URLs (Fixes localhost:3000):</span>
+              </div>
+              <p className="text-[8px] text-slate-400 leading-relaxed">
+                In Supabase &rarr; <strong>Authentication</strong> &rarr; <strong>URL Configuration</strong>:
+              </p>
+              <div className="space-y-1">
+                <div>
+                  <div className="flex items-center justify-between text-[8px] text-slate-400 mb-0.5">
+                    <span>1. Set Site URL:</span>
+                    <button
+                      type="button"
+                      onClick={copySiteUrl}
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5"
+                    >
+                      {copiedSiteUrl ? <Check className="w-2 h-2" /> : <Copy className="w-2 h-2" />}
+                      <span>{copiedSiteUrl ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <div className="p-1 rounded bg-slate-900 font-mono text-[8px] text-slate-300 select-all border border-slate-800 truncate">
+                    {cleanSiteUrl}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[8px] text-slate-400 mb-0.5">
+                    <span>2. Add Redirect URL:</span>
+                    <button
+                      type="button"
+                      onClick={copyRedirectUrl}
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5"
+                    >
+                      {copiedRedirectUrl ? <Check className="w-2 h-2" /> : <Copy className="w-2 h-2" />}
+                      <span>{copiedRedirectUrl ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <div className="p-1 rounded bg-slate-900 font-mono text-[8px] text-slate-300 select-all border border-slate-800 truncate">
+                    {wildcardRedirectUrl}
+                  </div>
+                </div>
               </div>
             </div>
 

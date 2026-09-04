@@ -34,6 +34,26 @@ export const App: React.FC = () => {
   // Supabase Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authErrorNotice, setAuthErrorNotice] = useState<string | null>(null);
+
+  // Check URL hash or query for OAuth errors returned from Supabase
+  useEffect(() => {
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : '';
+    const search = window.location.search.startsWith('?') ? window.location.search.substring(1) : '';
+    const params = new URLSearchParams(hash || search);
+    const error = params.get('error');
+    const errorDesc = params.get('error_description');
+
+    if (error || errorDesc) {
+      const msg = errorDesc
+        ? decodeURIComponent(errorDesc.replace(/\+/g, ' '))
+        : (error || 'Authentication error occurred.');
+      setAuthErrorNotice(msg);
+      setIsAuthModalOpen(true);
+      // Remove error fragment from URL bar
+      window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+    }
+  }, []);
 
   // Load cloud data for authenticated user
   const loadCloudData = useCallback(async (user: User) => {
@@ -243,7 +263,11 @@ export const App: React.FC = () => {
       {/* Auth Modal (Google, Email/Password, Magic Link, DB Config) */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        initialError={authErrorNotice}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthErrorNotice(null);
+        }}
         onAuthSuccess={() => {
           const supabase = getSupabaseClient();
           if (supabase) {
