@@ -441,7 +441,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         ) : (
           /* When Expanded: Full details breakdown, editable in place! */
           <div className="flex-1 flex flex-col justify-between overflow-hidden pt-1.5 space-y-1.5">
-            <div className="overflow-y-auto custom-scrollbar space-y-1.5 max-h-[360px] pr-1">
+            <div className="overflow-y-auto custom-scrollbar space-y-1.5 max-h-[360px] pr-1 overscroll-y-contain">
               {/* Banks */}
               <CategorySection
                 title="Banks"
@@ -649,7 +649,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
       </div>
 
       {/* 2. Scrollable Body: Categories and fields */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1.5 max-h-[460px]">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1.5 max-h-[460px] overscroll-y-contain">
         {/* ================= LIQUID ASSETS SECTION ================= */}
         <div className="rounded-xl bg-slate-950/60 p-2 border border-cyan-950/70 ring-1 ring-cyan-500/10 space-y-1.5">
           {/* Banks Category */}

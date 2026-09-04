@@ -224,6 +224,21 @@ export const App: React.FC = () => {
 
   const screenRefs = [screen1Ref, screen2Ref, screen3Ref];
 
+  // Track scroll session inside child scrollable containers (e.g. FinanceCard overflow-y-auto body)
+  // to ensure hitting bottom/top does NOT immediately shift screens during the same scroll gesture.
+  // Instead, the user must release (pause scrolling for a brief moment) and scroll again to trigger screen jump.
+  const childScrollSessionRef = useRef<{
+    target: HTMLElement | null;
+    startedAtBottom: boolean;
+    startedAtTop: boolean;
+    releaseTimer: ReturnType<typeof setTimeout> | null;
+  }>({
+    target: null,
+    startedAtBottom: false,
+    startedAtTop: false,
+    releaseTimer: null,
+  });
+
   const scrollToScreen = useCallback((index: number) => {
     if (index < 0 || index > 2) return;
     const target = screenRefs[index]?.current;
@@ -231,6 +246,16 @@ export const App: React.FC = () => {
       isJumpingRef.current = true;
       setActiveScreenIndex(index);
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Reset child scroll session on screen transition
+      if (childScrollSessionRef.current.releaseTimer) {
+        clearTimeout(childScrollSessionRef.current.releaseTimer);
+        childScrollSessionRef.current.releaseTimer = null;
+      }
+      childScrollSessionRef.current.target = null;
+      childScrollSessionRef.current.startedAtBottom = false;
+      childScrollSessionRef.current.startedAtTop = false;
+
       setTimeout(() => {
         isJumpingRef.current = false;
       }, 550);
@@ -254,14 +279,57 @@ export const App: React.FC = () => {
         return;
       }
 
-      // If scrolling inside an internal list (e.g. expanded card list), let it scroll
+      // If scrolling inside an internal list (e.g. card items)
       const target = e.target as HTMLElement;
       const scrollableChild = target.closest('.overflow-y-auto') as HTMLElement | null;
       if (scrollableChild && scrollableChild !== container) {
-        const atTop = scrollableChild.scrollTop <= 2;
-        const atBottom = scrollableChild.scrollTop + scrollableChild.clientHeight >= scrollableChild.scrollHeight - 2;
-        if ((e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop)) {
-          return;
+        const isScrollable = scrollableChild.scrollHeight > scrollableChild.clientHeight + 4;
+        if (isScrollable) {
+          const atTop = scrollableChild.scrollTop <= 2;
+          const atBottom = scrollableChild.scrollTop + scrollableChild.clientHeight >= scrollableChild.scrollHeight - 2;
+
+          // If starting a fresh scroll gesture session, record boundary state at start
+          if (!childScrollSessionRef.current.releaseTimer) {
+            childScrollSessionRef.current.target = scrollableChild;
+            childScrollSessionRef.current.startedAtBottom = atBottom;
+            childScrollSessionRef.current.startedAtTop = atTop;
+          }
+
+          // Reset the release timer: after 200ms of inactivity, the gesture is considered released
+          if (childScrollSessionRef.current.releaseTimer) {
+            clearTimeout(childScrollSessionRef.current.releaseTimer);
+          }
+          childScrollSessionRef.current.releaseTimer = setTimeout(() => {
+            childScrollSessionRef.current.releaseTimer = null;
+            childScrollSessionRef.current.target = null;
+            childScrollSessionRef.current.startedAtBottom = false;
+            childScrollSessionRef.current.startedAtTop = false;
+          }, 200);
+
+          // 1. If actively scrolling within the content bounds, let child scroll naturally
+          if ((e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop)) {
+            wheelAccum = 0;
+            return;
+          }
+
+          // 2. Boundary hit: If user reached bottom during THIS gesture (did not start at bottom),
+          // absorb remaining wheel momentum/events so it does NOT shift screens.
+          if (e.deltaY > 0 && atBottom && !childScrollSessionRef.current.startedAtBottom) {
+            e.preventDefault();
+            wheelAccum = 0;
+            return;
+          }
+
+          // 3. Boundary hit: If user reached top during THIS gesture (did not start at top),
+          // absorb remaining wheel momentum/events so it does NOT shift screens.
+          if (e.deltaY < 0 && atTop && !childScrollSessionRef.current.startedAtTop) {
+            e.preventDefault();
+            wheelAccum = 0;
+            return;
+          }
+
+          // 4. Otherwise: User started this gesture while ALREADY at the boundary (they released and scrolled again).
+          // Allow fall-through to screen jumping accumulator below.
         }
       }
 
@@ -292,11 +360,77 @@ export const App: React.FC = () => {
       }
     };
 
+    let touchStartY = 0;
+    let touchScrollChild: HTMLElement | null = null;
+    let touchStartedAtBottom = false;
+    let touchStartedAtTop = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartY = e.touches[0].clientY;
+      const target = e.target as HTMLElement;
+      touchScrollChild = target.closest('.overflow-y-auto') as HTMLElement | null;
+      if (touchScrollChild && touchScrollChild !== container) {
+        const isScrollable = touchScrollChild.scrollHeight > touchScrollChild.clientHeight + 4;
+        if (isScrollable) {
+          touchStartedAtBottom = touchScrollChild.scrollTop + touchScrollChild.clientHeight >= touchScrollChild.scrollHeight - 2;
+          touchStartedAtTop = touchScrollChild.scrollTop <= 2;
+        } else {
+          touchScrollChild = null;
+        }
+      } else {
+        touchScrollChild = null;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || !touchScrollChild) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = touchStartY - currentY; // > 0 means dragging up -> scrolling down
+
+      const atBottom = touchScrollChild.scrollTop + touchScrollChild.clientHeight >= touchScrollChild.scrollHeight - 2;
+      const atTop = touchScrollChild.scrollTop <= 2;
+
+      // Prevent chaining to screen snapping if gesture did not start at boundary
+      if (deltaY > 0 && atBottom && !touchStartedAtBottom) {
+        e.preventDefault();
+      } else if (deltaY < 0 && atTop && !touchStartedAtTop) {
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchScrollChild) return;
+      const currentY = e.changedTouches[0].clientY;
+      const deltaY = touchStartY - currentY; // > 0 is scroll down
+
+      // If user started already at bottom and swiped up significantly: jump to next screen
+      if (deltaY > 45 && touchStartedAtBottom) {
+        if (activeScreenIndex < 2) {
+          scrollToScreen(activeScreenIndex + 1);
+        }
+      } else if (deltaY < -45 && touchStartedAtTop) {
+        if (activeScreenIndex > 0) {
+          scrollToScreen(activeScreenIndex - 1);
+        }
+      }
+      touchScrollChild = null;
+    };
+
     container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
       if (wheelTimer) clearTimeout(wheelTimer);
+      if (childScrollSessionRef.current.releaseTimer) {
+        clearTimeout(childScrollSessionRef.current.releaseTimer);
+      }
     };
   }, [activeScreenIndex, scrollToScreen]);
 
@@ -443,52 +577,59 @@ export const App: React.FC = () => {
         <section
           ref={screen2Ref}
           id="screen-2"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-center py-2 space-y-3 relative"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-between py-2 relative"
         >
-          {/* Top navigation jump button */}
-          <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+          {/* Top navigation jump button: Latest Card (Centered) */}
+          <div className="w-full flex justify-center pb-1">
             <button
               onClick={() => scrollToScreen(0)}
-              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
               title="Jump up to Latest Card"
             >
               <ChevronUp className="w-3 h-3" />
               <span>Latest Card</span>
             </button>
+          </div>
+
+          {/* Middle Content: Carousel Deck + Compare Section */}
+          <div className="w-full space-y-3 flex-1 flex flex-col justify-center">
+            {/* Part A: Past Cards Carousel (Deck) */}
+            <div className="w-full">
+              <PastCardsCarousel
+                cards={pastCards}
+                selectedCardId={selectedCompareCardId}
+                onSelectCard={(id) => setSelectedCompareCardId(id)}
+                onAddNewBlankCard={handleAddNewBlankCard}
+                onUpdateCard={handleUpdateCard}
+                onDeleteCard={handleDeleteCard}
+              />
+            </div>
+
+            {/* Part B: Compare Cards Section (3 Columns) */}
+            {latestCard && (
+              <div className="w-full">
+                <CompareSection
+                  cards={cards}
+                  baseCardId={activeBaseCardId}
+                  compareCardId={selectedCompareCardId}
+                  onSelectBaseCard={(id) => setSelectedBaseCardId(id)}
+                  onSelectCompareCard={(id) => setSelectedCompareCardId(id)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom navigation jump button: Asset Graph (Centered at bottom of page) */}
+          <div className="w-full flex justify-center pt-2">
             <button
               onClick={() => scrollToScreen(2)}
-              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-1 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 animate-pulse"
               title="Jump down to Asset Graph"
             >
               <span>Asset Graph</span>
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {/* Part A: Past Cards Carousel (Deck) */}
-          <div className="w-full">
-            <PastCardsCarousel
-              cards={pastCards}
-              selectedCardId={selectedCompareCardId}
-              onSelectCard={(id) => setSelectedCompareCardId(id)}
-              onAddNewBlankCard={handleAddNewBlankCard}
-              onUpdateCard={handleUpdateCard}
-              onDeleteCard={handleDeleteCard}
-            />
-          </div>
-
-          {/* Part B: Compare Cards Section (3 Columns) */}
-          {latestCard && (
-            <div className="w-full">
-              <CompareSection
-                cards={cards}
-                baseCardId={activeBaseCardId}
-                compareCardId={selectedCompareCardId}
-                onSelectBaseCard={(id) => setSelectedBaseCardId(id)}
-                onSelectCompareCard={(id) => setSelectedCompareCardId(id)}
-              />
-            </div>
-          )}
         </section>
 
         {/* ============================================================ */}
@@ -499,23 +640,15 @@ export const App: React.FC = () => {
           id="screen-3"
           className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-between py-2 relative"
         >
-          {/* Top navigation jump button */}
-          <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pb-1">
+          {/* Top navigation jump button: Past Cards & Compare (Centered directly on top of the graph) */}
+          <div className="w-full flex justify-center pb-1">
             <button
               onClick={() => scrollToScreen(1)}
-              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
               title="Jump up to Past Cards & Compare"
             >
               <ChevronUp className="w-3 h-3" />
               <span>Past Cards &amp; Compare</span>
-            </button>
-            <button
-              onClick={() => scrollToScreen(0)}
-              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
-              title="Jump back to Top"
-            >
-              <ChevronUp className="w-3 h-3" />
-              <span>Back to Top</span>
             </button>
           </div>
 
