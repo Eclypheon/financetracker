@@ -4,38 +4,81 @@ import { calculateCardTotals, parseMonthYear } from '../utils/calculations';
 import { formatCurrency } from '../utils/formatters';
 import { TrendingUp, Eye, EyeOff, Coins, Landmark, Wallet } from 'lucide-react';
 
+export type TimePeriod = '1Y' | 'YTD' | '3Y' | '5Y' | 'ALL';
+
 interface AssetsChartProps {
   cards: FinanceCardData[];
 }
 
 export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
-  // Default: only show total assets line
+  // Line visibility toggles (Total on by default)
   const [showTotal, setShowTotal] = useState<boolean>(true);
   const [showLiquid, setShowLiquid] = useState<boolean>(false);
   const [showNonLiquid, setShowNonLiquid] = useState<boolean>(false);
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
-  // Chronologically sort data (oldest to newest for the graph timeline)
-  const chartData = useMemo(() => {
-    return [...cards]
-      .sort((a, b) => {
-        const timeA = parseMonthYear(a.monthYear).timestamp || a.createdAt;
-        const timeB = parseMonthYear(b.monthYear).timestamp || b.createdAt;
-        return timeA - timeB;
-      })
-      .map((card) => {
-        const totals = calculateCardTotals(card);
-        return {
-          id: card.id,
-          monthYear: card.monthYear,
-          totalAssets: totals.totalAssets,
-          liquidTotal: totals.liquidTotal,
-          nonLiquidTotal: totals.nonLiquidTotal,
-        };
-      });
+  // Time period filter: Past Year, YTD, Past 3 years, Past 5 Years, All Time
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('ALL');
+
+  const timePeriodOptions: { key: TimePeriod; label: string }[] = [
+    { key: '1Y', label: 'Past Year' },
+    { key: 'YTD', label: 'YTD' },
+    { key: '3Y', label: 'Past 3 years' },
+    { key: '5Y', label: 'Past 5 Years' },
+    { key: 'ALL', label: 'All Time' },
+  ];
+
+  // Chronologically sort all data first
+  const sortedCards = useMemo(() => {
+    return [...cards].sort((a, b) => {
+      const timeA = parseMonthYear(a.monthYear).timestamp || a.createdAt;
+      const timeB = parseMonthYear(b.monthYear).timestamp || b.createdAt;
+      return timeA - timeB;
+    });
   }, [cards]);
 
-  // Requirement: "on the y axis, the lowest value should always be 0 it should not auto fit the graph"
+  // Filter based on selected time period
+  const chartData = useMemo(() => {
+    if (sortedCards.length === 0) return [];
+
+    const latestCard = sortedCards[sortedCards.length - 1];
+    const latestParsed = parseMonthYear(latestCard.monthYear);
+    const latestTimestamp = latestParsed.timestamp || latestCard.createdAt;
+    const latestYear = latestParsed.year;
+
+    const oneDay = 24 * 3600 * 1000;
+
+    let filtered = sortedCards;
+
+    if (timePeriod === '1Y') {
+      const cutoff = latestTimestamp - 365.25 * oneDay;
+      filtered = sortedCards.filter((c) => (parseMonthYear(c.monthYear).timestamp || c.createdAt) >= cutoff);
+    } else if (timePeriod === 'YTD') {
+      filtered = sortedCards.filter((c) => parseMonthYear(c.monthYear).year === latestYear);
+    } else if (timePeriod === '3Y') {
+      const cutoff = latestTimestamp - 3 * 365.25 * oneDay;
+      filtered = sortedCards.filter((c) => (parseMonthYear(c.monthYear).timestamp || c.createdAt) >= cutoff);
+    } else if (timePeriod === '5Y') {
+      const cutoff = latestTimestamp - 5 * 365.25 * oneDay;
+      filtered = sortedCards.filter((c) => (parseMonthYear(c.monthYear).timestamp || c.createdAt) >= cutoff);
+    }
+
+    // If filtered slice has less than 2 cards, fallback to sortedCards so chart is informative
+    const dataset = filtered.length >= 1 ? filtered : sortedCards;
+
+    return dataset.map((card) => {
+      const totals = calculateCardTotals(card);
+      return {
+        id: card.id,
+        monthYear: card.monthYear,
+        totalAssets: totals.totalAssets,
+        liquidTotal: totals.liquidTotal,
+        nonLiquidTotal: totals.nonLiquidTotal,
+      };
+    });
+  }, [sortedCards, timePeriod]);
+
+  // Lowest value on Y-axis is strictly 0!
   const { minVal, maxVal } = useMemo(() => {
     const min = 0; // Always strictly 0!
 
@@ -57,9 +100,9 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     return { minVal: min, maxVal: max };
   }, [chartData, showTotal, showLiquid, showNonLiquid]);
 
-  // SVG Chart dimensions - compact and half width (~480px)
+  // SVG Chart dimensions - compact and half width (~460px)
   const width = 460;
-  const height = 210;
+  const height = 200;
   const padding = { top: 15, right: 15, bottom: 25, left: 52 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
@@ -106,23 +149,23 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const activeHoverData = hoveredPointIndex !== null ? chartData[hoveredPointIndex] : null;
 
   return (
-    <section className="w-full max-w-[480px] mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-3 shadow-md space-y-2">
-      {/* Header & Line Toggles */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1.5 border-b border-slate-800">
+    <section className="w-full max-w-[480px] mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-2.5 shadow-md space-y-2">
+      {/* Header with Title & Line Toggles */}
+      <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-800">
         <div className="flex items-center gap-1">
           <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <TrendingUp className="w-3 h-3" />
           </div>
           <h2 className="text-xs font-bold text-white tracking-wide">
-            Assets Over Time
+            Graph Over Time
           </h2>
         </div>
 
-        {/* Minimalist Toggle Buttons */}
-        <div className="flex flex-wrap items-center gap-1">
+        {/* Minimalist Line Toggles */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setShowTotal(!showTotal)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
+            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all ${
               showTotal
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
@@ -135,7 +178,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
           <button
             onClick={() => setShowLiquid(!showLiquid)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
+            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all ${
               showLiquid
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
@@ -148,7 +191,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
           <button
             onClick={() => setShowNonLiquid(!showNonLiquid)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
+            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all ${
               showNonLiquid
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
@@ -161,21 +204,41 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
         </div>
       </div>
 
+      {/* Time Period Options: Past Year, YTD, Past 3 years, Past 5 Years, All Time */}
+      <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5 text-[8px]">
+        <span className="text-slate-500 text-[8px] uppercase tracking-wider font-semibold">Period:</span>
+        <div className="flex items-center gap-1">
+          {timePeriodOptions.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setTimePeriod(opt.key)}
+              className={`px-1.5 py-0.5 rounded font-medium transition-all ${
+                timePeriod === opt.key
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700/60'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* SVG Chart Graphic */}
       <div className="relative w-full overflow-hidden">
         {chartData.length === 0 ? (
           <div className="h-32 flex items-center justify-center text-slate-500 text-[10px]">
-            Not enough data to plot.
+            No records in this period.
           </div>
         ) : (
           <div className="w-full overflow-x-auto no-scrollbar">
             <svg
               viewBox={`0 0 ${width} ${height}`}
               className="w-full h-auto select-none"
-              style={{ maxHeight: '220px' }}
+              style={{ maxHeight: '200px' }}
             >
               <defs>
-                <linearGradient id="totalGradientMini2" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="totalGradientMini3" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
                   <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                 </linearGradient>
@@ -217,7 +280,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
               {/* Area Under Total Assets */}
               {showTotal && (
-                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradientMini2)" />
+                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradientMini3)" />
               )}
 
               {/* Liquid Assets Line */}
@@ -339,14 +402,14 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
         {/* Hover Snapshot */}
         {activeHoverData && (
-          <div className="mt-1.5 p-1.5 rounded-lg bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
+          <div className="mt-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-1 text-[10px]">
             <div className="flex items-center gap-1">
               <span className="px-1 py-0.2 rounded bg-slate-800 text-slate-200 font-mono-num font-bold text-[9px]">
                 {activeHoverData.monthYear}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 font-mono-num text-[10px]">
+            <div className="flex items-center gap-2 font-mono-num text-[9px]">
               {showTotal && (
                 <div className="flex items-center gap-0.5">
                   <Wallet className="w-2.5 h-2.5 text-emerald-400" />
