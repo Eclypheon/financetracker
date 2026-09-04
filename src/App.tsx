@@ -54,7 +54,6 @@ export const App: React.FC = () => {
     const newCard = createNextCardFromPrevious(latestCard);
     setCards((prev) => [newCard, ...prev]);
     setSelectedBaseCardId(newCard.id);
-    // By default, the previous latest card becomes the comparison card
     if (latestCard) {
       setSelectedCompareCardId(latestCard.id);
     }
@@ -109,18 +108,18 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Dashboard */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-4 py-6 space-y-8">
         {/* ====================================================================
-            SECTION 1: TOP CENTER LATEST CARD
+            SECTION 1: TOP CENTER LATEST CARD (VERTICAL RECTANGLE)
             "The main page would have the latest card at the top center of the page"
             ==================================================================== */}
         <section className="w-full flex flex-col items-center">
-          <div className="text-center mb-6 max-w-xl">
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-              Current Financial Snapshot
+          <div className="text-center mb-3">
+            <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
+              Latest Month Card
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Enter or update your assets below. Totals calculate instantly.
+            <p className="text-[10px] text-slate-400">
+              Interactive snapshot. All totals calculate live.
             </p>
           </div>
 
@@ -139,7 +138,7 @@ export const App: React.FC = () => {
             SECTION 2: PAST CARDS SPREAD HORIZONTALLY
             "with the past cards smaller and below it spread out horizontally."
             ==================================================================== */}
-        <section className="w-full pt-2">
+        <section className="w-full">
           <PastCardsCarousel
             cards={pastCards}
             selectedCardId={selectedCompareCardId}
@@ -158,7 +157,7 @@ export const App: React.FC = () => {
             for Liquid assets total, Non liquid assets total and total assets."
             ==================================================================== */}
         {latestCard && (
-          <section className="w-full pt-2">
+          <section className="w-full">
             <CompareSection
               cards={cards}
               baseCardId={activeBaseCardId}
@@ -176,16 +175,16 @@ export const App: React.FC = () => {
             Each of these lines are toggleable to be on or off. By default, it should only 
             show the total assets line."
             ==================================================================== */}
-        <section className="w-full pt-2">
+        <section className="w-full">
           <AssetsChart cards={cards} />
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Finance Tracker PWA · Offline Capable · Private & Local-First</span>
-          <span>Deployable to GitHub Pages</span>
+      {/* Minimalist Footer */}
+      <footer className="w-full border-t border-slate-900 bg-slate-950 py-4 text-center text-[10px] text-slate-500">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
+          <span>Finance Tracker PWA · Offline Capable · Local Storage</span>
+          <span>github.com/Eclypheon/financetracker</span>
         </div>
       </footer>
     </div>

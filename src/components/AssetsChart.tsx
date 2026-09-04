@@ -47,19 +47,18 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     });
 
     if (allValues.length === 0) {
-      // Fallback if all lines toggled off
       allValues = chartData.map((d) => d.totalAssets);
     }
 
-    const min = Math.max(0, Math.min(...allValues) * 0.85);
-    const max = Math.max(...allValues) * 1.12 || 100000;
+    const min = Math.max(0, Math.min(...allValues) * 0.9);
+    const max = Math.max(...allValues) * 1.1 || 100000;
     return { minVal: min, maxVal: max };
   }, [chartData, showTotal, showLiquid, showNonLiquid]);
 
-  // SVG Chart dimensions
-  const width = 800;
-  const height = 320;
-  const padding = { top: 30, right: 30, bottom: 40, left: 70 };
+  // SVG Chart dimensions - compact and minimalist
+  const width = 760;
+  const height = 240;
+  const padding = { top: 20, right: 20, bottom: 30, left: 60 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
@@ -95,8 +94,8 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
   };
 
-  // Y-axis ticks (4 ticks)
-  const yTicks = [0, 0.33, 0.66, 1].map((ratio) => {
+  // Y-axis ticks (3 ticks)
+  const yTicks = [0, 0.5, 1].map((ratio) => {
     const value = minVal + ratio * (maxVal - minVal);
     const y = padding.top + innerHeight - ratio * innerHeight;
     return { value, y };
@@ -105,64 +104,64 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const activeHoverData = hoveredPointIndex !== null ? chartData[hoveredPointIndex] : null;
 
   return (
-    <section className="w-full rounded-2xl bg-slate-900/90 border border-slate-800 p-5 sm:p-6 shadow-xl space-y-5">
+    <section className="w-full max-w-4xl mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-4 shadow-md space-y-3">
       {/* Header & Line Toggles */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-            <TrendingUp className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+        <div className="flex items-center gap-1.5">
+          <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <TrendingUp className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
+            <h2 className="text-xs sm:text-sm font-bold text-white tracking-wide">
               Assets Over Time
             </h2>
-            <p className="text-xs text-slate-400">
-              Interactive historical trajectory. Toggle lines below to inspect trends.
+            <p className="text-[10px] text-slate-400">
+              Toggle lines below. Hover to view snapshot details.
             </p>
           </div>
         </div>
 
-        {/* Toggle Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Minimalist Toggle Buttons */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Total Assets Toggle */}
           <button
             onClick={() => setShowTotal(!showTotal)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
               showTotal
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-950'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showTotal ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            {showTotal ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             <span>Total Assets</span>
           </button>
 
           {/* Liquid Assets Toggle */}
           <button
             onClick={() => setShowLiquid(!showLiquid)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
               showLiquid
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-950'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showLiquid ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            {showLiquid ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
             <span>Liquid Total</span>
           </button>
 
           {/* Non-liquid Assets Toggle */}
           <button
             onClick={() => setShowNonLiquid(!showNonLiquid)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
               showNonLiquid
-                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm shadow-purple-950'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                 : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300'
             }`}
           >
-            {showNonLiquid ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+            {showNonLiquid ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
             <span>Non-liquid Total</span>
           </button>
         </div>
@@ -171,31 +170,20 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
       {/* SVG Chart Graphic */}
       <div className="relative w-full overflow-hidden">
         {chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
+          <div className="h-44 flex items-center justify-center text-slate-500 text-xs">
             Not enough data to plot graph. Add month cards to see graph.
           </div>
         ) : (
           <div className="w-full overflow-x-auto no-scrollbar">
             <svg
               viewBox={`0 0 ${width} ${height}`}
-              className="w-full h-auto min-w-[500px] select-none"
-              style={{ maxHeight: '380px' }}
+              className="w-full h-auto select-none"
+              style={{ maxHeight: '250px' }}
             >
               <defs>
-                {/* Emerald Area Gradient */}
-                <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                <linearGradient id="totalGradientMini" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
                   <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                </linearGradient>
-
-                <linearGradient id="cyanGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
-                </linearGradient>
-
-                <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a855f7" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#a855f7" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -207,15 +195,15 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                     y1={tick.y}
                     x2={width - padding.right}
                     y2={tick.y}
-                    stroke="rgba(51, 65, 85, 0.4)"
-                    strokeDasharray="4 4"
+                    stroke="rgba(51, 65, 85, 0.3)"
+                    strokeDasharray="3 3"
                   />
                   <text
-                    x={padding.left - 10}
-                    y={tick.y + 4}
+                    x={padding.left - 8}
+                    y={tick.y + 3}
                     textAnchor="end"
                     fill="#64748b"
-                    fontSize="11"
+                    fontSize="10"
                     fontFamily="monospace"
                   >
                     {formatCurrency(tick.value, { compact: true })}
@@ -235,7 +223,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
               {/* Area Under Total Assets */}
               {showTotal && (
-                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradient)" />
+                <path d={generateAreaPath('totalAssets')} fill="url(#totalGradientMini)" />
               )}
 
               {/* Liquid Assets Line */}
@@ -244,7 +232,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('liquidTotal')}
                   fill="none"
                   stroke="#06b6d4"
-                  strokeWidth="3"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -256,7 +244,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('nonLiquidTotal')}
                   fill="none"
                   stroke="#a855f7"
-                  strokeWidth="3"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -268,7 +256,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                   d={generateLinePath('totalAssets')}
                   fill="none"
                   stroke="#10b981"
-                  strokeWidth="3.5"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -281,7 +269,6 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
                 return (
                   <g key={d.id}>
-                    {/* Hover vertical guideline */}
                     {isHovered && (
                       <line
                         x1={x}
@@ -290,63 +277,55 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                         y2={padding.top + innerHeight}
                         stroke="#94a3b8"
                         strokeWidth="1"
-                        strokeDasharray="3 3"
+                        strokeDasharray="2 2"
                       />
                     )}
 
-                    {/* Liquid Asset Point */}
                     {showLiquid && (
                       <circle
                         cx={x}
                         cy={getY(d.liquidTotal)}
-                        r={isHovered ? 6 : 4}
+                        r={isHovered ? 4.5 : 3}
                         fill="#06b6d4"
                         stroke="#0f172a"
-                        strokeWidth="2"
-                        className="transition-all"
+                        strokeWidth="1.5"
                       />
                     )}
 
-                    {/* Non-liquid Asset Point */}
                     {showNonLiquid && (
                       <circle
                         cx={x}
                         cy={getY(d.nonLiquidTotal)}
-                        r={isHovered ? 6 : 4}
+                        r={isHovered ? 4.5 : 3}
                         fill="#a855f7"
                         stroke="#0f172a"
-                        strokeWidth="2"
-                        className="transition-all"
+                        strokeWidth="1.5"
                       />
                     )}
 
-                    {/* Total Asset Point */}
                     {showTotal && (
                       <circle
                         cx={x}
                         cy={getY(d.totalAssets)}
-                        r={isHovered ? 7 : 4.5}
+                        r={isHovered ? 5 : 3.5}
                         fill="#10b981"
                         stroke="#0f172a"
-                        strokeWidth="2.5"
-                        className="transition-all"
+                        strokeWidth="1.5"
                       />
                     )}
 
-                    {/* X-axis Label */}
                     <text
                       x={x}
-                      y={padding.top + innerHeight + 22}
+                      y={padding.top + innerHeight + 18}
                       textAnchor="middle"
                       fill={isHovered ? '#34d399' : '#94a3b8'}
-                      fontSize="12"
+                      fontSize="10"
                       fontWeight={isHovered ? '700' : '500'}
                       fontFamily="monospace"
                     >
                       {d.monthYear}
                     </text>
 
-                    {/* Invisible hover hotspot */}
                     <rect
                       x={x - (innerWidth / chartData.length) / 2}
                       y={padding.top}
@@ -364,34 +343,34 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
           </div>
         )}
 
-        {/* Floating Tooltip Summary */}
+        {/* Minimalist Hover Tooltip */}
         {activeHoverData && (
-          <div className="mt-3 p-3.5 rounded-xl bg-slate-950/90 border border-slate-700/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 font-mono-num font-bold">
+          <div className="mt-2 p-2 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-200 font-mono-num font-bold text-[10px]">
                 {activeHoverData.monthYear}
               </span>
-              <span className="text-slate-400">Selected Month Snapshot:</span>
+              <span className="text-slate-400">Snapshot:</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3 font-mono-num text-[11px]">
               {showTotal && (
-                <div className="flex items-center gap-1.5 font-mono-num">
-                  <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="flex items-center gap-1">
+                  <Wallet className="w-3 h-3 text-emerald-400" />
                   <span className="text-slate-400">Total:</span>
                   <span className="text-emerald-400 font-bold">{formatCurrency(activeHoverData.totalAssets)}</span>
                 </div>
               )}
               {showLiquid && (
-                <div className="flex items-center gap-1.5 font-mono-num">
-                  <Coins className="w-3.5 h-3.5 text-cyan-400" />
+                <div className="flex items-center gap-1">
+                  <Coins className="w-3 h-3 text-cyan-400" />
                   <span className="text-slate-400">Liquid:</span>
                   <span className="text-cyan-400 font-bold">{formatCurrency(activeHoverData.liquidTotal)}</span>
                 </div>
               )}
               {showNonLiquid && (
-                <div className="flex items-center gap-1.5 font-mono-num">
-                  <Landmark className="w-3.5 h-3.5 text-purple-400" />
+                <div className="flex items-center gap-1">
+                  <Landmark className="w-3 h-3 text-purple-400" />
                   <span className="text-slate-400">Non-liquid:</span>
                   <span className="text-purple-400 font-bold">{formatCurrency(activeHoverData.nonLiquidTotal)}</span>
                 </div>
