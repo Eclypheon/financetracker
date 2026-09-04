@@ -288,7 +288,8 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
   if (mode === 'compact') {
     return (
       <div
-        className={`group relative flex-shrink-0 transition-all duration-200 rounded-xl border p-2 flex flex-col justify-between text-left ${
+        onClick={() => onSelect && onSelect()}
+        className={`group relative flex-shrink-0 transition-all duration-200 rounded-xl border p-2 flex flex-col justify-between text-left cursor-pointer ${
           isExpanded ? 'w-[280px] sm:w-[290px] h-[420px]' : 'w-[190px] h-[145px]'
         } ${
           isSelected
@@ -428,7 +429,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         {/* When Collapsed: Direct editable inputs for Liquid & Non-liquid totals */}
         {!isExpanded ? (
           <div className="flex-1 flex flex-col justify-between py-1" onClick={onSelect}>
-            <div className="space-y-1 text-[9px] font-mono-num" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1 text-[9px] font-mono-num">
               {/* Direct edit Liquid */}
               <div className="flex justify-between items-center text-cyan-300">
                 <span className="text-slate-400">Liquid:</span>
@@ -440,6 +441,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                       inputMode="decimal"
                       value={totals.liquidTotal === 0 ? '' : totals.liquidTotal}
                       placeholder="0"
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => handleManualLiquidChange(e.target.value)}
                       className="w-16 text-right font-mono-num text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 text-cyan-300 focus:border-cyan-500 focus:outline-none font-semibold"
                       title="Direct edit Liquid Assets Total"
@@ -461,6 +463,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                       inputMode="decimal"
                       value={totals.nonLiquidTotal === 0 ? '' : totals.nonLiquidTotal}
                       placeholder="0"
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => handleManualNonLiquidChange(e.target.value)}
                       className="w-16 text-right font-mono-num text-[9px] px-1 py-0.2 rounded bg-slate-950 border border-slate-800 text-purple-300 focus:border-purple-500 focus:outline-none font-semibold"
                       title="Direct edit Non-liquid Assets Total"

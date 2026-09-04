@@ -35,15 +35,32 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
   const pointerStartRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const hasMovedRef = useRef(false);
 
-  // Synchronize frontIndex with selectedCardId
+  // Synchronize frontIndex with selectedCardId only on selection change (not on initial mount)
+  const isInitialMount = useRef(true);
+  const prevSelectedCardIdRef = useRef(selectedCardId);
+
   useEffect(() => {
-    if (selectedCardId) {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (selectedCardId && selectedCardId !== prevSelectedCardIdRef.current) {
+      prevSelectedCardIdRef.current = selectedCardId;
       const idx = cards.findIndex((c) => c.id === selectedCardId);
       if (idx !== -1) {
         setFrontIndex(idx);
       }
     }
   }, [selectedCardId, cards]);
+
+  // When cards change (e.g. new card saved or prepended), display the newest card in front
+  const prevFirstCardIdRef = useRef(cards[0]?.id);
+  useEffect(() => {
+    if (cards[0]?.id !== prevFirstCardIdRef.current) {
+      prevFirstCardIdRef.current = cards[0]?.id;
+      setFrontIndex(0);
+    }
+  }, [cards]);
 
   const handlePrev = () => {
     if (cards.length === 0) return;

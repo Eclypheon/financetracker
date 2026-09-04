@@ -35,7 +35,10 @@ export const App: React.FC = () => {
   const [showCardSavedModal, setShowCardSavedModal] = useState(false);
   const cardSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [selectedBaseCardId, setSelectedBaseCardId] = useState<string | null>(null);
+  const [selectedBaseCardId, setSelectedBaseCardId] = useState<string | null>(() => {
+    const loaded = loadStoredCards();
+    return loaded[0]?.id || null;
+  });
   const [selectedCompareCardId, setSelectedCompareCardId] = useState<string | null>(() => {
     const loaded = loadStoredCards();
     return loaded.length > 1 ? loaded[1].id : loaded[0]?.id || null;
@@ -72,8 +75,11 @@ export const App: React.FC = () => {
       if (cloudCards && cloudCards.length > 0) {
         setSavedCards(cloudCards);
         saveStoredCards(cloudCards);
+        setSelectedBaseCardId(cloudCards[0].id);
         if (cloudCards.length > 1) {
           setSelectedCompareCardId(cloudCards[1].id);
+        } else {
+          setSelectedCompareCardId(cloudCards[0].id);
         }
       } else {
         // If cloud is empty, migrate current local cards to user's cloud account
@@ -172,8 +178,9 @@ export const App: React.FC = () => {
 
     // Prepend to saved cards so it becomes the latest card in the carousel
     setSavedCards((prev) => [newSavedCard, ...prev]);
+    // Auto-populate compare feature with latest card and second latest card
     setSelectedBaseCardId(newSavedCard.id);
-    if (!selectedCompareCardId && savedCards.length > 0) {
+    if (savedCards.length > 0) {
       setSelectedCompareCardId(savedCards[0].id);
     }
 
@@ -190,6 +197,15 @@ export const App: React.FC = () => {
       setShowCardSavedModal(false);
       cardSavedTimerRef.current = null;
     }, 1600);
+  };
+
+  // Carousel card click handler: replace the second latest card with the clicked card,
+  // while keeping the base card as the latest card in the past cards carousel
+  const handleSelectCarouselCard = (cardId: string) => {
+    if (savedCards.length > 0) {
+      setSelectedBaseCardId(savedCards[0].id);
+    }
+    setSelectedCompareCardId(cardId);
   };
 
   // Update card in saved cards (carousel / past cards)
@@ -221,12 +237,8 @@ export const App: React.FC = () => {
     }
     setSavedCards((prev) => {
       const updated = prev.filter((c) => c.id !== cardId);
-      if (selectedBaseCardId === cardId) {
-        setSelectedBaseCardId(updated[0]?.id || null);
-      }
-      if (selectedCompareCardId === cardId) {
-        setSelectedCompareCardId(updated.length > 1 ? updated[1].id : updated[0]?.id || null);
-      }
+      setSelectedBaseCardId(updated[0]?.id || null);
+      setSelectedCompareCardId(updated.length > 1 ? updated[1].id : updated[0]?.id || null);
       return updated;
     });
     if (currentUser) {
@@ -253,8 +265,11 @@ export const App: React.FC = () => {
     try {
       const imported = await importCardsFromFile(file);
       setSavedCards(imported);
+      setSelectedBaseCardId(imported[0]?.id || null);
       if (imported.length > 1) {
         setSelectedCompareCardId(imported[1].id);
+      } else if (imported.length > 0) {
+        setSelectedCompareCardId(imported[0].id);
       }
       if (currentUser) {
         await syncAllCardsToCloud(imported, currentUser);
@@ -578,7 +593,7 @@ export const App: React.FC = () => {
         aria-label="Screen Navigation"
       >
         {[
-          { index: 0, label: 'New Entry' },
+          { index: 0, label: 'New Card' },
           { index: 1, label: 'Past Cards & Compare' },
           { index: 2, label: 'Asset Graph' },
         ].map((item) => (
@@ -598,7 +613,7 @@ export const App: React.FC = () => {
       {/* Main Content: 3 Snapping Screens */}
       <main className="flex-1 max-w-[500px] w-full mx-auto px-3">
         {/* ============================================================ */}
-        {/* SCREEN 1: TOP OF THE PAGE (NEW ENTRY DRAFT CARD)             */}
+        {/* SCREEN 1: TOP OF THE PAGE (NEW CARD ENTRY)                   */}
         {/* ============================================================ */}
         <section
           ref={screen1Ref}
@@ -652,10 +667,10 @@ export const App: React.FC = () => {
             <button
               onClick={() => scrollToScreen(0)}
               className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
-              title="Jump up to New Entry"
+              title="Jump up to New Card"
             >
               <ChevronUp className="w-3 h-3" />
-              <span>New Entry</span>
+              <span>New Card</span>
             </button>
           </div>
 
@@ -666,7 +681,7 @@ export const App: React.FC = () => {
               <PastCardsCarousel
                 cards={savedCards}
                 selectedCardId={selectedCompareCardId}
-                onSelectCard={(id) => setSelectedCompareCardId(id)}
+                onSelectCard={handleSelectCarouselCard}
                 onAddNewBlankCard={handleAddNewBlankCard}
                 onUpdateCard={handleUpdateCard}
                 onDeleteCard={handleDeleteCard}
