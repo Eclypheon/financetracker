@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { FinanceCardData } from './types/finance';
 import { 
@@ -22,6 +22,7 @@ import { PastCardsCarousel } from './components/PastCardsCarousel';
 import { CompareSection } from './components/CompareSection';
 import { AssetsChart } from './components/AssetsChart';
 import { AuthModal } from './components/AuthModal';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [cards, setCards] = useState<FinanceCardData[]>(() => loadStoredCards());
@@ -201,9 +202,157 @@ export const App: React.FC = () => {
     }
   };
 
+  // =========================================================================
+  // SCREEN SNAPPING CONTROLLER (3 Screens)
+  // Screen 0: Top of page (Latest Month Card)
+  // Screen 1: Past card deck & compare cards
+  // Screen 2: Graph over time
+  // =========================================================================
+  const [activeScreenIndex, setActiveScreenIndex] = useState(0);
+  const isJumpingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const screen1Ref = useRef<HTMLElement>(null);
+  const screen2Ref = useRef<HTMLElement>(null);
+  const screen3Ref = useRef<HTMLElement>(null);
+
+  const screenRefs = [screen1Ref, screen2Ref, screen3Ref];
+
+  const scrollToScreen = useCallback((index: number) => {
+    if (index < 0 || index > 2) return;
+    const target = screenRefs[index]?.current;
+    if (target) {
+      isJumpingRef.current = true;
+      setActiveScreenIndex(index);
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => {
+        isJumpingRef.current = false;
+      }, 550);
+    }
+  }, []);
+
+  // Intercept vertical wheel gestures on the container to jump screen-by-screen
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    let wheelAccum = 0;
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Ignore horizontal wheel gestures (which belong to the cards deck carousel)
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+      if (isJumpingRef.current) {
+        e.preventDefault();
+        return;
+      }
+
+      // If scrolling inside an internal list (e.g. expanded card list), let it scroll
+      const target = e.target as HTMLElement;
+      const scrollableChild = target.closest('.overflow-y-auto') as HTMLElement | null;
+      if (scrollableChild && scrollableChild !== container) {
+        const atTop = scrollableChild.scrollTop <= 2;
+        const atBottom = scrollableChild.scrollTop + scrollableChild.clientHeight >= scrollableChild.scrollHeight - 2;
+        if ((e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop)) {
+          return;
+        }
+      }
+
+      wheelAccum += e.deltaY;
+      if (wheelTimer) clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(() => {
+        wheelAccum = 0;
+      }, 150);
+
+      const THRESHOLD = 28;
+
+      if (Math.abs(wheelAccum) >= THRESHOLD) {
+        if (wheelAccum > 0) {
+          // Scroll down -> Jump to next screen
+          if (activeScreenIndex < 2) {
+            e.preventDefault();
+            wheelAccum = 0;
+            scrollToScreen(activeScreenIndex + 1);
+          }
+        } else if (wheelAccum < 0) {
+          // Scroll up -> Jump to previous screen
+          if (activeScreenIndex > 0) {
+            e.preventDefault();
+            wheelAccum = 0;
+            scrollToScreen(activeScreenIndex - 1);
+          }
+        }
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      if (wheelTimer) clearTimeout(wheelTimer);
+    };
+  }, [activeScreenIndex, scrollToScreen]);
+
+  // Keyboard navigation between screens (ArrowDown, ArrowUp, PageDown, PageUp)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        if (activeScreenIndex < 2) {
+          e.preventDefault();
+          scrollToScreen(activeScreenIndex + 1);
+        }
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        if (activeScreenIndex > 0) {
+          e.preventDefault();
+          scrollToScreen(activeScreenIndex - 1);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeScreenIndex, scrollToScreen]);
+
+  // Track active screen with IntersectionObserver for natural touch scroll snapping
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isJumpingRef.current) return;
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            if (id === 'screen-1') setActiveScreenIndex(0);
+            else if (id === 'screen-2') setActiveScreenIndex(1);
+            else if (id === 'screen-3') setActiveScreenIndex(2);
+          }
+        });
+      },
+      {
+        root: container,
+        threshold: 0.45,
+      }
+    );
+
+    [screen1Ref, screen2Ref, screen3Ref].forEach((ref) => {
+      if (ref.current) observer.observe(ref.current);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
-      {/* Header with Cloud Sync */}
+    <div 
+      ref={scrollContainerRef}
+      style={{ scrollPaddingTop: '46px' }}
+      className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300 relative"
+    >
+      {/* Header with Cloud Sync (sticky at top) */}
       <Header
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -214,10 +363,39 @@ export const App: React.FC = () => {
         onResetSample={handleResetSample}
       />
 
-      {/* Main Content Dashboard */}
-      <main className="flex-1 max-w-[500px] w-full mx-auto px-3 py-4 space-y-6">
-        {/* SECTION 1: TOP CENTER LATEST CARD */}
-        <section className="w-full flex flex-col items-center">
+      {/* Floating Screen Navigation Indicator (Right Edge) */}
+      <aside 
+        className="fixed right-2 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 p-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-xl"
+        aria-label="Screen Navigation"
+      >
+        {[
+          { index: 0, label: 'Latest Month' },
+          { index: 1, label: 'Past Cards & Compare' },
+          { index: 2, label: 'Asset Graph' },
+        ].map((item) => (
+          <button
+            key={item.index}
+            onClick={() => scrollToScreen(item.index)}
+            className={`transition-all duration-300 rounded-full ${
+              activeScreenIndex === item.index
+                ? 'w-2 h-4 bg-emerald-400 shadow-sm shadow-emerald-500/50 ring-1 ring-emerald-400/40'
+                : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'
+            }`}
+            title={item.label}
+          />
+        ))}
+      </aside>
+
+      {/* Main Content: 3 Snapping Screens */}
+      <main className="flex-1 max-w-[500px] w-full mx-auto px-3">
+        {/* ============================================================ */}
+        {/* SCREEN 1: TOP OF THE PAGE (LATEST MONTH CARD)                */}
+        {/* ============================================================ */}
+        <section
+          ref={screen1Ref}
+          id="screen-1"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
+        >
           {latestCard ? (
             <FinanceCard
               card={latestCard}
@@ -227,36 +405,112 @@ export const App: React.FC = () => {
               onDelete={cards.length > 1 ? () => handleDeleteCard(latestCard.id) : undefined}
             />
           ) : null}
+
+          {/* Jump Hint to Screen 2 */}
+          <button
+            onClick={() => scrollToScreen(1)}
+            className="mt-3 flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-1 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 animate-pulse"
+            title="Jump down to Past Cards & Compare"
+          >
+            <span>Past Cards &amp; Compare</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
         </section>
 
-        {/* SECTION 2: PAST CARDS SPREAD (DECK) */}
-        <section className="w-full">
-          <PastCardsCarousel
-            cards={pastCards}
-            selectedCardId={selectedCompareCardId}
-            onSelectCard={(id) => setSelectedCompareCardId(id)}
-            onAddNewBlankCard={handleAddNewBlankCard}
-            onUpdateCard={handleUpdateCard}
-            onDeleteCard={handleDeleteCard}
-          />
-        </section>
+        {/* ============================================================ */}
+        {/* SCREEN 2: PAST CARD DECK & COMPARE CARDS SCREEN              */}
+        {/* ============================================================ */}
+        <section
+          ref={screen2Ref}
+          id="screen-2"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-center py-2 space-y-3 relative"
+        >
+          {/* Top navigation jump button */}
+          <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+            <button
+              onClick={() => scrollToScreen(0)}
+              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              title="Jump up to Latest Card"
+            >
+              <ChevronUp className="w-3 h-3" />
+              <span>Latest Card</span>
+            </button>
+            <button
+              onClick={() => scrollToScreen(2)}
+              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              title="Jump down to Asset Graph"
+            >
+              <span>Asset Graph</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
 
-        {/* SECTION 3: COMPARE SECTION (3 COLUMNS) */}
-        {latestCard && (
-          <section className="w-full">
-            <CompareSection
-              cards={cards}
-              baseCardId={activeBaseCardId}
-              compareCardId={selectedCompareCardId}
-              onSelectBaseCard={(id) => setSelectedBaseCardId(id)}
-              onSelectCompareCard={(id) => setSelectedCompareCardId(id)}
+          {/* Part A: Past Cards Carousel (Deck) */}
+          <div className="w-full">
+            <PastCardsCarousel
+              cards={pastCards}
+              selectedCardId={selectedCompareCardId}
+              onSelectCard={(id) => setSelectedCompareCardId(id)}
+              onAddNewBlankCard={handleAddNewBlankCard}
+              onUpdateCard={handleUpdateCard}
+              onDeleteCard={handleDeleteCard}
             />
-          </section>
-        )}
+          </div>
 
-        {/* SECTION 4: GRAPH OVER TIME */}
-        <section className="w-full">
-          <AssetsChart cards={cards} />
+          {/* Part B: Compare Cards Section (3 Columns) */}
+          {latestCard && (
+            <div className="w-full">
+              <CompareSection
+                cards={cards}
+                baseCardId={activeBaseCardId}
+                compareCardId={selectedCompareCardId}
+                onSelectBaseCard={(id) => setSelectedBaseCardId(id)}
+                onSelectCompareCard={(id) => setSelectedCompareCardId(id)}
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ============================================================ */}
+        {/* SCREEN 3: GRAPH OVER TIME SCREEN                             */}
+        {/* ============================================================ */}
+        <section
+          ref={screen3Ref}
+          id="screen-3"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-between py-2 relative"
+        >
+          {/* Top navigation jump button */}
+          <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pb-1">
+            <button
+              onClick={() => scrollToScreen(1)}
+              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              title="Jump up to Past Cards & Compare"
+            >
+              <ChevronUp className="w-3 h-3" />
+              <span>Past Cards &amp; Compare</span>
+            </button>
+            <button
+              onClick={() => scrollToScreen(0)}
+              className="flex items-center gap-0.5 hover:text-emerald-400 transition-colors"
+              title="Jump back to Top"
+            >
+              <ChevronUp className="w-3 h-3" />
+              <span>Back to Top</span>
+            </button>
+          </div>
+
+          {/* Assets Chart */}
+          <div className="w-full flex-1 flex flex-col justify-center">
+            <AssetsChart cards={cards} />
+          </div>
+
+          {/* Footer */}
+          <footer className="w-full border-t border-slate-900 bg-slate-950/80 py-2.5 text-center text-[9px] text-slate-500 mt-2">
+            <div className="flex items-center justify-between">
+              <span>Finance Tracker PWA</span>
+              <span>github.com/Eclypheon/financetracker</span>
+            </div>
+          </footer>
         </section>
       </main>
 
@@ -280,14 +534,6 @@ export const App: React.FC = () => {
           }
         }}
       />
-
-      {/* Footer */}
-      <footer className="w-full border-t border-slate-900 bg-slate-950 py-3 text-center text-[9px] text-slate-500">
-        <div className="max-w-[500px] mx-auto px-3 flex items-center justify-between">
-          <span>Finance Tracker PWA</span>
-          <span>github.com/Eclypheon/financetracker</span>
-        </div>
-      </footer>
     </div>
   );
 };

@@ -73,13 +73,11 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
         e.preventDefault();
       }
 
-      // Prioritize horizontal delta, or vertical if discrete mouse wheel over deck
+      // Carousel ONLY consumes horizontal swipe/wheel (browsing past cards)
+      // or Shift+wheel. Vertical wheel gestures bubble up to jump page screens!
       let delta = 0;
-      if (absX > 1.5) {
-        delta = e.deltaX;
-      } else if (absY > 15) {
-        delta = e.deltaY;
-        e.preventDefault();
+      if (absX > 1.5 || e.shiftKey) {
+        delta = e.shiftKey ? e.deltaY : e.deltaX;
       }
 
       if (delta === 0) return;
