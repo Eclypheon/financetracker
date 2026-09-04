@@ -89,6 +89,7 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
   const { data, error } = await supabase
     .from('cards')
     .select('id, month_year, data, created_at')
+    .neq('id', 'entry_card_template')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -115,6 +116,68 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
   }
 
   return [];
+};
+
+/**
+ * Fetch entry card template from Supabase cloud
+ */
+export const fetchCloudEntryCard = async (): Promise<FinanceCardData | null> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('cards')
+    .select('id, month_year, data, created_at')
+    .eq('id', 'entry_card_template')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching entry card template from Supabase:', error);
+    return null;
+  }
+
+  if (data && data.data) {
+    const cardData = data.data as FinanceCardData;
+    return {
+      ...cardData,
+      id: 'entry_card_template',
+      others: Array.isArray(cardData.others)
+        ? cardData.others.map((o) => ({
+            ...o,
+            assetType: o.assetType === 'liquid' ? 'liquid' : 'nonLiquid',
+          }))
+        : [],
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Upsert entry card template to Supabase cloud
+ */
+export const saveCloudEntryCard = async (card: FinanceCardData, user: User): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  const { error } = await supabase.from('cards').upsert({
+    id: 'entry_card_template',
+    user_id: user.id,
+    month_year: card.monthYear,
+    created_at: Date.now(),
+    data: card,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error('Error saving entry card template to Supabase:', error);
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -164,7 +227,10 @@ export const syncAllCardsToCloud = async (cards: FinanceCardData[], user: User):
   const supabase = getSupabaseClient();
   if (!supabase || cards.length === 0) return false;
 
-  const rows = cards.map((c) => ({
+  const validCards = cards.filter((c) => c.id !== 'entry_card_template');
+  if (validCards.length === 0) return false;
+
+  const rows = validCards.map((c) => ({
     id: c.id,
     user_id: user.id,
     month_year: c.monthYear,

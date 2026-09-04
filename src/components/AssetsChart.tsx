@@ -68,15 +68,28 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
     return dataset.map((card) => {
       const totals = calculateCardTotals(card);
+      const parsed = parseMonthYear(card.monthYear);
+      const timestamp = parsed.timestamp || card.createdAt;
       return {
         id: card.id,
         monthYear: card.monthYear,
+        timestamp,
         totalAssets: totals.totalAssets,
         liquidTotal: totals.liquidTotal,
         nonLiquidTotal: totals.nonLiquidTotal,
       };
     });
   }, [sortedCards, timePeriod]);
+
+  // Period % gain calculation
+  const periodGain = useMemo(() => {
+    if (chartData.length < 2) return null;
+    const first = chartData[0].totalAssets;
+    const last = chartData[chartData.length - 1].totalAssets;
+    const diff = last - first;
+    const percent = first !== 0 ? (diff / Math.abs(first)) * 100 : (last > 0 ? 100 : 0);
+    return { diff, percent };
+  }, [chartData]);
 
   // Lowest value on Y-axis is strictly 0!
   const { minVal, maxVal } = useMemo(() => {
@@ -107,10 +120,19 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
-  // Coordinate helpers
-  const getX = (index: number) => {
-    if (chartData.length <= 1) return padding.left + innerWidth / 2;
-    return padding.left + (index / (chartData.length - 1)) * innerWidth;
+  // Time boundaries for proportional spacing
+  const { minTime, timeSpan } = useMemo(() => {
+    if (chartData.length === 0) return { minTime: 0, maxTime: 1, timeSpan: 1 };
+    const minTime = chartData[0].timestamp;
+    const maxTime = chartData[chartData.length - 1].timestamp;
+    const timeSpan = Math.max(1, maxTime - minTime);
+    return { minTime, maxTime, timeSpan };
+  }, [chartData]);
+
+  // Coordinate helpers: time-proportional X axis
+  const getX = (timestamp: number) => {
+    if (chartData.length <= 1 || timeSpan <= 0) return padding.left + innerWidth / 2;
+    return padding.left + ((timestamp - minTime) / timeSpan) * innerWidth;
   };
 
   const getY = (val: number) => {
@@ -123,7 +145,7 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const generateLinePath = (dataKey: 'totalAssets' | 'liquidTotal' | 'nonLiquidTotal') => {
     if (chartData.length === 0) return '';
     return chartData.reduce((acc, point, index) => {
-      const x = getX(index);
+      const x = getX(point.timestamp);
       const y = getY(point[dataKey]);
       return index === 0 ? `M ${x} ${y}` : `${acc} L ${x} ${y}`;
     }, '');
@@ -133,10 +155,54 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
   const generateAreaPath = (dataKey: 'totalAssets') => {
     if (chartData.length === 0) return '';
     const linePath = generateLinePath(dataKey);
-    const lastX = getX(chartData.length - 1);
-    const firstX = getX(0);
+    const lastX = getX(chartData[chartData.length - 1].timestamp);
+    const firstX = getX(chartData[0].timestamp);
     const bottomY = padding.top + innerHeight;
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+  };
+
+  // Determine non-colliding visible labels on the X-axis
+  const visibleLabelIndices = useMemo(() => {
+    if (chartData.length === 0) return new Set<number>();
+    if (chartData.length === 1) return new Set([0]);
+
+    const indices = new Set<number>();
+    indices.add(0); // Always include earliest label
+
+    let lastX = getX(chartData[0].timestamp);
+    const lastIndex = chartData.length - 1;
+    const endX = getX(chartData[lastIndex].timestamp);
+
+    for (let i = 1; i < lastIndex; i++) {
+      const currentX = getX(chartData[i].timestamp);
+      // Ensure at least 34px distance from the previous placed label and from the final label
+      if (currentX - lastX >= 34 && endX - currentX >= 34) {
+        indices.add(i);
+        lastX = currentX;
+      }
+    }
+    indices.add(lastIndex); // Always include latest label
+    return indices;
+  }, [chartData, minTime, timeSpan]);
+
+  // Interactive pointer move over SVG
+  const handleSvgPointerMove = (e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) => {
+    if (chartData.length === 0) return;
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const relX = ((clientX - rect.left) / rect.width) * width;
+
+    let closestIdx = 0;
+    let minDistance = Infinity;
+    chartData.forEach((d, idx) => {
+      const dist = Math.abs(getX(d.timestamp) - relX);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = idx;
+      }
+    });
+    setHoveredPointIndex(closestIdx);
   };
 
   // Y-axis ticks starting strictly from 0
@@ -152,17 +218,30 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
     <section className="w-full max-w-[480px] mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-2.5 shadow-md space-y-2">
       {/* Header with Title & Line Toggles */}
       <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-800">
-        <div className="flex items-center gap-1">
-          <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
             <TrendingUp className="w-3 h-3" />
           </div>
-          <h2 className="text-xs font-bold text-white tracking-wide">
+          <h2 className="text-xs font-bold text-white tracking-wide shrink-0">
             Graph Over Time
           </h2>
+          {periodGain && (
+            <span
+              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold border shrink-0 ${
+                periodGain.diff >= 0
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+              }`}
+              title={`Period Change: ${periodGain.diff >= 0 ? '+' : ''}${formatCurrency(periodGain.diff)}`}
+            >
+              {periodGain.diff >= 0 ? '+' : ''}
+              {periodGain.percent.toFixed(1)}%
+            </span>
+          )}
         </div>
 
         {/* Minimalist Line Toggles */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setShowTotal(!showTotal)}
             className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all ${
@@ -236,6 +315,9 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
               viewBox={`0 0 ${width} ${height}`}
               className="w-full h-auto select-none"
               style={{ maxHeight: '200px' }}
+              onMouseMove={handleSvgPointerMove}
+              onTouchMove={handleSvgPointerMove}
+              onMouseLeave={() => setHoveredPointIndex(null)}
             >
               <defs>
                 <linearGradient id="totalGradientMini3" x1="0" y1="0" x2="0" y2="1">
@@ -321,8 +403,9 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
               {/* Data points & hover triggers */}
               {chartData.map((d, index) => {
-                const x = getX(index);
+                const x = getX(d.timestamp);
                 const isHovered = hoveredPointIndex === index;
+                const isLabelVisible = visibleLabelIndices.has(index) || isHovered;
 
                 return (
                   <g key={d.id}>
@@ -371,23 +454,25 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
                       />
                     )}
 
-                    <text
-                      x={x}
-                      y={padding.top + innerHeight + 16}
-                      textAnchor="middle"
-                      fill={isHovered ? '#34d399' : '#94a3b8'}
-                      fontSize="9"
-                      fontWeight={isHovered ? '700' : '500'}
-                      fontFamily="monospace"
-                    >
-                      {d.monthYear}
-                    </text>
+                    {isLabelVisible && (
+                      <text
+                        x={x}
+                        y={padding.top + innerHeight + 16}
+                        textAnchor="middle"
+                        fill={isHovered ? '#34d399' : '#94a3b8'}
+                        fontSize="9"
+                        fontWeight={isHovered ? '700' : '500'}
+                        fontFamily="monospace"
+                      >
+                        {d.monthYear}
+                      </text>
+                    )}
 
-                    <rect
-                      x={x - (innerWidth / chartData.length) / 2}
-                      y={padding.top}
-                      width={innerWidth / Math.max(1, chartData.length)}
-                      height={innerHeight}
+                    {/* Generous touch/hover target */}
+                    <circle
+                      cx={x}
+                      cy={getY(d.totalAssets)}
+                      r={16}
                       fill="transparent"
                       className="cursor-pointer"
                       onMouseEnter={() => setHoveredPointIndex(index)}

@@ -63,33 +63,34 @@ export const createNewBlankCard = (): FinanceCardData => {
   };
 };
 
+export const defaultInitialEntryTemplate: FinanceCardData = {
+  id: 'initial_entry_template',
+  monthYear: getCurrentMonthYear(),
+  createdAt: Date.now(),
+  banks: [
+    { id: 'ocbc', name: 'OCBC', value: 24500, isCustom: false },
+    { id: 'dbs', name: 'DBS', value: 18200, isCustom: false },
+  ],
+  stocks: [
+    { id: 'ibkr', name: 'IBKR', value: 68500, isCustom: false },
+    { id: 'sgx', name: 'SGX', value: 16800, isCustom: false },
+  ],
+  cpf: [
+    { id: 'oa', name: 'Ordinary Account', value: 58400, isCustom: false },
+    { id: 'sa', name: 'Special Account', value: 42300, isCustom: false },
+    { id: 'ma', name: 'Medisave Account', value: 29800, isCustom: false },
+    { id: 'endowus', name: 'Endowus', value: 21500, isCustom: false },
+  ],
+  property: [
+    { id: 'prop_cash', name: 'Cash', value: 85000, isCustom: false },
+    { id: 'prop_cpf', name: 'CPF', value: 145000, isCustom: false },
+  ],
+  others: [],
+  customLiquidCategories: [],
+  customNonLiquidCategories: [],
+};
+
 export const sampleInitialCards: FinanceCardData[] = [
-  {
-    id: 'sample_0926',
-    monthYear: '09/26',
-    createdAt: new Date(2026, 8, 1).getTime(),
-    banks: [
-      { id: 'ocbc', name: 'OCBC', value: 24500, isCustom: false },
-      { id: 'dbs', name: 'DBS', value: 18200, isCustom: false },
-    ],
-    stocks: [
-      { id: 'ibkr', name: 'IBKR', value: 68500, isCustom: false },
-      { id: 'sgx', name: 'SGX', value: 16800, isCustom: false },
-    ],
-    cpf: [
-      { id: 'oa', name: 'Ordinary Account', value: 58400, isCustom: false },
-      { id: 'sa', name: 'Special Account', value: 42300, isCustom: false },
-      { id: 'ma', name: 'Medisave Account', value: 29800, isCustom: false },
-      { id: 'endowus', name: 'Endowus', value: 21500, isCustom: false },
-    ],
-    property: [
-      { id: 'prop_cash', name: 'Cash', value: 85000, isCustom: false },
-      { id: 'prop_cpf', name: 'CPF', value: 145000, isCustom: false },
-    ],
-    others: [],
-    customLiquidCategories: [],
-    customNonLiquidCategories: [],
-  },
   {
     id: 'sample_0826',
     monthYear: '08/26',
@@ -205,7 +206,9 @@ export const loadStoredCards = (): FinanceCardData[] => {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return (parsed as FinanceCardData[]).map((card) => ({
+      const filtered = (parsed as FinanceCardData[]).filter((c) => c.id !== 'sample_0926');
+      const targetList = filtered.length > 0 ? filtered : sampleInitialCards;
+      return targetList.map((card) => ({
         ...card,
         others: Array.isArray(card.others)
           ? card.others.map((o: AssetField) => ({
@@ -232,7 +235,7 @@ export const saveStoredCards = (cards: FinanceCardData[]): void => {
 
 const ENTRY_CARD_STORAGE_KEY = 'financetracker_entry_card_v1';
 
-export const loadStoredEntryCard = (fallbackCard?: FinanceCardData): FinanceCardData => {
+export const loadStoredEntryCard = (fallbackCard: FinanceCardData = defaultInitialEntryTemplate): FinanceCardData => {
   const currentMY = getCurrentMonthYear();
   try {
     const raw = localStorage.getItem(ENTRY_CARD_STORAGE_KEY);
@@ -249,29 +252,25 @@ export const loadStoredEntryCard = (fallbackCard?: FinanceCardData): FinanceCard
     console.error('Failed to load entry card from storage', err);
   }
 
-  if (fallbackCard) {
-    return {
-      ...fallbackCard,
-      id: `entry_${Date.now()}`,
-      monthYear: currentMY,
-      createdAt: Date.now(),
-      banks: fallbackCard.banks.map((b) => ({ ...b })),
-      stocks: fallbackCard.stocks.map((s) => ({ ...s })),
-      cpf: fallbackCard.cpf.map((c) => ({ ...c })),
-      property: fallbackCard.property.map((p) => ({ ...p })),
-      others: (fallbackCard.others || []).map((o) => ({ ...o })),
-      customLiquidCategories: (fallbackCard.customLiquidCategories || []).map((cat) => ({
-        ...cat,
-        fields: cat.fields.map((f) => ({ ...f })),
-      })),
-      customNonLiquidCategories: (fallbackCard.customNonLiquidCategories || []).map((cat) => ({
-        ...cat,
-        fields: cat.fields.map((f) => ({ ...f })),
-      })),
-    };
-  }
-
-  return getDefaultTemplate(currentMY);
+  return {
+    ...fallbackCard,
+    id: `entry_${Date.now()}`,
+    monthYear: currentMY,
+    createdAt: Date.now(),
+    banks: fallbackCard.banks.map((b) => ({ ...b })),
+    stocks: fallbackCard.stocks.map((s) => ({ ...s })),
+    cpf: fallbackCard.cpf.map((c) => ({ ...c })),
+    property: fallbackCard.property.map((p) => ({ ...p })),
+    others: (fallbackCard.others || []).map((o) => ({ ...o })),
+    customLiquidCategories: (fallbackCard.customLiquidCategories || []).map((cat) => ({
+      ...cat,
+      fields: cat.fields.map((f) => ({ ...f })),
+    })),
+    customNonLiquidCategories: (fallbackCard.customNonLiquidCategories || []).map((cat) => ({
+      ...cat,
+      fields: cat.fields.map((f) => ({ ...f })),
+    })),
+  };
 };
 
 export const saveStoredEntryCard = (card: FinanceCardData): void => {

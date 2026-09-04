@@ -14,6 +14,8 @@ import {
 import { 
   getSupabaseClient, 
   fetchCloudCards, 
+  fetchCloudEntryCard,
+  saveCloudEntryCard,
   saveCloudCard, 
   deleteCloudCard, 
   syncAllCardsToCloud 
@@ -28,10 +30,7 @@ import { ChevronDown, ChevronUp, Save, CheckCircle2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [savedCards, setSavedCards] = useState<FinanceCardData[]>(() => loadStoredCards());
-  const [entryCard, setEntryCard] = useState<FinanceCardData>(() => {
-    const initialSaved = loadStoredCards();
-    return loadStoredEntryCard(initialSaved[0]);
-  });
+  const [entryCard, setEntryCard] = useState<FinanceCardData>(() => loadStoredEntryCard());
   const [showCardSavedModal, setShowCardSavedModal] = useState(false);
   const cardSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,8 +87,18 @@ export const App: React.FC = () => {
           await syncAllCardsToCloud(localCards, user);
         }
       }
+
+      // Sync and restore entry card template from cloud
+      const cloudEntry = await fetchCloudEntryCard();
+      if (cloudEntry) {
+        setEntryCard(cloudEntry);
+        saveStoredEntryCard(cloudEntry);
+      } else {
+        const localEntry = loadStoredEntryCard();
+        await saveCloudEntryCard(localEntry, user);
+      }
     } catch (err) {
-      console.error('Failed to sync cloud cards:', err);
+      console.error('Failed to sync cloud data:', err);
     }
   }, []);
 
@@ -152,6 +161,10 @@ export const App: React.FC = () => {
   // Update entry card handler (Screen 1)
   const handleUpdateEntryCard = (updated: FinanceCardData) => {
     setEntryCard(updated);
+    saveStoredEntryCard(updated);
+    if (currentUser) {
+      saveCloudEntryCard(updated, currentUser);
+    }
   };
 
   // Save entry card handler (Screen 1 -> Saved Cards Carousel)
@@ -184,8 +197,12 @@ export const App: React.FC = () => {
       setSelectedCompareCardId(savedCards[0].id);
     }
 
+    // Persist entry card locally and to cloud database so values and fields are completely retained
+    saveStoredEntryCard(entryCard);
+
     if (currentUser) {
       saveCloudCard(newSavedCard, currentUser);
+      saveCloudEntryCard(entryCard, currentUser);
     }
 
     // Show temporary "Card Saved" modal
