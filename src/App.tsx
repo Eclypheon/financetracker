@@ -6,8 +6,8 @@ import {
   saveStoredCards, 
   sampleInitialCards, 
   createNewBlankCard, 
-  exportCardsToJson, 
-  importCardsFromJson 
+  exportCardsToCsv, 
+  importCardsFromFile 
 } from './utils/storage';
 import { 
   getSupabaseClient, 
@@ -170,13 +170,13 @@ export const App: React.FC = () => {
 
   // Export handler
   const handleExport = () => {
-    exportCardsToJson(cards);
+    exportCardsToCsv(cards);
   };
 
   // Import handler
   const handleImport = async (file: File) => {
     try {
-      const imported = await importCardsFromJson(file);
+      const imported = await importCardsFromFile(file);
       setCards(imported);
       if (imported.length > 1) {
         setSelectedCompareCardId(imported[1].id);
@@ -185,7 +185,7 @@ export const App: React.FC = () => {
         await syncAllCardsToCloud(imported, currentUser);
       }
     } catch {
-      alert('Could not import backup file.');
+      alert('Could not import file. Please check that it is a valid CSV or JSON file.');
     }
   };
 

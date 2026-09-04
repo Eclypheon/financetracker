@@ -215,31 +215,271 @@ export const saveStoredCards = (cards: FinanceCardData[]): void => {
   }
 };
 
-export const exportCardsToJson = (cards: FinanceCardData[]): void => {
-  const dataStr = JSON.stringify(cards, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
+// Helper to escape CSV cell value
+const escapeCsvCell = (str: string | number): string => {
+  const val = String(str ?? '');
+  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return val;
+};
+
+export const exportCardsToCsv = (cards: FinanceCardData[]): void => {
+  const rows: string[][] = [
+    ['Month/Year', 'Category', 'Item', 'Amount']
+  ];
+
+  cards.forEach((card) => {
+    const my = card.monthYear;
+
+    // Banks
+    card.banks?.forEach((b) => {
+      rows.push([my, 'Banks', b.name, String(b.value)]);
+    });
+
+    // Stocks
+    card.stocks?.forEach((s) => {
+      rows.push([my, 'Stocks', s.name, String(s.value)]);
+    });
+
+    // CPF
+    card.cpf?.forEach((c) => {
+      rows.push([my, 'CPF', c.name, String(c.value)]);
+    });
+
+    // Property
+    card.property?.forEach((p) => {
+      rows.push([my, 'Property', p.name, String(p.value)]);
+    });
+
+    // Custom Liquid Categories
+    card.customLiquidCategories?.forEach((cat) => {
+      cat.fields.forEach((f) => {
+        rows.push([my, `${cat.name} (Liquid)`, f.name, String(f.value)]);
+      });
+    });
+
+    // Custom Non-Liquid Categories
+    card.customNonLiquidCategories?.forEach((cat) => {
+      cat.fields.forEach((f) => {
+        rows.push([my, `${cat.name} (Non-Liquid)`, f.name, String(f.value)]);
+      });
+    });
+
+    // Manual Overrides (if any)
+    if (card.manualLiquidTotal !== undefined) {
+      rows.push([my, 'Manual Overrides', 'Manual Liquid Total', String(card.manualLiquidTotal)]);
+    }
+    if (card.manualNonLiquidTotal !== undefined) {
+      rows.push([my, 'Manual Overrides', 'Manual Non-Liquid Total', String(card.manualNonLiquidTotal)]);
+    }
+    if (card.manualTotalAssets !== undefined) {
+      rows.push([my, 'Manual Overrides', 'Manual Total Assets', String(card.manualTotalAssets)]);
+    }
+  });
+
+  // Prepend \uFEFF for UTF-8 BOM so Excel opens it with correct encoding
+  const csvContent = '\uFEFF' + rows.map((r) => r.map(escapeCsvCell).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `finance_tracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `finance_tracker_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
 
-export const importCardsFromJson = (file: File): Promise<FinanceCardData[]> => {
+const parseCsvText = (text: string): string[][] => {
+  const cleanText = text.replace(/^\uFEFF/, '');
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let insideQuote = false;
+
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    const nextChar = cleanText[i + 1];
+
+    if (char === '"') {
+      if (insideQuote && nextChar === '"') {
+        currentCell += '"';
+        i++;
+      } else {
+        insideQuote = !insideQuote;
+      }
+    } else if (char === ',' && !insideQuote) {
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+    } else if ((char === '\r' || char === '\n') && !insideQuote) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+      if (currentRow.some((c) => c !== '')) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+    } else {
+      currentCell += char;
+    }
+  }
+
+  if (currentCell !== '' || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some((c) => c !== '')) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+};
+
+export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].banks) {
-          resolve(parsed);
-        } else {
-          reject(new Error('Invalid backup file format'));
+        
+        // Check if JSON file was uploaded
+        if (file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('[')) {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].banks || parsed[0].monthYear)) {
+            resolve(parsed);
+            return;
+          }
         }
+
+        // Parse CSV
+        const rows = parseCsvText(text);
+        if (rows.length < 2) {
+          reject(new Error('CSV file does not contain enough data rows'));
+          return;
+        }
+
+        const headers = rows[0].map((h) => h.toLowerCase().trim());
+        let monthIdx = headers.findIndex((h) => h.includes('month') || h.includes('date'));
+        let catIdx = headers.findIndex((h) => h.includes('cat') || h.includes('sec') || h.includes('type'));
+        let itemIdx = headers.findIndex((h) => h.includes('item') || h.includes('name'));
+        let amountIdx = headers.findIndex((h) => h.includes('amount') || h.includes('value') || h.includes('total'));
+
+        if (monthIdx === -1) monthIdx = 0;
+        if (catIdx === -1) catIdx = 1;
+        if (itemIdx === -1) itemIdx = 2;
+        if (amountIdx === -1) amountIdx = 3;
+
+        // Group rows by month/year
+        const monthGroups = new Map<string, Array<{ category: string; item: string; amount: number }>>();
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0) continue;
+          const rawMonth = row[monthIdx] || '';
+          if (!rawMonth) continue;
+
+          const monthYear = rawMonth.trim();
+          const category = (row[catIdx] || '').trim();
+          const item = (row[itemIdx] || '').trim();
+          const rawAmount = (row[amountIdx] || '0').replace(/[$,]/g, '').trim();
+          const amount = parseFloat(rawAmount) || 0;
+
+          if (!monthGroups.has(monthYear)) {
+            monthGroups.set(monthYear, []);
+          }
+          monthGroups.get(monthYear)!.push({ category, item, amount });
+        }
+
+        if (monthGroups.size === 0) {
+          reject(new Error('Could not parse any valid month rows from CSV'));
+          return;
+        }
+
+        const cards: FinanceCardData[] = [];
+        let cardIdx = 0;
+
+        for (const [monthYear, items] of monthGroups.entries()) {
+          let timestamp = Date.now() - (cardIdx * 30 * 24 * 60 * 60 * 1000);
+          const parts = monthYear.split('/');
+          if (parts.length === 2) {
+            const m = parseInt(parts[0], 10);
+            const y = parseInt(parts[1], 10);
+            if (!isNaN(m) && !isNaN(y)) {
+              const fullYear = y < 100 ? 2000 + y : y;
+              timestamp = new Date(fullYear, m - 1, 1).getTime();
+            }
+          }
+
+          const card: FinanceCardData = {
+            id: `card_${monthYear.replace(/[^0-9a-zA-Z]/g, '')}_${Date.now()}_${cardIdx}`,
+            monthYear,
+            createdAt: timestamp,
+            banks: [],
+            stocks: [],
+            cpf: [],
+            property: [],
+            customLiquidCategories: [],
+            customNonLiquidCategories: [],
+          };
+
+          for (const entry of items) {
+            const catLower = entry.category.toLowerCase();
+            const itemLower = entry.item.toLowerCase();
+            const val = entry.amount;
+
+            if (catLower.includes('override') || itemLower.includes('manual liquid total')) {
+              card.manualLiquidTotal = val;
+            } else if (itemLower.includes('manual non-liquid total') || itemLower.includes('manual non liquid total')) {
+              card.manualNonLiquidTotal = val;
+            } else if (itemLower.includes('manual total assets') || itemLower.includes('manual total')) {
+              card.manualTotalAssets = val;
+            } else if (catLower === 'banks' || catLower === 'bank') {
+              card.banks.push({ id: `bank_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else if (catLower === 'stocks' || catLower === 'stock' || catLower.includes('invest')) {
+              card.stocks.push({ id: `stock_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else if (catLower === 'cpf') {
+              card.cpf.push({ id: `cpf_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else if (catLower === 'property') {
+              card.property.push({ id: `prop_${Date.now()}_${Math.random()}`, name: entry.item, value: val, isCustom: false });
+            } else {
+              // Custom category
+              const isLiquid = catLower.includes('(liquid)') || catLower.includes('liquid');
+              const cleanCatName = entry.category.replace(/\(liquid\)/i, '').replace(/\(non-liquid\)/i, '').trim() || 'Other';
+              const targetList = isLiquid ? card.customLiquidCategories! : card.customNonLiquidCategories!;
+              
+              let existingCat = targetList.find((c) => c.name.toLowerCase() === cleanCatName.toLowerCase());
+              if (!existingCat) {
+                existingCat = {
+                  id: `cat_${Date.now()}_${Math.random()}`,
+                  name: cleanCatName,
+                  fields: []
+                };
+                targetList.push(existingCat);
+              }
+              existingCat.fields.push({
+                id: `field_${Date.now()}_${Math.random()}`,
+                name: entry.item || 'Item',
+                value: val,
+                isCustom: true
+              });
+            }
+          }
+
+          // Ensure default bank fields exist if empty and no override
+          if (card.banks.length === 0 && card.manualTotalAssets === undefined) {
+            card.banks.push(
+              { id: `ocbc_${Date.now()}`, name: 'OCBC', value: 0, isCustom: false },
+              { id: `dbs_${Date.now()}`, name: 'DBS', value: 0, isCustom: false }
+            );
+          }
+
+          cards.push(card);
+          cardIdx++;
+        }
+
+        resolve(cards);
       } catch (err) {
         reject(err);
       }
@@ -248,3 +488,6 @@ export const importCardsFromJson = (file: File): Promise<FinanceCardData[]> => {
     reader.readAsText(file);
   });
 };
+
+export const exportCardsToJson = exportCardsToCsv;
+export const importCardsFromJson = importCardsFromFile;
