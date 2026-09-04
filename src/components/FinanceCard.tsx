@@ -47,7 +47,9 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
 
   useEffect(() => {
     setIsConfirmingDeleteCard(false);
-  }, [card.id]);
+    setMonthInput(card.monthYear);
+    setIsEditingMonth(false);
+  }, [card.id, card.monthYear]);
 
   const totals = calculateCardTotals(card);
 
@@ -230,11 +232,14 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
 
   // Month year update
   const handleSaveMonthYear = () => {
-    if (onUpdate && monthInput.trim()) {
+    const trimmed = monthInput.trim();
+    if (onUpdate && trimmed && trimmed !== card.monthYear) {
       onUpdate({
         ...card,
-        monthYear: monthInput.trim(),
+        monthYear: trimmed,
       });
+    } else if (!trimmed) {
+      setMonthInput(card.monthYear);
     }
     setIsEditingMonth(false);
   };
@@ -263,34 +268,63 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
           {/* Left: MM/YY */}
           <div className="flex items-center gap-1">
             {isEditingMonth ? (
-              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <div 
+                className="flex items-center gap-0.5" 
+                onClick={(e) => e.stopPropagation()}
+                data-no-drag="true"
+              >
                 <input
                   type="text"
                   value={monthInput}
                   onChange={(e) => setMonthInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveMonthYear();
+                    } else if (e.key === 'Escape') {
+                      setIsEditingMonth(false);
+                      setMonthInput(card.monthYear);
+                    }
+                  }}
+                  onBlur={handleSaveMonthYear}
                   placeholder="MM/YY"
-                  className="w-12 px-1 py-0.2 text-[9px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none"
+                  className="w-14 px-1 py-0.5 text-[9px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none select-text"
                   autoFocus
                 />
                 <button
-                  onClick={handleSaveMonthYear}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleSaveMonthYear();
+                  }}
                   className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white"
+                  title="Save MM/YY"
                 >
-                  <Check className="w-2 h-2" />
+                  <Check className="w-2.5 h-2.5" />
                 </button>
               </div>
             ) : (
-              <div
+              <button
+                type="button"
+                data-no-drag="true"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isEditable) setIsEditingMonth(true);
+                  e.preventDefault();
+                  if (isEditable) {
+                    setMonthInput(card.monthYear);
+                    setIsEditingMonth(true);
+                  }
                 }}
-                className="flex items-center gap-0.5 font-bold font-mono-num text-slate-300 hover:text-emerald-400 cursor-pointer"
+                className="flex items-center gap-0.5 font-bold font-mono-num text-slate-300 hover:text-emerald-400 cursor-pointer p-0.5 rounded hover:bg-slate-800/80 transition-colors group/m"
                 title="Click to edit MM/YY"
               >
                 <Calendar className="w-2.5 h-2.5 text-emerald-400" />
                 <span>{card.monthYear}</span>
-              </div>
+                {isEditable && (
+                  <span className="text-[8px] text-slate-500 group-hover/m:text-emerald-400">✎</span>
+                )}
+              </button>
             )}
           </div>
 
@@ -545,27 +579,50 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
         {/* Left: MM/YY */}
         <div className="flex items-center gap-1">
           {isEditingMonth ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <input
                 type="text"
                 value={monthInput}
                 onChange={(e) => setMonthInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveMonthYear();
+                  } else if (e.key === 'Escape') {
+                    setIsEditingMonth(false);
+                    setMonthInput(card.monthYear);
+                  }
+                }}
+                onBlur={handleSaveMonthYear}
                 placeholder="MM/YY"
-                className="w-14 px-1 py-0.2 text-[10px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none"
+                className="w-16 px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-emerald-500 rounded text-white font-mono-num focus:outline-none select-text"
                 autoFocus
               />
               <button
-                onClick={handleSaveMonthYear}
-                className="p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleSaveMonthYear();
+                }}
+                className="p-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white"
                 title="Save Month"
               >
-                <Check className="w-2.5 h-2.5" />
+                <Check className="w-3 h-3" />
               </button>
             </div>
           ) : (
-            <div
-              onClick={() => isEditable && setIsEditingMonth(true)}
-              className={`flex items-center gap-1 font-bold text-slate-200 font-mono-num ${
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (isEditable) {
+                  setMonthInput(card.monthYear);
+                  setIsEditingMonth(true);
+                }
+              }}
+              className={`flex items-center gap-1 font-bold text-slate-200 font-mono-num p-0.5 rounded hover:bg-slate-800/60 transition-colors ${
                 isEditable ? 'cursor-pointer hover:text-emerald-400 group/m' : ''
               }`}
               title={isEditable ? 'Click to edit MM/YY' : undefined}
@@ -577,7 +634,7 @@ export const FinanceCard: React.FC<FinanceCardProps> = ({
                   ✎
                 </span>
               )}
-            </div>
+            </button>
           )}
         </div>
 

@@ -560,15 +560,17 @@ export const App: React.FC = () => {
             />
           ) : null}
 
-          {/* Jump Hint to Screen 2 */}
-          <button
-            onClick={() => scrollToScreen(1)}
-            className="mt-3 flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-1 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 animate-pulse"
-            title="Jump down to Past Cards & Compare"
-          >
-            <span>Past Cards &amp; Compare</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
+          {/* Navigation text: just below the card container */}
+          <div className="w-full flex justify-center mt-2.5">
+            <button
+              onClick={() => scrollToScreen(1)}
+              className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-1 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 animate-pulse"
+              title="Jump down to Past Cards & Compare"
+            >
+              <span>Past Cards &amp; Compare</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </section>
 
         {/* ============================================================ */}
@@ -577,10 +579,10 @@ export const App: React.FC = () => {
         <section
           ref={screen2Ref}
           id="screen-2"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-between py-2 relative"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
         >
-          {/* Top navigation jump button: Latest Card (Centered) */}
-          <div className="w-full flex justify-center pb-1">
+          {/* Navigation text: just above the past cards container */}
+          <div className="w-full flex justify-center mb-1.5">
             <button
               onClick={() => scrollToScreen(0)}
               className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
@@ -592,7 +594,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Middle Content: Carousel Deck + Compare Section */}
-          <div className="w-full space-y-3 flex-1 flex flex-col justify-center">
+          <div className="w-full space-y-2.5">
             {/* Part A: Past Cards Carousel (Deck) */}
             <div className="w-full">
               <PastCardsCarousel
@@ -619,8 +621,8 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          {/* Bottom navigation jump button: Asset Graph (Centered at bottom of page) */}
-          <div className="w-full flex justify-center pt-2">
+          {/* Navigation text: just below the compare cards container */}
+          <div className="w-full flex justify-center mt-2.5">
             <button
               onClick={() => scrollToScreen(2)}
               className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-1 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 animate-pulse"
@@ -638,10 +640,10 @@ export const App: React.FC = () => {
         <section
           ref={screen3Ref}
           id="screen-3"
-          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col justify-between py-2 relative"
+          className="min-h-[calc(100dvh-46px)] snap-start snap-always w-full flex flex-col items-center justify-center py-2 relative"
         >
-          {/* Top navigation jump button: Past Cards & Compare (Centered directly on top of the graph) */}
-          <div className="w-full flex justify-center pb-1">
+          {/* Navigation text: just above the graph container */}
+          <div className="w-full flex justify-center mb-1.5">
             <button
               onClick={() => scrollToScreen(1)}
               className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors py-0.5 px-2.5 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800"
@@ -653,7 +655,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Assets Chart */}
-          <div className="w-full flex-1 flex flex-col justify-center">
+          <div className="w-full">
             <AssetsChart cards={cards} />
           </div>
 

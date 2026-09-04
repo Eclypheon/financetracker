@@ -138,7 +138,8 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       target.tagName === 'INPUT' || 
       target.tagName === 'BUTTON' || 
       target.closest('input') || 
-      target.closest('button')
+      target.closest('button') ||
+      target.closest('[data-no-drag]')
     ) {
       return;
     }
