@@ -164,6 +164,9 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
     let touchStartX = 0;
     let touchStartY = 0;
+    let lastTouchX = 0;
+    let lastTouchTime = 0;
+    let touchVelocity = 0;
     let isHorizontalSwipe = false;
     let isVerticalScroll = false;
     let currentDrag = 0;
@@ -172,6 +175,9 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       if (e.touches.length !== 1) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
+      lastTouchX = e.touches[0].clientX;
+      lastTouchTime = Date.now();
+      touchVelocity = 0;
       isHorizontalSwipe = false;
       isVerticalScroll = false;
       currentDrag = 0;
@@ -183,6 +189,14 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
       const diffX = e.touches[0].clientX - touchStartX;
       const diffY = e.touches[0].clientY - touchStartY;
+
+      const now = Date.now();
+      const dt = now - lastTouchTime;
+      if (dt > 8) {
+        touchVelocity = (e.touches[0].clientX - lastTouchX) / dt;
+        lastTouchX = e.touches[0].clientX;
+        lastTouchTime = now;
+      }
 
       if (!isHorizontalSwipe && !isVerticalScroll) {
         // Distinguish horizontal card swipe from vertical screen scroll
@@ -212,7 +226,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
           (frontIndex === 0 && diffX > 0) ||
           (frontIndex === cards.length - 1 && diffX < 0)
         ) {
-          resisted = diffX * 0.35;
+          resisted = diffX * 0.25;
         }
         currentDrag = resisted;
         setDragOffset(resisted);
@@ -221,11 +235,17 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
 
     const onTouchEnd = () => {
       if (isHorizontalSwipe) {
-        const SWIPE_THRESHOLD = 26;
-        if (currentDrag < -SWIPE_THRESHOLD && frontIndex < cards.length - 1) {
-          handleNext();
-        } else if (currentDrag > SWIPE_THRESHOLD && frontIndex > 0) {
-          handlePrev();
+        const CARD_STEP = expandedCardId ? 110 : 75;
+        let projected = currentDrag;
+        if (Math.abs(touchVelocity) > 0.25) {
+          projected += touchVelocity * 170;
+        }
+        const deltaCards = Math.round(-projected / CARD_STEP);
+        const targetIndex = Math.max(0, Math.min(cards.length - 1, frontIndex + deltaCards));
+
+        if (targetIndex !== frontIndex) {
+          setFrontIndex(targetIndex);
+          onSelectCard(cards[targetIndex].id);
         }
       }
 
@@ -235,7 +255,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       // Briefly keep hasMoved true to prevent accidental card click right after swipe
       setTimeout(() => {
         hasMovedRef.current = false;
-      }, 100);
+      }, 120);
     };
 
     const onTouchCancel = () => {
@@ -255,7 +275,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchCancel);
     };
-  }, [frontIndex, cards, onSelectCard]);
+  }, [frontIndex, cards, onSelectCard, expandedCardId]);
 
   // Mouse Drag Handler for Desktop
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -271,24 +291,33 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
     }
 
     const startX = e.clientX;
+    let lastMouseX = e.clientX;
+    let lastMouseTime = Date.now();
+    let mouseVelocity = 0;
+    let currentDrag = 0;
     hasMovedRef.current = false;
     setIsDragging(true);
-
-    let moveDiff = 0;
 
     const onMouseMove = (moveEvt: MouseEvent) => {
       const diffX = moveEvt.clientX - startX;
       if (Math.abs(diffX) > 4) {
         hasMovedRef.current = true;
       }
+      const now = Date.now();
+      const dt = now - lastMouseTime;
+      if (dt > 8) {
+        mouseVelocity = (moveEvt.clientX - lastMouseX) / dt;
+        lastMouseX = moveEvt.clientX;
+        lastMouseTime = now;
+      }
       let resisted = diffX;
       if (
         (frontIndex === 0 && diffX > 0) ||
         (frontIndex === cards.length - 1 && diffX < 0)
       ) {
-        resisted = diffX * 0.35;
+        resisted = diffX * 0.25;
       }
-      moveDiff = resisted;
+      currentDrag = resisted;
       setDragOffset(resisted);
     };
 
@@ -297,11 +326,17 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       window.removeEventListener('mouseup', onMouseUp);
 
       if (hasMovedRef.current) {
-        const SWIPE_THRESHOLD = 30;
-        if (moveDiff < -SWIPE_THRESHOLD && frontIndex < cards.length - 1) {
-          handleNext();
-        } else if (moveDiff > SWIPE_THRESHOLD && frontIndex > 0) {
-          handlePrev();
+        const CARD_STEP = expandedCardId ? 110 : 75;
+        let projected = currentDrag;
+        if (Math.abs(mouseVelocity) > 0.25) {
+          projected += mouseVelocity * 170;
+        }
+        const deltaCards = Math.round(-projected / CARD_STEP);
+        const targetIndex = Math.max(0, Math.min(cards.length - 1, frontIndex + deltaCards));
+
+        if (targetIndex !== frontIndex) {
+          setFrontIndex(targetIndex);
+          onSelectCard(cards[targetIndex].id);
         }
       }
 
@@ -309,7 +344,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
       setDragOffset(0);
       setTimeout(() => {
         hasMovedRef.current = false;
-      }, 100);
+      }, 120);
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -364,7 +399,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
         </div>
       </div>
 
-      {/* Overlapping Deck Container - with real-time 1:1 drag & responsive wheel */}
+      {/* Overlapping Deck Container - with real-time continuous card transitions */}
       {cards.length === 0 ? (
         <div className="text-center py-4 px-3 rounded-xl bg-slate-900/40 border border-dashed border-slate-800">
           <p className="text-[11px] text-slate-400">No past cards yet.</p>
@@ -387,19 +422,20 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
           }`}
         >
           {cards.map((card, idx) => {
-            const offset = idx - frontIndex;
-            const isFront = offset === 0;
+            const CARD_STEP = expandedCardId ? 110 : 75;
+            const effectiveFloatIndex = frontIndex - dragOffset / CARD_STEP;
+            const currentOffset = idx - effectiveFloatIndex;
+            const isFront = Math.abs(currentOffset) < 0.5;
 
-            // Render up to 3 cards on each side for smooth peeking
-            if (Math.abs(offset) > 3) return null;
+            // Render cards within 3.5 positions of current float index for seamless peeking
+            if (Math.abs(currentOffset) > 3.5) return null;
 
-            // Responsive offset calculation with drag follow-through
-            const baseTranslateX = offset * 48;
-            const translateX = baseTranslateX + dragOffset * 0.75;
-            const visualOffset = offset - (dragOffset / 130);
-            const scale = Math.max(0.76, 1 - Math.abs(visualOffset) * 0.08);
-            const zIndex = 30 - Math.round(Math.abs(offset));
-            const opacity = Math.max(0.35, 1 - Math.abs(visualOffset) * 0.22);
+            // Smooth position, scale, z-index, and opacity based on continuous offset
+            const spacing = expandedCardId ? 64 : 52;
+            const translateX = currentOffset * spacing;
+            const scale = Math.max(0.74, 1 - Math.abs(currentOffset) * 0.08);
+            const zIndex = 30 - Math.round(Math.abs(currentOffset) * 2);
+            const opacity = Math.max(0.3, 1 - Math.abs(currentOffset) * 0.22);
 
             return (
               <div
@@ -420,7 +456,7 @@ export const PastCardsCarousel: React.FC<PastCardsCarouselProps> = ({
                   opacity,
                   transition: isDragging
                     ? 'none'
-                    : 'transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease',
+                    : 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.32s ease',
                   willChange: 'transform, opacity',
                 }}
                 className={`absolute select-none ${
