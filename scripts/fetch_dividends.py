@@ -14,11 +14,8 @@ try:
 except ImportError:
     yf = None
 
-TWELVE_CACHE_FILE = Path(__file__).parent / ".twelvedata_cache.json"
-TWELVE_RATE_LIMIT_FILE = Path(__file__).parent / ".twelvedata_ratelimit.json"
 EODHD_CACHE_FILE = Path(__file__).parent / ".eodhd_cache.json"
 CACHE_TTL = 86400  # 24 hours
-TWELVE_MIN_INTERVAL = 7.5  # Max ~8 calls/min
 
 def get_env_var(keys):
     for k in keys:
@@ -41,9 +38,6 @@ def get_env_var(keys):
                 pass
     return None
 
-def get_twelvedata_api_key():
-    return get_env_var(["TWELVEDATA_API_KEY", "VITE_TWELVEDATA_API_KEY"])
-
 def get_eodhd_api_key():
     return get_env_var(["EODHD_API_KEY", "EODHD_API_TOKEN", "VITE_EODHD_API_KEY"])
 
@@ -62,190 +56,7 @@ def save_cache(filepath, data):
         pass
 
 # =========================================================================
-# 1. TWELVE DATA PROVIDER (/dividends_calendar)
-# =========================================================================
-def enforce_twelvedata_rate_limit():
-    """Ensure max 8 requests per minute to stay strictly within free tier limits."""
-    now = time.time()
-    call_history = []
-    if TWELVE_RATE_LIMIT_FILE.exists():
-        try:
-            call_history = json.loads(TWELVE_RATE_LIMIT_FILE.read_text())
-        except Exception:
-            call_history = []
-
-    call_history = [t for t in call_history if now - t < 60.0]
-
-    if len(call_history) >= 7:
-        sleep_needed = 60.0 - (now - call_history[0]) + 0.5
-        if sleep_needed > 0:
-            time.sleep(sleep_needed)
-            now = time.time()
-            call_history = [t for t in call_history if now - t < 60.0]
-
-    if call_history:
-        last_call = call_history[-1]
-        elapsed_since_last = now - last_call
-        if elapsed_since_last < TWELVE_MIN_INTERVAL:
-            time.sleep(TWELVE_MIN_INTERVAL - elapsed_since_last)
-            now = time.time()
-
-    call_history.append(now)
-    try:
-        TWELVE_RATE_LIMIT_FILE.write_text(json.dumps(call_history))
-    except Exception:
-        pass
-
-def fetch_from_twelvedata(symbol: str, api_key: str):
-    """Query Twelve Data /dividends_calendar endpoint."""
-    if not api_key:
-        return None
-
-    clean_sym = symbol.strip().upper()
-    is_sgx = clean_sym.endswith('.SI') or (len(clean_sym) <= 5 and any(c.isdigit() for c in clean_sym))
-    td_symbol = clean_sym.replace('.SI', '')
-
-    cache = load_cache(TWELVE_CACHE_FILE)
-    cache_key = f"{td_symbol}:SGX" if is_sgx else td_symbol
-    now_ts = time.time()
-
-    if cache_key in cache:
-        item = cache[cache_key]
-        if now_ts - item.get('cached_at', 0) < CACHE_TTL:
-            return item.get('data')
-
-    start_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
-    end_date = (datetime.now() + timedelta(days=180)).strftime('%Y-%m-%d')
-
-    query_params = {
-        'symbol': td_symbol,
-        'start_date': start_date,
-        'end_date': end_date,
-        'apikey': api_key
-    }
-    if is_sgx:
-        query_params['exchange'] = 'SGX'
-
-    url = f"https://api.twelvedata.com/dividends_calendar?{urllib.parse.urlencode(query_params)}"
-
-    enforce_twelvedata_rate_limit()
-
-    req = urllib.request.Request(url, headers={'User-Agent': 'FinanceTracker/1.0'})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw_body = resp.read().decode('utf-8')
-            res_json = json.loads(raw_body)
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode('utf-8')
-        try:
-            err_json = json.loads(err_body)
-            msg = err_json.get('message', str(e))
-        except Exception:
-            msg = f"HTTP {e.code}: {str(e)}"
-        return {"error": msg, "statusCode": e.code, "source": "twelvedata"}
-    except Exception as e:
-        return {"error": str(e), "source": "twelvedata"}
-
-    if isinstance(res_json, dict) and res_json.get('status') == 'error':
-        return {"error": res_json.get('message', 'Twelve Data API Error'), "statusCode": res_json.get('code', 400), "source": "twelvedata"}
-
-    events = []
-    company_name = symbol
-    currency = 'SGD' if is_sgx else 'USD'
-
-    if isinstance(res_json, dict):
-        if 'data' in res_json and isinstance(res_json['data'], list):
-            items_list = res_json['data']
-        else:
-            items_list = []
-            for d_key, entries in res_json.items():
-                if isinstance(entries, list):
-                    for entry in entries:
-                        if isinstance(entry, dict):
-                            e_copy = dict(entry)
-                            if 'date' not in e_copy:
-                                e_copy['date'] = d_key
-                            items_list.append(e_copy)
-    elif isinstance(res_json, list):
-        items_list = res_json
-    else:
-        items_list = []
-
-    for it in items_list:
-        ev_sym = str(it.get('symbol', '')).upper()
-        if not ev_sym or ev_sym == td_symbol or ev_sym == clean_sym:
-            d_str = it.get('payment_date') or it.get('ex_dividend_date') or it.get('date', '')
-            amt = float(it.get('amount', 0))
-            if amt > 0 and d_str:
-                company_name = it.get('name') or company_name
-                currency = it.get('currency') or currency
-                try:
-                    dt = datetime.strptime(d_str[:10], '%Y-%m-%d')
-                    ts = int(dt.timestamp() * 1000)
-                except Exception:
-                    ts = int(time.time() * 1000)
-
-                events.append({
-                    'date': d_str[:10],
-                    'timestamp': ts,
-                    'amount': round(amt, 4)
-                })
-
-    events.sort(key=lambda x: x['date'], reverse=True)
-
-    if not events:
-        return {"warning": f"No dividend events found in Twelve Data calendar for {symbol}", "source": "twelvedata"}
-
-    now = datetime.now()
-    one_year_ago = (now - timedelta(days=365)).strftime('%Y-%m-%d')
-    recent_1y = [e for e in events if e['date'] >= one_year_ago and e['date'] <= now.strftime('%Y-%m-%d')]
-
-    if len(recent_1y) >= 8:
-        freq = 'monthly'
-        cycle_count = 12
-    elif len(recent_1y) >= 3 or len(events) >= 4:
-        freq = 'quarterly'
-        cycle_count = 4
-    elif len(recent_1y) == 2 or len(events) >= 2:
-        freq = 'semi-annually'
-        cycle_count = 2
-    else:
-        freq = 'annually'
-        cycle_count = 1
-
-    recent_cycle = events[:min(cycle_count, len(events))]
-    annual_dps = round(sum(e['amount'] for e in recent_cycle), 4)
-    latest_dps = round(events[0]['amount'], 4)
-
-    months_set = set()
-    monthly_dpu = {}
-    for e in recent_cycle:
-        m = int(e['date'].split('-')[1])
-        months_set.add(m)
-        monthly_dpu[m] = e['amount']
-
-    months = sorted(list(months_set))
-
-    result_data = {
-        "symbol": clean_sym,
-        "name": company_name,
-        "currency": currency,
-        "annualDps": annual_dps,
-        "latestDPS": latest_dps,
-        "frequency": freq,
-        "months": months,
-        "monthlyDpu": monthly_dpu,
-        "events": events,
-        "source": "twelvedata"
-    }
-
-    cache[cache_key] = {'data': result_data, 'cached_at': now_ts}
-    save_cache(TWELVE_CACHE_FILE, cache)
-
-    return result_data
-
-# =========================================================================
-# 2. EODHD PROVIDER (/api/div/{SYMBOL}.{EXCHANGE} with paymentDate)
+# 1. EODHD PROVIDER (/api/div/{SYMBOL}.{EXCHANGE} with paymentDate)
 # =========================================================================
 def fetch_from_eodhd(symbol: str, api_token: str):
     """Query EODHD /api/div/ endpoint which explicitly provides paymentDate."""
@@ -398,7 +209,7 @@ def fetch_from_eodhd(symbol: str, api_token: str):
 # 3. YFINANCE FALLBACK PROVIDER
 # =========================================================================
 def fetch_from_yfinance(raw_ticker: str):
-    """Fallback to yfinance when Twelve Data and EODHD are unavailable."""
+    """Fallback to yfinance when EODHD is unavailable."""
     if not yf:
         return {"error": "yfinance not installed"}
 
@@ -535,37 +346,25 @@ def fetch_from_yfinance(raw_ticker: str):
     }
 
 # =========================================================================
-# ORCHESTRATOR: TwelveData -> EODHD -> yfinance
+# ORCHESTRATOR: EODHD -> yfinance
 # =========================================================================
-def fetch_dividend_info(raw_ticker: str, twelvedata_key: str = None, eodhd_key: str = None):
+def fetch_dividend_info(raw_ticker: str, eodhd_key: str = None):
     ticker_sym = raw_ticker.strip().upper()
     if not ticker_sym:
         return {"error": "Ticker symbol is empty"}
 
-    td_key = (twelvedata_key or "").strip() or get_twelvedata_api_key()
     eod_key = (eodhd_key or "").strip() or get_eodhd_api_key()
-
     provider_notes = []
 
-    # Priority 1: Twelve Data
-    if td_key:
-        td_res = fetch_from_twelvedata(ticker_sym, td_key)
-        if td_res and 'annualDps' in td_res and td_res.get('events'):
-            return td_res
-        elif td_res and 'error' in td_res:
-            provider_notes.append(f"Twelve Data: {td_res['error']}")
-
-    # Priority 2: EODHD
+    # Priority 1: EODHD
     if eod_key:
         eod_res = fetch_from_eodhd(ticker_sym, eod_key)
         if eod_res and 'annualDps' in eod_res and eod_res.get('events'):
-            if provider_notes:
-                eod_res['providerNote'] = "; ".join(provider_notes)
             return eod_res
         elif eod_res and 'error' in eod_res:
             provider_notes.append(f"EODHD: {eod_res['error']}")
 
-    # Priority 3: yfinance fallback
+    # Priority 2: yfinance fallback
     yf_res = fetch_from_yfinance(ticker_sym)
     if isinstance(yf_res, dict) and provider_notes:
         yf_res['providerNote'] = "; ".join(provider_notes) + ". Displaying yfinance data."
@@ -574,12 +373,11 @@ def fetch_dividend_info(raw_ticker: str, twelvedata_key: str = None, eodhd_key: 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: fetch_dividends.py <TICKER> [TWELVEDATA_KEY] [EODHD_KEY]"}))
+        print(json.dumps({"error": "Usage: fetch_dividends.py <TICKER> [EODHD_KEY]"}))
         sys.exit(1)
 
     ticker_arg = sys.argv[1]
-    td_key_arg = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != '-' else None
-    eod_key_arg = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != '-' else None
+    eod_key_arg = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != '-' else None
 
-    result = fetch_dividend_info(ticker_arg, td_key_arg, eod_key_arg)
+    result = fetch_dividend_info(ticker_arg, eod_key_arg)
     print(json.dumps(result))

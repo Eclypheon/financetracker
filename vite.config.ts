@@ -22,7 +22,6 @@ function yfinanceDevPlugin() {
         const parsedUrl = new URL(req.url, 'http://localhost');
         if (parsedUrl.pathname === '/api/dividend' || parsedUrl.pathname === '/api/yfinance') {
           const ticker = parsedUrl.searchParams.get('ticker') || parsedUrl.searchParams.get('symbol');
-          const apiKey = (parsedUrl.searchParams.get('apikey') || parsedUrl.searchParams.get('twelvedata_key') || process.env.TWELVEDATA_API_KEY || '').trim();
           const eodhdKey = (parsedUrl.searchParams.get('eodhd_key') || parsedUrl.searchParams.get('eodhd_token') || process.env.EODHD_API_KEY || process.env.EODHD_API_TOKEN || '').trim();
           if (!ticker) {
             res.statusCode = 400;
@@ -32,7 +31,7 @@ function yfinanceDevPlugin() {
           }
 
           const upper = ticker.trim().toUpperCase();
-          const cacheKey = `${upper}_${apiKey}_${eodhdKey}`;
+          const cacheKey = eodhdKey ? `${upper}_${eodhdKey}` : upper;
           const cached = cache.get(cacheKey);
           if (cached && Date.now() - cached.time < CACHE_TTL) {
             res.statusCode = 200;
@@ -47,7 +46,6 @@ function yfinanceDevPlugin() {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 600);
             const queryParams = new URLSearchParams({ ticker: upper });
-            if (apiKey) queryParams.set('apikey', apiKey);
             if (eodhdKey) queryParams.set('eodhd_key', eodhdKey);
             const serverRes = await fetch(`http://127.0.0.1:5001/api/dividend?${queryParams.toString()}`, {
               signal: controller.signal
@@ -67,7 +65,7 @@ function yfinanceDevPlugin() {
           }
 
           // 2. Direct python3 execution via Node child_process
-          const pyArgs = [scriptPath, upper, apiKey || '-', eodhdKey || '-'];
+          const pyArgs = eodhdKey ? [scriptPath, upper, eodhdKey] : [scriptPath, upper];
           execFile('python3', pyArgs, (err, stdout, stderr) => {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
