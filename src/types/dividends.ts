@@ -22,6 +22,7 @@ export interface DividendHolding {
   lastFetchedAt?: number;         // Timestamp of last web sync
   scrapeStatus?: 'success' | 'unable_to_calculate';
   scrapeError?: string;
+  source?: 'digrin' | 'stockevents';
   createdAt: number;
 }
 

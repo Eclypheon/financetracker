@@ -360,52 +360,31 @@ export function parseDigrinContent(content: string, rawTicker: string): Dividend
   // Sort descending by Payable Date
   events.sort((a, b) => b.date.localeCompare(a.date));
 
-  // Determine frequency and payout months from actual Payable Dates
-  const payoutMonthsSet = new Set<number>();
-  events.slice(0, 12).forEach((e) => {
-    const m = parseInt(e.date.split("-")[1], 10);
-    if (!isNaN(m)) payoutMonthsSet.add(m);
-  });
+  // Natural 365-day payout cycle relative to latest payout (no forced categories)
+  const latestTimestamp = events[0].timestamp || Date.now();
+  const cycleCutoff = latestTimestamp - 365 * 24 * 60 * 60 * 1000;
+  const cycleEvents = events.filter((e) => e.timestamp >= cycleCutoff && e.timestamp <= latestTimestamp);
+  const effectiveEvents = cycleEvents.length > 0 ? cycleEvents : events.slice(0, 2);
 
-  const now = Date.now();
-  const oneYearAgo = now - 365.25 * 86400000;
-  const recent1y = events.filter((e) => e.timestamp >= oneYearAgo && e.timestamp <= now);
-
-  let freq: DividendFrequency = "quarterly";
-  let cycleCount = 4;
-  if (payoutMonthsSet.size >= 8 || recent1y.length >= 8) {
-    freq = "monthly";
-    cycleCount = 12;
-  } else if (payoutMonthsSet.size >= 3 || recent1y.length >= 3) {
-    freq = "quarterly";
-    cycleCount = 4;
-  } else if (payoutMonthsSet.size === 2 || recent1y.length === 2) {
-    freq = "semi-annually";
-    cycleCount = 2;
-  } else {
-    freq = "annually";
-    cycleCount = 1;
-  }
-
-  // Pick the latest payout for each payout month up to cycleCount
   const monthsSet = new Set<number>();
   const monthlyDpu: Record<number, number> = {};
-  for (const e of events.slice(0, 16)) {
+  for (const e of effectiveEvents) {
     const m = parseInt(e.date.split("-")[1], 10);
     if (!isNaN(m) && monthlyDpu[m] === undefined) {
-      if (monthsSet.size < cycleCount || payoutMonthsSet.has(m)) {
-        monthlyDpu[m] = e.amount;
-        monthsSet.add(m);
-      }
-    }
-    if (monthsSet.size >= cycleCount && cycleCount > 1) {
-      break;
+      monthsSet.add(m);
+      monthlyDpu[m] = e.amount;
     }
   }
 
   const months = Array.from(monthsSet).sort((a, b) => a - b);
   const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
   const latestDPS = events[0].amount;
+
+  let freq: DividendFrequency = "quarterly";
+  if (months.length >= 8) freq = "monthly";
+  else if (months.length >= 3) freq = "quarterly";
+  else if (months.length === 2) freq = "semi-annually";
+  else freq = "annually";
 
   return {
     symbol: cleanTicker,
@@ -530,44 +509,31 @@ export function parseStockEventsContent(content: string, rawTicker: string): Div
   if (events.length === 0) return null;
   events.sort((a, b) => b.date.localeCompare(a.date));
 
-  const payoutMonthsSet = new Set<number>();
-  events.slice(0, 12).forEach((e) => {
-    const m = parseInt(e.date.split("-")[1], 10);
-    if (!isNaN(m)) payoutMonthsSet.add(m);
-  });
-
-  let freq: DividendFrequency = "quarterly";
-  let cycleCount = 4;
-  if (payoutMonthsSet.size >= 8) {
-    freq = "monthly";
-    cycleCount = 12;
-  } else if (payoutMonthsSet.size >= 3) {
-    freq = "quarterly";
-    cycleCount = 4;
-  } else if (payoutMonthsSet.size === 2) {
-    freq = "semi-annually";
-    cycleCount = 2;
-  } else {
-    freq = "annually";
-    cycleCount = 1;
-  }
+  // Natural 365-day payout cycle relative to latest payout
+  const latestTimestamp = events[0].timestamp || Date.now();
+  const cycleCutoff = latestTimestamp - 365 * 24 * 60 * 60 * 1000;
+  const cycleEvents = events.filter((e) => e.timestamp >= cycleCutoff && e.timestamp <= latestTimestamp);
+  const effectiveEvents = cycleEvents.length > 0 ? cycleEvents : events.slice(0, 2);
 
   const monthsSet = new Set<number>();
   const monthlyDpu: Record<number, number> = {};
-  for (const e of events.slice(0, 16)) {
+  for (const e of effectiveEvents) {
     const m = parseInt(e.date.split("-")[1], 10);
     if (!isNaN(m) && monthlyDpu[m] === undefined) {
-      if (monthsSet.size < cycleCount || payoutMonthsSet.has(m)) {
-        monthlyDpu[m] = e.amount;
-        monthsSet.add(m);
-      }
+      monthsSet.add(m);
+      monthlyDpu[m] = e.amount;
     }
-    if (monthsSet.size >= cycleCount && cycleCount > 1) break;
   }
 
   const months = Array.from(monthsSet).sort((a, b) => a - b);
   const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
   const latestDPS = events[0].amount;
+
+  let freq: DividendFrequency = "quarterly";
+  if (months.length >= 8) freq = "monthly";
+  else if (months.length >= 3) freq = "quarterly";
+  else if (months.length === 2) freq = "semi-annually";
+  else freq = "annually";
 
   return {
     symbol: cleanTicker,

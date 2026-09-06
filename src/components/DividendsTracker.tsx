@@ -485,6 +485,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           lastFetchedAt: Date.now(),
           scrapeStatus: 'success',
           scrapeError: undefined,
+          source: (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
         };
 
         updatedMap.set(holding.id, updated);
@@ -557,6 +558,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       lastFetchedAt: Date.now(),
       scrapeStatus: 'success',
       scrapeError: undefined,
+      source: (scrapedResult.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
       createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : (existingHolding?.createdAt || Date.now()),
     };
 
@@ -604,6 +606,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         lastFetchedAt: Date.now(),
         scrapeStatus: 'success',
         scrapeError: undefined,
+        source: (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
       };
       onUpdateHolding(updated);
     } catch (err: any) {
@@ -1149,10 +1152,10 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                           {h.scrapeStatus === 'success' && (
                             <span
                               className="text-[9px] px-1.5 py-0.2 rounded-md font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5"
-                              title="Verified via Digrin.com Payable Dates"
+                              title={`Verified via ${h.source === 'stockevents' ? 'StockEvents.app' : 'Digrin.com'} Payment Dates`}
                             >
                               <CheckCircle2 className="w-2.5 h-2.5" />
-                              <span>Digrin Verified</span>
+                              <span>{h.source === 'stockevents' ? 'StockEvents Verified' : 'Digrin Verified'}</span>
                             </span>
                           )}
                         </div>
@@ -1256,7 +1259,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
                     {/* Months Badges */}
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[9px] text-slate-500">Payouts ({h.frequency}):</span>
+                      <span className="text-[9px] text-slate-500">Payouts:</span>
                       {MONTH_NAMES.map((mName, mIdx) => {
                         const mNum = mIdx + 1;
                         const isPaying = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(mNum);
