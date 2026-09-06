@@ -10,6 +10,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { IosInstallModal } from './IosInstallModal';
+import { NavigationTabs, ActiveTabType } from './NavigationTabs';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -23,6 +24,10 @@ interface HeaderProps {
   onAddNewBlankCard?: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  activeTab?: ActiveTabType;
+  onChangeTab?: (tab: ActiveTabType) => void;
+  dividendsCount?: number;
+  expensesCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,7 +36,12 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onExport,
   onImport,
+  activeTab,
+  onChangeTab,
+  dividendsCount,
+  expensesCount,
 }) => {
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -242,6 +252,17 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </div>
+
+        {/* Navigation Tabs (Net Assets / Dividends / Expenses) immediately below top bar */}
+        {activeTab && onChangeTab && (
+          <NavigationTabs
+            activeTab={activeTab}
+            onChangeTab={onChangeTab}
+            dividendsCount={dividendsCount}
+            expensesCount={expensesCount}
+          />
+        )}
+
 
         {/* Toast Notification */}
         {showNotification && (

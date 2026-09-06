@@ -1,0 +1,1307 @@
+import React, { useState, useMemo } from 'react';
+import { User } from '@supabase/supabase-js';
+import { 
+  DividendHolding, 
+  DividendFrequency, 
+  DIVIDEND_CATEGORIES, 
+  MONTH_NAMES,
+  ScrapedDividendResult 
+} from '../types/dividends';
+import { 
+  calculateMonthlyDistribution, 
+  calculateDividendAnnual, 
+  exportDividendsToCsv
+} from '../utils/dividendsStorage';
+import { 
+  scrapeDividendsForTicker, 
+  normalizeTickerInput 
+} from '../utils/dividendScraper';
+import { formatCurrency } from '../utils/formatters';
+import { 
+  Search, 
+  Download, 
+  TrendingUp, 
+  Calendar, 
+  DollarSign, 
+  Edit3, 
+  Trash2, 
+  X, 
+  Sparkles,
+  Cloud,
+  Zap,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  History,
+  ChevronRight
+} from 'lucide-react';
+
+interface DividendsTrackerProps {
+  holdings: DividendHolding[];
+  currentUser: User | null;
+  onUpdateHolding: (holding: DividendHolding) => void;
+  onAddHolding: (holding: DividendHolding) => void;
+  onDeleteHolding: (id: string) => void;
+  onResetToSample: () => void;
+}
+
+export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
+  holdings,
+  currentUser,
+  onUpdateHolding,
+  onAddHolding,
+  onDeleteHolding,
+  onResetToSample,
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<number | null>(null);
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalTab, setModalTab] = useState<'auto' | 'manual'>('auto');
+
+  // Auto-Scraper State
+  const [scrapeTickerInput, setScrapeTickerInput] = useState('D05.SI');
+  const [scrapeSharesInput, setScrapeSharesInput] = useState('1000');
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [scrapedResult, setScrapedResult] = useState<ScrapedDividendResult | null>(null);
+  const [showPayoutHistory, setShowPayoutHistory] = useState(false);
+
+  // Single Holding Refresh State
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  // Form Fields
+  const [formTicker, setFormTicker] = useState('');
+  const [formCategory, setFormCategory] = useState<string>(DIVIDEND_CATEGORIES[0]);
+  const [formInputMode, setFormInputMode] = useState<'direct' | 'shares'>('direct');
+  const [formAmount, setFormAmount] = useState<string>('');
+  const [formShares, setFormShares] = useState<string>('');
+  const [formDps, setFormDps] = useState<string>('');
+  const [formFrequency, setFormFrequency] = useState<DividendFrequency>('quarterly');
+  const [formPayoutMonths, setFormPayoutMonths] = useState<number[]>([3, 6, 9, 12]);
+  const [formAccount, setFormAccount] = useState('');
+  const [formNotes, setFormNotes] = useState('');
+
+  // Delete Confirmation State
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const currentMonthNum = new Date().getMonth() + 1; // 1-indexed (1 = Jan, ..., 12 = Dec)
+  const currentYear = new Date().getFullYear();
+
+  // Calculations
+  const monthlyDistributions = useMemo(() => {
+    return calculateMonthlyDistribution(holdings);
+  }, [holdings]);
+
+  const maxMonthAmount = useMemo(() => {
+    return Math.max(...monthlyDistributions.map((d) => d.totalAmount), 1);
+  }, [monthlyDistributions]);
+
+  const totalAnnualDividends = useMemo(() => {
+    return holdings.reduce((sum, h) => sum + (Number(h.expectedYearlyDividends || h.totalAnnualPayout) || 0), 0);
+  }, [holdings]);
+
+  const averageMonthlyDividends = totalAnnualDividends / 12;
+
+  const totalPastYearDividends = useMemo(() => {
+    return holdings.reduce((sum, h) => sum + (Number(h.pastYearDividends || h.totalAnnualPayout) || 0), 0);
+  }, [holdings]);
+
+  const totalYtdDividends = useMemo(() => {
+    return holdings.reduce((sum, h) => {
+      if (h.ytdDividends !== undefined) return sum + h.ytdDividends;
+      return sum + ((h.totalAnnualPayout || 0) * (currentMonthNum / 12));
+    }, 0);
+  }, [holdings, currentMonthNum]);
+
+  // Filtered Holdings
+  const filteredHoldings = useMemo(() => {
+    return holdings.filter((h) => {
+      const matchesSearch = searchQuery === '' || 
+        h.tickerOrName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (h.paymentMethodOrAccount && h.paymentMethodOrAccount.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (h.notes && h.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesCategory = selectedCategory === 'All' || h.category === selectedCategory;
+
+      const matchesMonth = selectedMonthFilter === null || (Array.isArray(h.payoutMonths) && h.payoutMonths.includes(selectedMonthFilter));
+
+      return matchesSearch && matchesCategory && matchesMonth;
+    });
+  }, [holdings, searchQuery, selectedCategory, selectedMonthFilter]);
+
+  // Open modal for new holding
+  const handleOpenAdd = () => {
+    setEditingId(null);
+    setModalTab('auto');
+    setScrapeTickerInput('D05.SI');
+    setScrapeSharesInput('1000');
+    setScrapedResult(null);
+    setScrapeError(null);
+    setShowPayoutHistory(false);
+
+    setFormTicker('');
+    setFormCategory(DIVIDEND_CATEGORIES[0]);
+    setFormInputMode('direct');
+    setFormAmount('');
+    setFormShares('');
+    setFormDps('');
+    setFormFrequency('quarterly');
+    setFormPayoutMonths([3, 6, 9, 12]);
+    setFormAccount('');
+    setFormNotes('');
+    setIsModalOpen(true);
+  };
+
+  // Open modal for editing holding
+  const handleOpenEdit = (holding: DividendHolding) => {
+    setEditingId(holding.id);
+    setModalTab('manual');
+    setFormTicker(holding.tickerOrName);
+    setFormCategory(holding.category || DIVIDEND_CATEGORIES[0]);
+    if (holding.shares && holding.dividendPerShare) {
+      setFormInputMode('shares');
+      setFormShares(String(holding.shares));
+      setFormDps(String(holding.dividendPerShare));
+      setFormAmount(String(holding.amount || holding.shares * holding.dividendPerShare));
+    } else {
+      setFormInputMode('direct');
+      setFormAmount(String(holding.amount));
+      setFormShares(holding.shares ? String(holding.shares) : '');
+      setFormDps(holding.dividendPerShare ? String(holding.dividendPerShare) : '');
+    }
+    setFormFrequency(holding.frequency);
+    setFormPayoutMonths(Array.isArray(holding.payoutMonths) ? [...holding.payoutMonths] : [3, 6, 9, 12]);
+    setFormAccount(holding.paymentMethodOrAccount || '');
+    setFormNotes(holding.notes || '');
+    setIsModalOpen(true);
+  };
+
+  // Frequency change helper to auto-populate default months
+  const handleFrequencyChange = (freq: DividendFrequency) => {
+    setFormFrequency(freq);
+    if (freq === 'monthly') {
+      setFormPayoutMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    } else if (freq === 'quarterly') {
+      setFormPayoutMonths([3, 6, 9, 12]);
+    } else if (freq === 'semi-annually') {
+      setFormPayoutMonths([6, 12]);
+    } else if (freq === 'annually') {
+      setFormPayoutMonths([12]);
+    }
+  };
+
+  // Toggle specific month
+  const toggleMonth = (monthNum: number) => {
+    setFormPayoutMonths((prev) => {
+      if (prev.includes(monthNum)) {
+        if (prev.length <= 1) return prev; // Keep at least one
+        return prev.filter((m) => m !== monthNum).sort((a, b) => a - b);
+      } else {
+        return [...prev, monthNum].sort((a, b) => a - b);
+      }
+    });
+  };
+
+  // Run auto scraper from ticker input
+  const handleRunScraper = async (tickerOverride?: string, sharesOverride?: string) => {
+    const ticker = (tickerOverride || scrapeTickerInput).trim();
+    const sharesNum = parseFloat(sharesOverride || scrapeSharesInput) || 0;
+
+    if (!ticker) {
+      setScrapeError('Please enter a valid stock or ETF ticker symbol.');
+      return;
+    }
+
+    setIsScraping(true);
+    setScrapeError(null);
+
+    try {
+      const result = await scrapeDividendsForTicker(ticker, sharesNum);
+      setScrapedResult(result);
+
+      // Pre-fill manual form fields as well
+      const displayName = result.name ? `${result.name} (${result.ticker})` : result.ticker;
+      setFormTicker(displayName);
+      setFormCategory(result.category);
+      setFormInputMode('shares');
+      setFormShares(String(result.shares));
+      setFormDps(String(result.latestDPS));
+      setFormAmount(String(result.latestDPS * result.shares));
+      setFormFrequency(result.frequency);
+      setFormPayoutMonths(result.payoutMonths);
+      setFormNotes(`Past 1Y: $${result.pastYearDividends.toFixed(0)} | YTD: $${result.ytdDividends.toFixed(0)}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch dividend data.';
+      setScrapeError(msg);
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  // Apply scraped result into portfolio
+  const handleApplyScrapedHolding = () => {
+    if (!scrapedResult) return;
+
+    const displayName = scrapedResult.name ? `${scrapedResult.name} (${scrapedResult.ticker})` : scrapedResult.ticker;
+
+    const holdingData: DividendHolding = {
+      id: editingId || `div_${Date.now()}`,
+      tickerOrName: displayName,
+      category: scrapedResult.category,
+      amount: scrapedResult.latestDPS * scrapedResult.shares,
+      frequency: scrapedResult.frequency,
+      payoutMonths: scrapedResult.payoutMonths,
+      shares: scrapedResult.shares,
+      dividendPerShare: scrapedResult.latestDPS,
+      totalAnnualPayout: scrapedResult.expectedYearlyDividends,
+      pastYearDividends: scrapedResult.pastYearDividends,
+      ytdDividends: scrapedResult.ytdDividends,
+      expectedYearlyDividends: scrapedResult.expectedYearlyDividends,
+      monthlyAverageDividends: scrapedResult.monthlyAverageDividends,
+      currency: scrapedResult.currency,
+      paymentMethodOrAccount: formAccount.trim() || undefined,
+      notes: formNotes.trim() || undefined,
+      lastFetchedAt: Date.now(),
+      createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : Date.now(),
+    };
+
+    if (editingId) {
+      onUpdateHolding(holdingData);
+    } else {
+      onAddHolding(holdingData);
+    }
+
+    setIsModalOpen(false);
+  };
+
+  // Quick refresh single holding from web
+  const handleQuickRefreshHolding = async (holding: DividendHolding) => {
+    const rawTicker = holding.tickerOrName.match(/\(([^)]+)\)/)?.[1] || holding.tickerOrName.split(' ')[0] || holding.tickerOrName;
+    const clean = normalizeTickerInput(rawTicker);
+    const sharesNum = holding.shares || (holding.dividendPerShare && holding.amount ? Math.round(holding.amount / holding.dividendPerShare) : 100);
+
+    setRefreshingId(holding.id);
+    try {
+      const result = await scrapeDividendsForTicker(clean, sharesNum);
+      const updated: DividendHolding = {
+        ...holding,
+        shares: sharesNum,
+        dividendPerShare: result.latestDPS,
+        amount: result.latestDPS * sharesNum,
+        frequency: result.frequency,
+        payoutMonths: result.payoutMonths,
+        totalAnnualPayout: result.expectedYearlyDividends,
+        pastYearDividends: result.pastYearDividends,
+        ytdDividends: result.ytdDividends,
+        expectedYearlyDividends: result.expectedYearlyDividends,
+        monthlyAverageDividends: result.monthlyAverageDividends,
+        currency: result.currency,
+        lastFetchedAt: Date.now(),
+      };
+      onUpdateHolding(updated);
+    } catch (err) {
+      console.error('Refresh error:', err);
+      alert(`Could not refresh ${holding.tickerOrName}. Please check internet connection.`);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
+
+  // Save Modal Form
+  const handleSaveForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTicker.trim()) return;
+
+    let payoutAmount = 0;
+    let sharesNum: number | undefined;
+    let dpsNum: number | undefined;
+
+    if (formInputMode === 'shares') {
+      sharesNum = parseFloat(formShares) || 0;
+      dpsNum = parseFloat(formDps) || 0;
+      payoutAmount = sharesNum * dpsNum;
+    } else {
+      payoutAmount = parseFloat(formAmount) || 0;
+    }
+
+    const calculatedAnnual = calculateDividendAnnual({
+      amount: payoutAmount,
+      frequency: formFrequency,
+      payoutMonths: formPayoutMonths,
+      shares: sharesNum,
+      dividendPerShare: dpsNum,
+    });
+
+    const existingHolding = editingId ? holdings.find((h) => h.id === editingId) : undefined;
+
+    const holdingData: DividendHolding = {
+      id: editingId || `div_${Date.now()}`,
+      tickerOrName: formTicker.trim(),
+      category: formCategory,
+      amount: payoutAmount,
+      frequency: formFrequency,
+      payoutMonths: formPayoutMonths,
+      shares: sharesNum,
+      dividendPerShare: dpsNum,
+      totalAnnualPayout: calculatedAnnual,
+      pastYearDividends: existingHolding?.pastYearDividends,
+      ytdDividends: existingHolding?.ytdDividends,
+      expectedYearlyDividends: calculatedAnnual,
+      monthlyAverageDividends: calculatedAnnual / 12,
+      currency: existingHolding?.currency,
+      paymentMethodOrAccount: formAccount.trim() || undefined,
+      notes: formNotes.trim() || undefined,
+      createdAt: existingHolding?.createdAt || Date.now(),
+    };
+
+    if (editingId) {
+      onUpdateHolding(holdingData);
+    } else {
+      onAddHolding(holdingData);
+    }
+
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div className="w-full flex flex-col space-y-3 pb-8">
+      {/* Top Status Row */}
+      <div className="flex items-center justify-between px-1 text-[10px] text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          <span className="font-semibold text-slate-300">Monthly Dividends Portfolio</span>
+        </div>
+        <div className="flex items-center gap-1 text-[9px] text-slate-500">
+          <Cloud className="w-3 h-3 text-cyan-400" />
+          <span>{currentUser ? 'Supabase Cloud Sync' : 'Local Storage'}</span>
+        </div>
+      </div>
+
+      {/* 1. Header Overview Metrics (Requested by user: Expected Yearly, Monthly Avg, Past Year, YTD) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* Metric 1: Expected Yearly */}
+        <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 text-[10px]">
+            <span>Expected Yearly</span>
+            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+          </div>
+          <div className="mt-1">
+            <div className="text-base sm:text-lg font-bold text-white font-mono-num">
+              {formatCurrency(totalAnnualDividends, { showCents: false })}
+            </div>
+            <div className="text-[9px] text-cyan-400 font-medium">
+              Forward 12M projected
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 2: Monthly Average */}
+        <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 text-[10px]">
+            <span>Monthly Average</span>
+            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <div className="mt-1">
+            <div className="text-base sm:text-lg font-bold text-white font-mono-num">
+              {formatCurrency(averageMonthlyDividends, { showCents: false })}
+            </div>
+            <div className="text-[9px] text-emerald-400 font-medium">
+              Passive cash flow / mo
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 3: Past 1 Year (TTM) */}
+        <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 text-[10px]">
+            <span>Past 1 Year (TTM)</span>
+            <History className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <div className="mt-1">
+            <div className="text-base sm:text-lg font-bold text-white font-mono-num">
+              {formatCurrency(totalPastYearDividends, { showCents: false })}
+            </div>
+            <div className="text-[9px] text-purple-400 font-medium">
+              Past 12M historical
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 4: Year-To-Date (YTD) */}
+        <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 text-[10px]">
+            <span>YTD ({currentYear})</span>
+            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+          </div>
+          <div className="mt-1">
+            <div className="text-base sm:text-lg font-bold text-white font-mono-num">
+              {formatCurrency(totalYtdDividends, { showCents: false })}
+            </div>
+            <div className="text-[9px] text-amber-400 font-medium">
+              Jan {currentYear} to date
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. 12-Month Bar Chart Timeline */}
+      <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-md space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-bold text-white">Monthly Dividend Distribution</h2>
+          </div>
+          {selectedMonthFilter !== null ? (
+            <button
+              onClick={() => setSelectedMonthFilter(null)}
+              className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/30"
+            >
+              <span>{MONTH_NAMES[selectedMonthFilter - 1]} filtered</span>
+              <X className="w-2.5 h-2.5" />
+            </button>
+          ) : (
+            <span className="text-[10px] text-slate-400">Click a bar to filter</span>
+          )}
+        </div>
+
+        {/* Bar Chart Container */}
+        <div className="grid grid-cols-12 gap-1 pt-3 pb-1 items-end h-32 border-b border-slate-800/80">
+          {monthlyDistributions.map((dist) => {
+            const isCurrentMonth = dist.month === currentMonthNum;
+            const isSelected = selectedMonthFilter === dist.month;
+            const heightPercent = maxMonthAmount > 0 
+              ? Math.max(Math.round((dist.totalAmount / maxMonthAmount) * 100), 6) 
+              : 6;
+
+            return (
+              <div 
+                key={dist.month}
+                onClick={() => setSelectedMonthFilter(isSelected ? null : dist.month)}
+                className="h-full flex flex-col items-center justify-end group cursor-pointer relative"
+              >
+                {/* Tooltip on hover */}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700 text-[9px] font-mono-num text-white pointer-events-none z-20 whitespace-nowrap shadow-xl">
+                  {formatCurrency(dist.totalAmount)}
+                </div>
+
+                {/* Amount Label above bar */}
+                <span className="text-[8px] font-mono-num text-slate-400 group-hover:text-cyan-300 truncate mb-1">
+                  {dist.totalAmount > 0 ? (dist.totalAmount >= 1000 ? `${(dist.totalAmount/1000).toFixed(1)}k` : Math.round(dist.totalAmount)) : ''}
+                </span>
+
+                {/* Animated / styled bar */}
+                <div 
+                  style={{ height: `${heightPercent}%` }}
+                  className={`w-full rounded-t-md transition-all duration-300 ${
+                    isSelected 
+                      ? 'bg-cyan-400 shadow-md shadow-cyan-500/40 ring-2 ring-cyan-300'
+                      : isCurrentMonth
+                        ? 'bg-gradient-to-t from-cyan-600 to-teal-400 ring-1 ring-cyan-400/50'
+                        : dist.totalAmount > 0
+                          ? 'bg-slate-700 hover:bg-cyan-600/80'
+                          : 'bg-slate-800/50'
+                  }`}
+                />
+
+                {/* Month Name */}
+                <span className={`text-[9px] mt-1.5 font-semibold transition-colors ${
+                  isSelected 
+                    ? 'text-cyan-300 font-bold'
+                    : isCurrentMonth
+                      ? 'text-amber-400 font-bold'
+                      : 'text-slate-400 group-hover:text-slate-200'
+                }`}>
+                  {dist.monthLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Filter and Action Bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Search Box */}
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search ticker, account, notes..."
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Add Holding Button with Auto-Calculate Badge */}
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md shadow-cyan-950/60 cursor-pointer active:scale-95 flex-shrink-0"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span>Auto-Calculate</span>
+          </button>
+
+          {/* Export CSV Button */}
+          <button
+            onClick={() => exportDividendsToCsv(holdings)}
+            className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-colors flex-shrink-0"
+            title="Export Dividends CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+          </button>
+        </div>
+
+        {/* Category Filter Pills (horizontal scrollable) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[10px]">
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className={`px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors ${
+              selectedCategory === 'All'
+                ? 'bg-cyan-500 text-slate-950 font-bold'
+                : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'
+            }`}
+          >
+            All Categories ({holdings.length})
+          </button>
+          {DIVIDEND_CATEGORIES.map((cat) => {
+            const count = holdings.filter((h) => h.category === cat).length;
+            if (count === 0 && selectedCategory !== cat) return null;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors ${
+                  selectedCategory === cat
+                    ? 'bg-cyan-500 text-slate-950 font-bold'
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'
+                }`}
+              >
+                {cat} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. Dividend Holdings List */}
+      <div className="space-y-2">
+        {filteredHoldings.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-slate-900/60 border border-dashed border-slate-800 text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto">
+              <Zap className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white">No dividend assets found</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {searchQuery || selectedCategory !== 'All' || selectedMonthFilter !== null
+                  ? 'Try adjusting your filters or search terms.'
+                  : 'Enter a ticker symbol and your share count to auto-calculate your dividends.'}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                onClick={handleOpenAdd}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition-all shadow-md shadow-cyan-950/60"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                <span>Auto-Calculate by Ticker</span>
+              </button>
+              {holdings.length === 0 && (
+                <button
+                  onClick={onResetToSample}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700"
+                >
+                  Load Sample Portfolio
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          filteredHoldings.map((h) => {
+            const paysThisMonth = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(currentMonthNum);
+            const isRefreshing = refreshingId === h.id;
+
+            return (
+              <div 
+                key={h.id}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-sm hover:border-slate-700/80 transition-all space-y-2"
+              >
+                {/* Top Row: Name + Category & Action buttons */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-white text-xs sm:text-sm">
+                        {h.tickerOrName}
+                      </span>
+                      <span className="text-[9px] px-2 py-0.5 rounded-md font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        {h.category}
+                      </span>
+                      {h.currency && (
+                        <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                          {h.currency}
+                        </span>
+                      )}
+                      {h.paymentMethodOrAccount && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-mono bg-slate-800 text-slate-400 border border-slate-700">
+                          {h.paymentMethodOrAccount}
+                        </span>
+                      )}
+                      {paysThisMonth && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>Pays in {MONTH_NAMES[currentMonthNum - 1]}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {h.shares ? (
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono-num flex items-center gap-2">
+                        <span>{h.shares.toLocaleString()} shares</span>
+                        {h.dividendPerShare ? (
+                          <span>@ {formatCurrency(h.dividendPerShare, { showCents: true })} DPS</span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {/* Actions (Re-scrape Web, Edit, Delete) */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleQuickRefreshHolding(h)}
+                      disabled={isRefreshing}
+                      className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+                      title="Re-fetch / scrape latest dividend data"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
+                    </button>
+                    <button
+                      onClick={() => handleOpenEdit(h)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    {deletingId === h.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            onDeleteHolding(h.id);
+                            setDeletingId(null);
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setDeletingId(null)}
+                          className="px-1 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeletingId(h.id)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle Row: Auto-Calculated Metrics (Expected Yearly, Monthly Average, Past 1Y, YTD) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 rounded-xl bg-slate-950/60 border border-slate-800/60 text-xs">
+                  <div>
+                    <span className="text-[9px] text-slate-500 block">Expected Yearly</span>
+                    <span className="font-bold text-emerald-400 font-mono-num text-xs sm:text-sm">
+                      {formatCurrency(h.expectedYearlyDividends || h.totalAnnualPayout)}
+                    </span>
+                    <span className="text-[9px] text-slate-400 ml-1">/ yr</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-500 block">Monthly Average</span>
+                    <span className="font-bold text-cyan-400 font-mono-num text-xs sm:text-sm">
+                      {formatCurrency(h.monthlyAverageDividends || ((h.totalAnnualPayout || 0) / 12))}
+                    </span>
+                    <span className="text-[9px] text-slate-400 ml-1">/ mo</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-500 block">Past 1 Year (TTM)</span>
+                    <span className="font-semibold text-purple-300 font-mono-num text-[11px] sm:text-xs">
+                      {formatCurrency(h.pastYearDividends !== undefined ? h.pastYearDividends : h.totalAnnualPayout)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-500 block">YTD ({currentYear})</span>
+                    <span className="font-semibold text-amber-300 font-mono-num text-[11px] sm:text-xs">
+                      {formatCurrency(h.ytdDividends !== undefined ? h.ytdDividends : (h.totalAnnualPayout * (currentMonthNum / 12)))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Month Badges & Notes */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                  {/* Months Badges */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[9px] text-slate-500">Payouts ({h.frequency}):</span>
+                    {MONTH_NAMES.map((mName, idx) => {
+                      const mNum = idx + 1;
+                      const isPaying = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(mNum);
+                      if (!isPaying) return null;
+                      const isCurrent = mNum === currentMonthNum;
+                      return (
+                        <span 
+                          key={mName}
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                            isCurrent
+                              ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 ring-1 ring-cyan-400/40'
+                              : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                          }`}
+                        >
+                          {mName}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* Notes */}
+                  {h.notes && (
+                    <span className="text-[10px] text-slate-400 italic truncate max-w-full">
+                      {h.notes}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 5. Add / Edit Modal with Auto-Scraping and Calculation */}
+      {isModalOpen && (
+        <div 
+          onClick={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700/80 shadow-2xl rounded-2xl p-4 sm:p-5 max-w-md w-full my-8 space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                </div>
+                <h3 className="text-sm font-bold text-white">
+                  {editingId ? 'Edit Dividend Holding' : 'Add Dividend Holding'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Mode Switcher: Auto-Calculate vs Manual */}
+            <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-950 border border-slate-800 gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setModalTab('auto')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-bold transition-all ${
+                  modalTab === 'auto'
+                    ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/60'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                <span>Auto-Calculate</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab('manual')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-bold transition-all ${
+                  modalTab === 'manual'
+                    ? 'bg-slate-800 text-white border border-slate-700'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Manual Entry</span>
+              </button>
+            </div>
+
+            {/* TAB 1: AUTO-CALCULATE FROM WEB */}
+            {modalTab === 'auto' && (
+              <div className="space-y-3.5">
+                {/* Ticker & Shares Input */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-[11px] text-slate-400 font-semibold mb-1">
+                      Ticker Symbol *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. D05.SI, AAPL, VOO, SCHD"
+                      value={scrapeTickerInput}
+                      onChange={(e) => setScrapeTickerInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 font-semibold mb-1">
+                      Shares Owned *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="1000"
+                      value={scrapeSharesInput}
+                      onChange={(e) => setScrapeSharesInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono-num font-bold placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Suggestion Pills */}
+                <div>
+                  <span className="text-[10px] text-slate-500 block mb-1">Popular Quick Fill:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { label: 'DBS', symbol: 'D05.SI', shares: '1000' },
+                      { label: 'OCBC', symbol: 'O39.SI', shares: '1000' },
+                      { label: 'UOB', symbol: 'U11.SI', shares: '1000' },
+                      { label: 'Singtel', symbol: 'Z74.SI', shares: '5000' },
+                      { label: 'CLAR', symbol: 'A17U.SI', shares: '2000' },
+                      { label: 'VOO', symbol: 'VOO', shares: '100' },
+                      { label: 'SCHD', symbol: 'SCHD', shares: '200' },
+                      { label: 'Apple', symbol: 'AAPL', shares: '100' },
+                      { label: 'Realty Income', symbol: 'O', shares: '150' },
+                    ].map((item) => (
+                      <button
+                        key={item.symbol}
+                        type="button"
+                        onClick={() => {
+                          setScrapeTickerInput(item.symbol);
+                          setScrapeSharesInput(item.shares);
+                          handleRunScraper(item.symbol, item.shares);
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-950 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 transition-colors font-medium"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fetch Button */}
+                <button
+                  type="button"
+                  onClick={() => handleRunScraper()}
+                  disabled={isScraping}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-xs shadow-lg shadow-cyan-950/60 cursor-pointer disabled:opacity-50 transition-all active:scale-98"
+                >
+                  {isScraping ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Scraping Public Dividend Records...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 text-amber-300" />
+                      <span>Auto-Calculate Dividends</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Error Banner */}
+                {scrapeError && (
+                  <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 flex items-start gap-2 text-[11px] text-rose-300 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">{scrapeError}</p>
+                      <button
+                        type="button"
+                        onClick={() => setModalTab('manual')}
+                        className="text-cyan-400 underline font-bold mt-1"
+                      >
+                        Enter manually instead
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Scraped Result Display Card */}
+                {scrapedResult && (
+                  <div className="p-3 rounded-xl bg-slate-950 border border-cyan-500/40 shadow-xl space-y-2.5 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs font-bold text-white">
+                            {scrapedResult.name}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                          {scrapedResult.shares.toLocaleString()} shares • {scrapedResult.currency} • {scrapedResult.category}
+                        </p>
+                      </div>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 capitalize">
+                        {scrapedResult.frequency}
+                      </span>
+                    </div>
+
+                    {/* 4 Big Auto-Calculated Metrics (Past 1 Year, YTD, Expected Yearly, Monthly Avg) */}
+                    <div className="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                      {/* Expected Yearly */}
+                      <div className="p-1.5 rounded-md bg-slate-950/60">
+                        <span className="text-[9px] text-slate-400 block font-semibold">Expected Yearly</span>
+                        <span className="font-bold text-emerald-400 font-mono-num text-sm">
+                          {formatCurrency(scrapedResult.expectedYearlyDividends)}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block">Forward 12M</span>
+                      </div>
+
+                      {/* Monthly Average */}
+                      <div className="p-1.5 rounded-md bg-slate-950/60">
+                        <span className="text-[9px] text-slate-400 block font-semibold">Monthly Average</span>
+                        <span className="font-bold text-cyan-400 font-mono-num text-sm">
+                          {formatCurrency(scrapedResult.monthlyAverageDividends)}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block">/ month</span>
+                      </div>
+
+                      {/* Past 1 Year (TTM) */}
+                      <div className="p-1.5 rounded-md bg-slate-950/60">
+                        <span className="text-[9px] text-slate-400 block font-semibold">Past 1 Year (TTM)</span>
+                        <span className="font-bold text-purple-300 font-mono-num text-xs">
+                          {formatCurrency(scrapedResult.pastYearDividends)}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block">Past 365 days</span>
+                      </div>
+
+                      {/* Year-To-Date (YTD) */}
+                      <div className="p-1.5 rounded-md bg-slate-950/60">
+                        <span className="text-[9px] text-slate-400 block font-semibold">YTD ({currentYear})</span>
+                        <span className="font-bold text-amber-300 font-mono-num text-xs">
+                          {formatCurrency(scrapedResult.ytdDividends)}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block">Jan to present</span>
+                      </div>
+                    </div>
+
+                    {/* DPS & Payout Months */}
+                    <div className="flex items-center justify-between text-[10px] text-slate-300 px-1">
+                      <span>Latest DPS: <strong className="text-white font-mono-num">${scrapedResult.latestDPS.toFixed(4)}</strong></span>
+                      <div className="flex items-center gap-1">
+                        <span>Months:</span>
+                        {scrapedResult.payoutMonths.map((m) => (
+                          <span key={m} className="px-1 rounded bg-slate-800 text-cyan-300 font-mono text-[9px]">
+                            {MONTH_NAMES[m - 1]}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Expandable Past Payouts History */}
+                    {scrapedResult.pastPayouts.length > 0 && (
+                      <div className="border-t border-slate-800 pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowPayoutHistory(!showPayoutHistory)}
+                          className="w-full flex items-center justify-between text-[10px] text-slate-400 hover:text-cyan-300 transition-colors"
+                        >
+                          <span className="flex items-center gap-1">
+                            <History className="w-3 h-3" />
+                            <span>Recent Public Dividend Payouts ({scrapedResult.pastPayouts.length} events)</span>
+                          </span>
+                          <ChevronRight className={`w-3 h-3 transition-transform ${showPayoutHistory ? 'rotate-90' : ''}`} />
+                        </button>
+
+                        {showPayoutHistory && (
+                          <div className="mt-1.5 space-y-1 max-h-32 overflow-y-auto no-scrollbar rounded-lg bg-slate-900 p-1.5 text-[10px]">
+                            {scrapedResult.pastPayouts.map((p, idx) => (
+                              <div key={idx} className="flex items-center justify-between py-0.5 border-b border-slate-800/60 last:border-0 font-mono-num">
+                                <span className="text-slate-400">{p.dateFormatted}</span>
+                                <span className="text-slate-300">${p.amount.toFixed(4)} / share</span>
+                                <span className="font-bold text-emerald-400">{formatCurrency(p.totalForShares)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Account / Custody Input */}
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-semibold mb-1">
+                        Custody / Broker Account (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. CDP, IBKR, SRS"
+                        value={formAccount}
+                        onChange={(e) => setFormAccount(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    {/* Apply Button */}
+                    <button
+                      type="button"
+                      onClick={handleApplyScrapedHolding}
+                      className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950/60 cursor-pointer transition-all active:scale-98"
+                    >
+                      {editingId ? 'Update Holding with Scraped Data' : 'Add Holding to Dividend Portfolio'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: MANUAL ENTRY FORM */}
+            {modalTab === 'manual' && (
+              <form onSubmit={handleSaveForm} className="space-y-3 text-xs">
+                {/* Name / Ticker */}
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">
+                    Ticker / Asset Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. DBS Group (D05.SI), VOO, Apple"
+                    value={formTicker}
+                    onChange={(e) => setFormTicker(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    {DIVIDEND_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Input Mode Selector: Direct vs Shares × DPS */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-400 font-semibold">
+                      Dividend Payout Calculation
+                    </label>
+                    <div className="flex items-center p-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setFormInputMode('direct')}
+                        className={`px-2 py-0.5 rounded-md font-semibold ${
+                          formInputMode === 'direct' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Direct Amount
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormInputMode('shares')}
+                        className={`px-2 py-0.5 rounded-md font-semibold ${
+                          formInputMode === 'shares' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Shares × DPS
+                      </button>
+                    </div>
+                  </div>
+
+                  {formInputMode === 'direct' ? (
+                    <div>
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        placeholder="Amount per payout event (e.g. 540)"
+                        value={formAmount}
+                        onChange={(e) => setFormAmount(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono-num placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          placeholder="Shares (e.g. 1000)"
+                          value={formShares}
+                          onChange={(e) => setFormShares(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono-num placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          placeholder="DPS ($ e.g. 0.54)"
+                          value={formDps}
+                          onChange={(e) => setFormDps(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono-num placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Frequency */}
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">
+                    Distribution Frequency
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                    {(['quarterly', 'semi-annually', 'monthly', 'annually'] as DividendFrequency[]).map((freq) => (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => handleFrequencyChange(freq)}
+                        className={`py-1.5 px-2 rounded-xl text-[10px] font-semibold capitalize border transition-all ${
+                          formFrequency === freq
+                            ? 'bg-cyan-950 border-cyan-500 text-cyan-300 shadow-sm'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payout Months Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-400 font-semibold">
+                      Payout Months ({formPayoutMonths.length} selected)
+                    </label>
+                    {formFrequency === 'quarterly' && (
+                      <div className="flex items-center gap-1 text-[9px]">
+                        <button
+                          type="button"
+                          onClick={() => setFormPayoutMonths([3, 6, 9, 12])}
+                          className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-cyan-300"
+                        >
+                          Mar/Jun/Sep/Dec
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormPayoutMonths([2, 5, 8, 11])}
+                          className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-cyan-300"
+                        >
+                          Feb/May/Aug/Nov
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {MONTH_NAMES.map((name, idx) => {
+                      const mNum = idx + 1;
+                      const isSelected = formPayoutMonths.includes(mNum);
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => toggleMonth(mNum)}
+                          className={`py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                            isSelected
+                              ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                              : 'bg-slate-950 text-slate-400 hover:bg-slate-800 border border-slate-800'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custody / Account & Notes */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">
+                      Broker / Account
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CDP, IBKR, SRS"
+                      value={formAccount}
+                      onChange={(e) => setFormAccount(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">
+                      Notes
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Scrip dividend, Tax info"
+                      value={formNotes}
+                      onChange={(e) => setFormNotes(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-md shadow-cyan-950/60"
+                  >
+                    {editingId ? 'Save Changes' : 'Add Holding'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

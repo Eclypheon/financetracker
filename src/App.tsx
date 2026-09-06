@@ -26,8 +26,43 @@ import { CompareSection } from './components/CompareSection';
 import { AssetsChart } from './components/AssetsChart';
 import { AuthModal } from './components/AuthModal';
 import { ChevronDown, ChevronUp, Save, CheckCircle2 } from 'lucide-react';
+import { ActiveTabType } from './components/NavigationTabs';
+import { DividendHolding } from './types/dividends';
+import { RecurringExpense } from './types/expenses';
+import { 
+  loadStoredDividends, 
+  saveStoredDividends, 
+  sampleInitialDividends 
+} from './utils/dividendsStorage';
+import { 
+  loadStoredExpenses, 
+  saveStoredExpenses, 
+  sampleInitialExpenses 
+} from './utils/expensesStorage';
+import { 
+  fetchCloudDividends, 
+  saveCloudDividend, 
+  deleteCloudDividend, 
+  syncAllDividendsToCloud,
+  fetchCloudExpenses, 
+  saveCloudExpense, 
+  deleteCloudExpense, 
+  syncAllExpensesToCloud 
+} from './utils/supabase';
+import { DividendsTracker } from './components/DividendsTracker';
+import { ExpensesTracker } from './components/ExpensesTracker';
+
 
 export const App: React.FC = () => {
+  // Navigation Tabs State: 'assets' | 'dividends' | 'expenses'
+  const [activeTab, setActiveTab] = useState<ActiveTabType>('assets');
+
+  // Dividends Tracker State
+  const [dividends, setDividends] = useState<DividendHolding[]>(() => loadStoredDividends());
+
+  // Recurring Expenses Tracker State
+  const [expenses, setExpenses] = useState<RecurringExpense[]>(() => loadStoredExpenses());
+
   const [savedCards, setSavedCards] = useState<FinanceCardData[]>(() => loadStoredCards());
   const [entryCard, setEntryCard] = useState<FinanceCardData>(() => loadStoredEntryCard());
   const [showCardSavedModal, setShowCardSavedModal] = useState(false);
@@ -96,6 +131,30 @@ export const App: React.FC = () => {
         const localEntry = loadStoredEntryCard();
         await saveCloudEntryCard(localEntry, user);
       }
+
+      // Sync dividends with cloud
+      const cloudDividends = await fetchCloudDividends();
+      if (cloudDividends && cloudDividends.length > 0) {
+        setDividends(cloudDividends);
+        saveStoredDividends(cloudDividends);
+      } else if (cloudDividends) {
+        const localDividends = loadStoredDividends();
+        if (localDividends.length > 0) {
+          await syncAllDividendsToCloud(localDividends, user);
+        }
+      }
+
+      // Sync recurring expenses with cloud
+      const cloudExpenses = await fetchCloudExpenses();
+      if (cloudExpenses && cloudExpenses.length > 0) {
+        setExpenses(cloudExpenses);
+        saveStoredExpenses(cloudExpenses);
+      } else if (cloudExpenses) {
+        const localExpenses = loadStoredExpenses();
+        if (localExpenses.length > 0) {
+          await syncAllExpensesToCloud(localExpenses, user);
+        }
+      }
     } catch (err) {
       console.error('Failed to sync cloud data:', err);
     }
@@ -135,6 +194,17 @@ export const App: React.FC = () => {
   useEffect(() => {
     saveStoredEntryCard(entryCard);
   }, [entryCard]);
+
+  // Always save dividends to localStorage for offline access
+  useEffect(() => {
+    saveStoredDividends(dividends);
+  }, [dividends]);
+
+  // Always save expenses to localStorage for offline access
+  useEffect(() => {
+    saveStoredExpenses(expenses);
+  }, [expenses]);
+
 
   // Cleanup modal timer on unmount
   useEffect(() => {
@@ -295,8 +365,101 @@ export const App: React.FC = () => {
     }
   };
 
+  // Switch active tab handler
+  const handleSelectTab = (tab: ActiveTabType) => {
+    setActiveTab(tab);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Dividends handlers
+  const handleUpdateDividend = (updated: DividendHolding) => {
+    setDividends((prev) => {
+      const next = prev.map((h) => (h.id === updated.id ? updated : h));
+      saveStoredDividends(next);
+      return next;
+    });
+    if (currentUser) {
+      saveCloudDividend(updated, currentUser);
+    }
+  };
+
+  const handleAddDividend = (newHolding: DividendHolding) => {
+    setDividends((prev) => {
+      const next = [newHolding, ...prev];
+      saveStoredDividends(next);
+      return next;
+    });
+    if (currentUser) {
+      saveCloudDividend(newHolding, currentUser);
+    }
+  };
+
+  const handleDeleteDividend = (id: string) => {
+    setDividends((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      saveStoredDividends(next);
+      return next;
+    });
+    if (currentUser) {
+      deleteCloudDividend(id);
+    }
+  };
+
+  const handleResetDividendsToSample = () => {
+    setDividends(sampleInitialDividends);
+    saveStoredDividends(sampleInitialDividends);
+    if (currentUser) {
+      syncAllDividendsToCloud(sampleInitialDividends, currentUser);
+    }
+  };
+
+  // Recurring Expenses handlers
+  const handleUpdateExpense = (updated: RecurringExpense) => {
+    setExpenses((prev) => {
+      const next = prev.map((e) => (e.id === updated.id ? updated : e));
+      saveStoredExpenses(next);
+      return next;
+    });
+    if (currentUser) {
+      saveCloudExpense(updated, currentUser);
+    }
+  };
+
+  const handleAddExpense = (newExpense: RecurringExpense) => {
+    setExpenses((prev) => {
+      const next = [newExpense, ...prev];
+      saveStoredExpenses(next);
+      return next;
+    });
+    if (currentUser) {
+      saveCloudExpense(newExpense, currentUser);
+    }
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    setExpenses((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      saveStoredExpenses(next);
+      return next;
+    });
+    if (currentUser) {
+      deleteCloudExpense(id);
+    }
+  };
+
+  const handleResetExpensesToSample = () => {
+    setExpenses(sampleInitialExpenses);
+    saveStoredExpenses(sampleInitialExpenses);
+    if (currentUser) {
+      syncAllExpensesToCloud(sampleInitialExpenses, currentUser);
+    }
+  };
+
   // =========================================================================
   // SCREEN SNAPPING CONTROLLER (3 Screens)
+
   // Screen 0: Top of page (Latest Month Card)
   // Screen 1: Past card deck & compare cards
   // Screen 2: Graph over time
@@ -357,6 +520,9 @@ export const App: React.FC = () => {
     let wheelTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleWheel = (e: WheelEvent) => {
+      // Only snap screens when on Net Assets tab
+      if (activeTab !== 'assets') return;
+
       // Ignore horizontal wheel gestures (which belong to the cards deck carousel)
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
 
@@ -364,6 +530,7 @@ export const App: React.FC = () => {
         e.preventDefault();
         return;
       }
+
 
       // If scrolling inside an internal list (e.g. card items)
       const target = e.target as HTMLElement;
@@ -451,8 +618,10 @@ export const App: React.FC = () => {
     let touchStartedAtTop = false;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (activeTab !== 'assets') return;
       if (e.touches.length !== 1) return;
       touchStartY = e.touches[0].clientY;
+
       const target = e.target as HTMLElement;
       touchScrollChild = target.closest('.overflow-y-auto') as HTMLElement | null;
       if (touchScrollChild && touchScrollChild !== container) {
@@ -519,11 +688,12 @@ export const App: React.FC = () => {
         clearTimeout(childScrollSessionRef.current.releaseTimer);
       }
     };
-  }, [activeScreenIndex, scrollToScreen]);
+  }, [activeScreenIndex, scrollToScreen, activeTab]);
 
   // Keyboard navigation between screens (ArrowDown, ArrowUp, PageDown, PageUp)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (activeTab !== 'assets') return;
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
@@ -542,7 +712,8 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeScreenIndex, scrollToScreen]);
+  }, [activeScreenIndex, scrollToScreen, activeTab]);
+
 
   // Track active screen with IntersectionObserver for natural touch scroll snapping
   useEffect(() => {
@@ -577,10 +748,10 @@ export const App: React.FC = () => {
   return (
     <div 
       ref={scrollContainerRef}
-      style={{ scrollPaddingTop: 'calc(46px + env(safe-area-inset-top, 0px))' }}
-      className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300 relative"
+      style={{ scrollPaddingTop: 'calc(80px + env(safe-area-inset-top, 0px))' }}
+      className={`h-screen overflow-y-auto scroll-smooth ${activeTab === 'assets' ? 'snap-y snap-mandatory' : ''} bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300 relative`}
     >
-      {/* Header with Cloud Sync (sticky at top) */}
+      {/* Header with Cloud Sync and Navigation Tabs (sticky at top) */}
       <Header
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -588,35 +759,44 @@ export const App: React.FC = () => {
         onAddNewBlankCard={handleAddNewBlankCard}
         onExport={handleExport}
         onImport={handleImport}
+        activeTab={activeTab}
+        onChangeTab={handleSelectTab}
+        dividendsCount={dividends.length}
+        expensesCount={expenses.length}
       />
 
-      {/* Floating Screen Navigation Indicator (Right Edge) */}
-      <aside 
-        className="fixed right-2 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 p-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-xl"
-        aria-label="Screen Navigation"
-      >
-        {[
-          { index: 0, label: 'New Card' },
-          { index: 1, label: 'Past Cards & Compare' },
-          { index: 2, label: 'Asset Graph' },
-        ].map((item) => (
-          <button
-            key={item.index}
-            onClick={() => scrollToScreen(item.index)}
-            className={`transition-all duration-300 rounded-full ${
-              activeScreenIndex === item.index
-                ? 'w-2 h-4 bg-emerald-400 shadow-sm shadow-emerald-500/50 ring-1 ring-emerald-400/40'
-                : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'
-            }`}
-            title={item.label}
-          />
-        ))}
-      </aside>
+      {/* Floating Screen Navigation Indicator (Right Edge) - only active on Net Assets tab */}
+      {activeTab === 'assets' && (
+        <aside 
+          className="fixed right-2 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 p-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-xl"
+          aria-label="Screen Navigation"
+        >
+          {[
+            { index: 0, label: 'New Card' },
+            { index: 1, label: 'Past Cards & Compare' },
+            { index: 2, label: 'Asset Graph' },
+          ].map((item) => (
+            <button
+              key={item.index}
+              onClick={() => scrollToScreen(item.index)}
+              className={`transition-all duration-300 rounded-full ${
+                activeScreenIndex === item.index
+                  ? 'w-2 h-4 bg-emerald-400 shadow-sm shadow-emerald-500/50 ring-1 ring-emerald-400/40'
+                  : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'
+              }`}
+              title={item.label}
+            />
+          ))}
+        </aside>
+      )}
 
-      {/* Main Content: 3 Snapping Screens */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-[500px] w-full mx-auto px-3">
-        {/* ============================================================ */}
-        {/* SCREEN 1: TOP OF THE PAGE (NEW CARD ENTRY)                   */}
+        {activeTab === 'assets' && (
+          <>
+            {/* ============================================================ */}
+            {/* SCREEN 1: TOP OF THE PAGE (NEW CARD ENTRY)                   */}
+
         {/* ============================================================ */}
         <section
           ref={screen1Ref}
@@ -755,7 +935,42 @@ export const App: React.FC = () => {
             </div>
           </footer>
         </section>
-      </main>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* MONTHLY DIVIDENDS TRACKER TAB                                */}
+      {/* ============================================================ */}
+      {activeTab === 'dividends' && (
+        <section className="w-full pt-1 animate-in fade-in duration-150">
+          <DividendsTracker
+            holdings={dividends}
+            currentUser={currentUser}
+            onUpdateHolding={handleUpdateDividend}
+            onAddHolding={handleAddDividend}
+            onDeleteHolding={handleDeleteDividend}
+            onResetToSample={handleResetDividendsToSample}
+          />
+        </section>
+      )}
+
+      {/* ============================================================ */}
+      {/* MONTHLY & ANNUAL RECURRENT EXPENSES TRACKER TAB              */}
+      {/* ============================================================ */}
+      {activeTab === 'expenses' && (
+        <section className="w-full pt-1 animate-in fade-in duration-150">
+          <ExpensesTracker
+            expenses={expenses}
+            currentUser={currentUser}
+            onUpdateExpense={handleUpdateExpense}
+            onAddExpense={handleAddExpense}
+            onDeleteExpense={handleDeleteExpense}
+            onResetToSample={handleResetExpensesToSample}
+          />
+        </section>
+      )}
+    </main>
+
 
       {/* Auth Modal (Google, Email/Password, Magic Link, DB Config) */}
       <AuthModal
