@@ -415,6 +415,14 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleReorderDividends = (reordered: DividendHolding[]) => {
+    setDividends(reordered);
+    saveStoredDividends(reordered);
+    if (currentUser) {
+      syncAllDividendsToCloud(reordered, currentUser);
+    }
+  };
+
   // Recurring Expenses handlers
   const handleUpdateExpense = (updated: RecurringExpense) => {
     setExpenses((prev) => {
@@ -950,6 +958,7 @@ export const App: React.FC = () => {
             onAddHolding={handleAddDividend}
             onDeleteHolding={handleDeleteDividend}
             onResetToSample={handleResetDividendsToSample}
+            onReorderHoldings={handleReorderDividends}
           />
         </section>
       )}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { 
   DividendHolding, 
@@ -36,7 +36,10 @@ import {
   History,
   ChevronRight,
   Info,
-  ExternalLink
+  ExternalLink,
+  GripVertical,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 interface DividendsTrackerProps {
@@ -46,6 +49,7 @@ interface DividendsTrackerProps {
   onAddHolding: (holding: DividendHolding) => void;
   onDeleteHolding: (id: string) => void;
   onResetToSample: () => void;
+  onReorderHoldings?: (reordered: DividendHolding[]) => void;
 }
 
 export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
@@ -55,6 +59,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   onAddHolding,
   onDeleteHolding,
   onResetToSample,
+  onReorderHoldings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -90,6 +95,115 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
   // Delete Confirmation State
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Drag-and-Drop Reorder State
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const touchStartYRef = useRef<number>(0);
+  const touchSourceIdRef = useRef<string | null>(null);
+
+  // Reordering Logic
+  const handleReorder = (sourceId: string, targetId: string, position: 'before' | 'after') => {
+    if (sourceId === targetId) return;
+
+    const sourceIndex = holdings.findIndex((h) => h.id === sourceId);
+    const targetIndex = holdings.findIndex((h) => h.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const updated = [...holdings];
+    const [moved] = updated.splice(sourceIndex, 1);
+
+    const newTargetIndex = updated.findIndex((h) => h.id === targetId);
+    if (position === 'after') {
+      updated.splice(newTargetIndex + 1, 0, moved);
+    } else {
+      updated.splice(newTargetIndex, 0, moved);
+    }
+
+    if (onReorderHoldings) {
+      onReorderHoldings(updated);
+    }
+  };
+
+  const handleMoveStep = (id: string, direction: 'up' | 'down') => {
+    const currentIndex = holdings.findIndex((h) => h.id === id);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= holdings.length) return;
+    const targetId = holdings[targetIndex].id;
+    handleReorder(id, targetId, direction === 'up' ? 'before' : 'after');
+  };
+
+  // HTML5 Drag Events
+  const onDragStartCard = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const onDragOverCard = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!draggedId || draggedId === id) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const pos = e.clientY < midY ? 'before' : 'after';
+
+    setDragOverId(id);
+    setDropPosition(pos);
+  };
+
+  const onDragEndCard = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+    setDropPosition(null);
+  };
+
+  const onDropCard = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== targetId && dropPosition) {
+      handleReorder(draggedId, targetId, dropPosition);
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+    setDropPosition(null);
+  };
+
+  // Touch Drag Events for Mobile
+  const onTouchStartGrip = (e: React.TouchEvent, id: string) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    touchSourceIdRef.current = id;
+    setDraggedId(id);
+  };
+
+  const onTouchMoveGrip = (e: React.TouchEvent) => {
+    if (!touchSourceIdRef.current) return;
+    const touch = e.touches[0];
+    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cardEl = targetEl?.closest('[data-holding-id]') as HTMLElement | null;
+    if (cardEl) {
+      const targetId = cardEl.getAttribute('data-holding-id');
+      if (targetId && targetId !== touchSourceIdRef.current) {
+        const rect = cardEl.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const pos = touch.clientY < midY ? 'before' : 'after';
+        setDragOverId(targetId);
+        setDropPosition(pos);
+      }
+    }
+  };
+
+  const onTouchEndGrip = () => {
+    if (touchSourceIdRef.current && dragOverId && dropPosition && touchSourceIdRef.current !== dragOverId) {
+      handleReorder(touchSourceIdRef.current, dragOverId, dropPosition);
+    }
+    touchSourceIdRef.current = null;
+    setDraggedId(null);
+    setDragOverId(null);
+    setDropPosition(null);
+  };
 
   const currentMonthNum = new Date().getMonth() + 1; // 1-indexed (1 = Jan, ..., 12 = Dec)
   const currentYear = new Date().getFullYear();
@@ -660,165 +774,231 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
             </div>
           </div>
         ) : (
-          filteredHoldings.map((h) => {
+          filteredHoldings.map((h, idx) => {
             const paysThisMonth = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(currentMonthNum);
             const isRefreshing = refreshingId === h.id;
+            const isBeingDragged = draggedId === h.id;
+            const isTargetBefore = dragOverId === h.id && dropPosition === 'before';
+            const isTargetAfter = dragOverId === h.id && dropPosition === 'after';
 
             return (
               <div 
                 key={h.id}
-                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-sm hover:border-slate-700/80 transition-all space-y-2"
+                data-holding-id={h.id}
+                className="relative transition-all"
               >
-                {/* Top Row: Name + Category & Action buttons */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-white text-xs sm:text-sm">
-                        {h.tickerOrName}
-                      </span>
-                      <span className="text-[9px] px-2 py-0.5 rounded-md font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-                        {h.category}
-                      </span>
-                      {h.currency && (
-                        <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                          {h.currency}
-                        </span>
-                      )}
-                      {h.paymentMethodOrAccount && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-mono bg-slate-800 text-slate-400 border border-slate-700">
-                          {h.paymentMethodOrAccount}
-                        </span>
-                      )}
-                      {paysThisMonth && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          <span>Pays in {MONTH_NAMES[currentMonthNum - 1]}</span>
-                        </span>
-                      )}
+                {/* Visual Drop Line Indicator (Before) */}
+                {isTargetBefore && (
+                  <div className="h-1 w-full rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse my-1.5" />
+                )}
+
+                <div 
+                  draggable={true}
+                  onDragStart={(e) => onDragStartCard(e, h.id)}
+                  onDragOver={(e) => onDragOverCard(e, h.id)}
+                  onDragEnd={onDragEndCard}
+                  onDrop={(e) => onDropCard(e, h.id)}
+                  className={`p-3 rounded-2xl bg-slate-900/90 border transition-all space-y-2 select-none ${
+                    isBeingDragged
+                      ? 'opacity-40 border-cyan-500/70 scale-[0.98] shadow-2xl ring-2 ring-cyan-500/40 bg-slate-800'
+                      : 'border-slate-800/90 shadow-sm hover:border-slate-700/80'
+                  }`}
+                >
+                  {/* Top Row: Drag Handle + Name + Category & Action buttons */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
+                      {/* Drag Handle & Mobile Reorder Nudge */}
+                      <div 
+                        className="flex flex-col items-center justify-center pt-0.5 text-slate-500 hover:text-cyan-400 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+                        title="Click and drag to reorder"
+                        onTouchStart={(e) => onTouchStartGrip(e, h.id)}
+                        onTouchMove={onTouchMoveGrip}
+                        onTouchEnd={onTouchEndGrip}
+                      >
+                        <GripVertical className="w-4 h-4" />
+                        <div className="flex flex-col items-center -space-y-1 mt-0.5 sm:hidden">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveStep(h.id, 'up');
+                            }}
+                            disabled={idx === 0}
+                            className="p-0.5 text-slate-500 hover:text-cyan-300 disabled:opacity-20"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveStep(h.id, 'down');
+                            }}
+                            disabled={idx === filteredHoldings.length - 1}
+                            className="p-0.5 text-slate-500 hover:text-cyan-300 disabled:opacity-20"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-white text-xs sm:text-sm">
+                            {h.tickerOrName}
+                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-md font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            {h.category}
+                          </span>
+                          {h.currency && (
+                            <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                              {h.currency}
+                            </span>
+                          )}
+                          {h.paymentMethodOrAccount && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-mono bg-slate-800 text-slate-400 border border-slate-700">
+                              {h.paymentMethodOrAccount}
+                            </span>
+                          )}
+                          {paysThisMonth && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>Pays in {MONTH_NAMES[currentMonthNum - 1]}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {h.shares ? (
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono-num flex items-center gap-2">
+                            <span>{h.shares.toLocaleString()} shares</span>
+                            {h.dividendPerShare ? (
+                              <span>@ {formatCurrency(h.dividendPerShare, { showCents: true })} DPS</span>
+                            ) : null}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
 
-                    {h.shares ? (
-                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono-num flex items-center gap-2">
-                        <span>{h.shares.toLocaleString()} shares</span>
-                        {h.dividendPerShare ? (
-                          <span>@ {formatCurrency(h.dividendPerShare, { showCents: true })} DPS</span>
-                        ) : null}
-                      </p>
-                    ) : null}
+                    {/* Actions (Re-scrape Web, Edit, Delete) */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleQuickRefreshHolding(h)}
+                        disabled={isRefreshing}
+                        className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+                        title="Re-fetch / scrape latest dividend data"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => handleOpenEdit(h)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      {deletingId === h.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              onDeleteHolding(h.id);
+                              setDeletingId(null);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="px-1 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeletingId(h.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions (Re-scrape Web, Edit, Delete) */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleQuickRefreshHolding(h)}
-                      disabled={isRefreshing}
-                      className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
-                      title="Re-fetch / scrape latest dividend data"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(h)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    {deletingId === h.id ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => {
-                            onDeleteHolding(h.id);
-                            setDeletingId(null);
-                          }}
-                          className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(null)}
-                          className="px-1 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px]"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeletingId(h.id)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  {/* Middle Row: Auto-Calculated Metrics (Expected Yearly, Monthly Average, Past 1Y, YTD) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 rounded-xl bg-slate-950/60 border border-slate-800/60 text-xs">
+                    <div>
+                      <span className="text-[9px] text-slate-500 block">Expected Yearly</span>
+                      <span className="font-bold text-emerald-400 font-mono-num text-xs sm:text-sm">
+                        {formatCurrency(h.expectedYearlyDividends || h.totalAnnualPayout)}
+                      </span>
+                      <span className="text-[9px] text-slate-400 ml-1">/ yr</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] text-slate-500 block">Monthly Average</span>
+                      <span className="font-bold text-cyan-400 font-mono-num text-xs sm:text-sm">
+                        {formatCurrency(h.monthlyAverageDividends || ((h.totalAnnualPayout || 0) / 12))}
+                      </span>
+                      <span className="text-[9px] text-slate-400 ml-1">/ mo</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] text-slate-500 block">Past 1 Year (TTM)</span>
+                      <span className="font-semibold text-purple-300 font-mono-num text-[11px] sm:text-xs">
+                        {formatCurrency(h.pastYearDividends !== undefined ? h.pastYearDividends : h.totalAnnualPayout)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] text-slate-500 block">YTD ({currentYear})</span>
+                      <span className="font-semibold text-amber-300 font-mono-num text-[11px] sm:text-xs">
+                        {formatCurrency(h.ytdDividends !== undefined ? h.ytdDividends : (h.totalAnnualPayout * (currentMonthNum / 12)))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Month Badges & Notes */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                    {/* Months Badges */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[9px] text-slate-500">Payouts ({h.frequency}):</span>
+                      {MONTH_NAMES.map((mName, mIdx) => {
+                        const mNum = mIdx + 1;
+                        const isPaying = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(mNum);
+                        if (!isPaying) return null;
+                        const isCurrent = mNum === currentMonthNum;
+                        return (
+                          <span 
+                            key={mName}
+                            className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                              isCurrent
+                                ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 ring-1 ring-cyan-400/40'
+                                : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                            }`}
+                          >
+                            {mName}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Notes */}
+                    {h.notes && (
+                      <span className="text-[10px] text-slate-400 italic truncate max-w-full">
+                        {h.notes}
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Middle Row: Auto-Calculated Metrics (Expected Yearly, Monthly Average, Past 1Y, YTD) */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 rounded-xl bg-slate-950/60 border border-slate-800/60 text-xs">
-                  <div>
-                    <span className="text-[9px] text-slate-500 block">Expected Yearly</span>
-                    <span className="font-bold text-emerald-400 font-mono-num text-xs sm:text-sm">
-                      {formatCurrency(h.expectedYearlyDividends || h.totalAnnualPayout)}
-                    </span>
-                    <span className="text-[9px] text-slate-400 ml-1">/ yr</span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-500 block">Monthly Average</span>
-                    <span className="font-bold text-cyan-400 font-mono-num text-xs sm:text-sm">
-                      {formatCurrency(h.monthlyAverageDividends || ((h.totalAnnualPayout || 0) / 12))}
-                    </span>
-                    <span className="text-[9px] text-slate-400 ml-1">/ mo</span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-500 block">Past 1 Year (TTM)</span>
-                    <span className="font-semibold text-purple-300 font-mono-num text-[11px] sm:text-xs">
-                      {formatCurrency(h.pastYearDividends !== undefined ? h.pastYearDividends : h.totalAnnualPayout)}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] text-slate-500 block">YTD ({currentYear})</span>
-                    <span className="font-semibold text-amber-300 font-mono-num text-[11px] sm:text-xs">
-                      {formatCurrency(h.ytdDividends !== undefined ? h.ytdDividends : (h.totalAnnualPayout * (currentMonthNum / 12)))}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Row: Month Badges & Notes */}
-                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
-                  {/* Months Badges */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[9px] text-slate-500">Payouts ({h.frequency}):</span>
-                    {MONTH_NAMES.map((mName, idx) => {
-                      const mNum = idx + 1;
-                      const isPaying = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(mNum);
-                      if (!isPaying) return null;
-                      const isCurrent = mNum === currentMonthNum;
-                      return (
-                        <span 
-                          key={mName}
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
-                            isCurrent
-                              ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 ring-1 ring-cyan-400/40'
-                              : 'bg-slate-800 text-slate-300 border border-slate-700/60'
-                          }`}
-                        >
-                          {mName}
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  {/* Notes */}
-                  {h.notes && (
-                    <span className="text-[10px] text-slate-400 italic truncate max-w-full">
-                      {h.notes}
-                    </span>
-                  )}
-                </div>
+                {/* Visual Drop Line Indicator (After) */}
+                {isTargetAfter && (
+                  <div className="h-1 w-full rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-pulse my-1.5" />
+                )}
               </div>
             );
           })
