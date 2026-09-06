@@ -35,20 +35,20 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) BLUE CHIPS & INDUSTRIAL / TECH
   // =========================================================================
-  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 2.65 },
-  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 2.65 },
-  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
-  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
-  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
-  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
-  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
-  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
-  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
-  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
-  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
-  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.1125, frequency: 'quarterly', months: [2, 5, 10, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 10: 0.105, 11: 0.1075 }, price: 25.30 },
-  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.1125, frequency: 'quarterly', months: [2, 5, 10, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 10: 0.105, 11: 0.1075 }, price: 25.30 },
-  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.1125, frequency: 'quarterly', months: [2, 5, 10, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 10: 0.105, 11: 0.1075 }, price: 25.30 },
+  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 1.68 },
+  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 1.68 },
+  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
+  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
+  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
+  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
+  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
+  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
+  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
+  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
+  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
   'Z74.SI': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
   'Z74': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
   'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
@@ -235,129 +235,170 @@ export interface DividendBackendResult {
     date: string;
     timestamp: number;
     amount: number;
+    exDate?: string;
   }>;
-  source?: 'eodhd' | 'yfinance';
+  source?: 'digrin';
+  digrinUrl?: string;
   providerNote?: string;
   warning?: string;
   error?: string;
 }
 
 /**
- * Direct client-side EODHD fetch when user enters an EODHD API token in browser
+ * Parse raw HTML from Digrin.com (https://www.digrin.com/stocks/detail/{ticker}/)
+ * CRITICAL RULE: Uses column 1 "Payable date" to derive payout schedules, months, and distributions.
  */
-async function fetchFromEodhdClient(symbol: string, apiToken: string): Promise<DividendBackendResult | null> {
-  if (!apiToken) return null;
-  const cleanSym = symbol.trim().toUpperCase();
-  const isSgx = cleanSym.endsWith('.SI') || (cleanSym.length <= 5 && /\d/.test(cleanSym));
-  const bareSym = cleanSym.replace(/\.SI$/i, '');
+export function parseDigrinHtml(html: string, rawTicker: string): DividendBackendResult | null {
+  if (!html) return null;
+  const cleanTicker = normalizeTickerInput(rawTicker);
 
-  const candidateTickers = isSgx
-    ? [`${bareSym}.XSES`, `${bareSym}.SG`]
-    : (!cleanSym.includes('.') ? [`${cleanSym}.US`, cleanSym] : [cleanSym]);
+  // 1. Company Name
+  const titleMatch = html.match(/<h1>([^<]+)<\/h1>/i);
+  const headerText = titleMatch ? titleMatch[1].trim() : cleanTicker;
+  const nameMatch = headerText.match(/^(.*?)\s*(?:\([^)]+\))?\s*Dividends/i);
+  const companyName = nameMatch ? nameMatch[1].trim() : headerText;
 
-  for (const cand of candidateTickers) {
-    try {
-      const url = `https://eodhd.com/api/div/${encodeURIComponent(cand)}?api_token=${encodeURIComponent(apiToken)}&fmt=json`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        const raw = await res.json();
-        if (Array.isArray(raw) && raw.length > 0) {
-          raw.sort((a, b) => ((b.paymentDate || b.date || '').localeCompare(a.paymentDate || a.date || '')));
+  // 2. Extract Table containing Payable date
+  const tableMatch = html.match(/<th>Payable date<\/th>[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+  if (!tableMatch) return null;
 
-          const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
-          let currency = isSgx ? 'SGD' : 'USD';
-          let latestPeriod: string | undefined = undefined;
+  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
+  let latestPrice: number | undefined = undefined;
+  let currency = cleanTicker.endsWith('.SI') ? 'SGD' : 'USD';
 
-          for (const it of raw.slice(0, 24)) {
-            const pDate = it.paymentDate || it.date || '';
-            const amt = parseFloat(it.value || it.unadjustedValue || '0');
-            if (amt > 0 && pDate) {
-              if (!latestPeriod && it.period) latestPeriod = String(it.period).toLowerCase();
-              if (it.currency) currency = it.currency;
-              const dt = new Date(pDate);
-              events.push({
-                date: pDate.slice(0, 10),
-                timestamp: !isNaN(dt.getTime()) ? dt.getTime() : Date.now(),
-                amount: Math.round(amt * 10000) / 10000,
-                exDate: it.date || ''
-              });
-            }
-          }
+  let rowMatch;
+  while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
+    const rowContent = rowMatch[1];
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const tds: string[] = [];
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
+      tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim());
+    }
 
-          if (events.length === 0) continue;
+    if (tds.length < 3) continue;
 
-          let freq: DividendFrequency = 'quarterly';
-          let cycleCount = 4;
-          if (latestPeriod) {
-            if (latestPeriod.includes('quarter')) { freq = 'quarterly'; cycleCount = 4; }
-            else if (latestPeriod.includes('semi')) { freq = 'semi-annually'; cycleCount = 2; }
-            else if (latestPeriod.includes('month')) { freq = 'monthly'; cycleCount = 12; }
-            else if (latestPeriod.includes('annu')) { freq = 'annually'; cycleCount = 1; }
-          } else {
-            const now = Date.now();
-            const oneYr = now - 365.25 * 86400000;
-            const recent1y = events.filter(e => e.timestamp >= oneYr && e.timestamp <= now);
-            if (recent1y.length >= 8) { freq = 'monthly'; cycleCount = 12; }
-            else if (recent1y.length === 2 || events.length === 2) { freq = 'semi-annually'; cycleCount = 2; }
-            else if (recent1y.length === 1 || events.length === 1) { freq = 'annually'; cycleCount = 1; }
-          }
+    const exDate = tds[0];
+    const payableDate = tds[1];
+    const divRaw = tds[2];
 
-          const recentCycle = events.slice(0, Math.min(cycleCount, events.length));
-          const annualDps = Math.round(recentCycle.reduce((s, e) => s + e.amount, 0) * 10000) / 10000;
-          const latestDPS = events[0].amount;
-
-          const monthsSet = new Set<number>();
-          const monthlyDpu: Record<number, number> = {};
-          recentCycle.forEach(e => {
-            const m = parseInt(e.date.split('-')[1], 10);
-            if (!isNaN(m)) {
-              monthsSet.add(m);
-              monthlyDpu[m] = e.amount;
-            }
-          });
-
-          return {
-            symbol: cleanSym,
-            name: cleanSym,
-            currency,
-            annualDps,
-            latestDPS,
-            frequency: freq,
-            months: Array.from(monthsSet).sort((a, b) => a - b),
-            monthlyDpu,
-            events,
-            source: 'eodhd'
-          };
-        }
+    if (latestPrice === undefined && tds.length >= 5) {
+      const pm = tds[4].match(/([\d\.]+)/);
+      if (pm) {
+        const p = parseFloat(pm[1]);
+        if (!isNaN(p)) latestPrice = Math.round(p * 100) / 100;
       }
-    } catch {
-      // Continue to next candidate
+    }
+
+    const amtMatch = divRaw.match(/([\d\.]+)/);
+    const currMatch = divRaw.match(/([A-Za-z]{3})/);
+    if (currMatch) currency = currMatch[1].toUpperCase();
+
+    // MUST use Payable Date!
+    if (amtMatch && payableDate && /^\d{4}-\d{2}-\d{2}$/.test(payableDate)) {
+      const amt = parseFloat(amtMatch[1]);
+      if (!isNaN(amt) && amt > 0) {
+        const dt = new Date(payableDate);
+        const ts = !isNaN(dt.getTime()) ? dt.getTime() : 0;
+        events.push({
+          date: payableDate,
+          timestamp: ts,
+          amount: Math.round(amt * 10000) / 10000,
+          exDate: /^\d{4}-\d{2}-\d{2}$/.test(exDate) ? exDate : undefined,
+        });
+      }
     }
   }
-  return null;
+
+  if (events.length === 0) return null;
+
+  // Sort descending by Payable Date
+  events.sort((a, b) => b.date.localeCompare(a.date));
+
+  // Determine frequency and payout months from actual Payable Dates
+  const payoutMonthsSet = new Set<number>();
+  events.slice(0, 12).forEach((e) => {
+    const m = parseInt(e.date.split('-')[1], 10);
+    if (!isNaN(m)) payoutMonthsSet.add(m);
+  });
+
+  const now = Date.now();
+  const oneYearAgo = now - 365.25 * 86400000;
+  const recent1y = events.filter((e) => e.timestamp >= oneYearAgo && e.timestamp <= now);
+
+  let freq: DividendFrequency = 'quarterly';
+  let cycleCount = 4;
+  if (payoutMonthsSet.size >= 8 || recent1y.length >= 8) {
+    freq = 'monthly';
+    cycleCount = 12;
+  } else if (payoutMonthsSet.size >= 3 || recent1y.length >= 3) {
+    freq = 'quarterly';
+    cycleCount = 4;
+  } else if (payoutMonthsSet.size === 2 || recent1y.length === 2) {
+    freq = 'semi-annually';
+    cycleCount = 2;
+  } else {
+    freq = 'annually';
+    cycleCount = 1;
+  }
+
+  const recentCycle = events.slice(0, Math.min(cycleCount, events.length));
+  const annualDps = Math.round(recentCycle.reduce((s, e) => s + e.amount, 0) * 10000) / 10000;
+  const latestDPS = events[0].amount;
+
+  const monthsSet = new Set<number>();
+  const monthlyDpu: Record<number, number> = {};
+  recentCycle.forEach((e) => {
+    const m = parseInt(e.date.split('-')[1], 10);
+    if (!isNaN(m)) {
+      monthsSet.add(m);
+      monthlyDpu[m] = Math.round(((monthlyDpu[m] || 0) + e.amount) * 10000) / 10000;
+    }
+  });
+
+  const months = Array.from(monthsSet).sort((a, b) => a - b);
+
+  return {
+    symbol: cleanTicker,
+    name: companyName,
+    currency,
+    price: latestPrice,
+    annualDps,
+    latestDPS,
+    frequency: freq,
+    months,
+    monthlyDpu,
+    events: events.slice(0, 24),
+    source: 'digrin',
+    digrinUrl: `https://www.digrin.com/stocks/detail/${cleanTicker}/`
+  };
 }
 
 /**
- * Priority 1: Query backend dividend service (EODHD / yfinance python script), with direct EODHD fallback
+ * Fetch dividend information from Digrin.com (Sole Source of Truth)
+ * 1. Queries local Vite dev middleware / Python backend
+ * 2. If running client-only (production / GitHub Pages), queries via proxy
  */
-async function fetchFromDividendBackend(symbol: string): Promise<DividendBackendResult | null> {
-  const userEodhdKey = typeof window !== 'undefined' ? (localStorage.getItem('eodhd_api_key') || localStorage.getItem('eodhd_api_token') || '') : '';
-  const eodhdParam = userEodhdKey ? `&eodhd_key=${encodeURIComponent(userEodhdKey)}` : '';
+async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | null> {
+  const cleanSym = normalizeTickerInput(symbol);
+  if (!cleanSym) return null;
 
-  const endpoints = [
-    `/api/dividend?ticker=${encodeURIComponent(symbol)}${eodhdParam}`,
-    `/api/yfinance?ticker=${encodeURIComponent(symbol)}${eodhdParam}`,
-    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(symbol)}${eodhdParam}`
+  // 1. Try local dev endpoints
+  const localEndpoints = [
+    `/api/dividend?ticker=${encodeURIComponent(cleanSym)}`,
+    `/api/digrin?ticker=${encodeURIComponent(cleanSym)}`,
+    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(cleanSym)}`
   ];
 
-  for (const endpoint of endpoints) {
+  for (const endpoint of localEndpoints) {
     try {
-      const res = await fetch(endpoint, {
-        signal: AbortSignal.timeout(6000),
-      });
+      const res = await fetch(endpoint, { signal: AbortSignal.timeout(6000) });
       if (res.ok) {
         const data: DividendBackendResult = await res.json();
-        if (data && data.symbol && !data.error) {
+        if (data && data.symbol && !data.error && data.events && data.events.length > 0) {
+          data.source = 'digrin';
+          data.digrinUrl = data.digrinUrl || `https://www.digrin.com/stocks/detail/${cleanSym}/`;
           return data;
         }
       }
@@ -366,17 +407,35 @@ async function fetchFromDividendBackend(symbol: string): Promise<DividendBackend
     }
   }
 
-  // If local python backend server not running, try direct EODHD client fetch if key provided
-  if (userEodhdKey) {
-    const directResult = await fetchFromEodhdClient(symbol, userEodhdKey);
-    if (directResult) return directResult;
+  // 2. Direct HTML fetch via proxies (local Vite dev proxy or public CORS proxies for GitHub Pages)
+  const targetUrl = `https://www.digrin.com/stocks/detail/${cleanSym}/`;
+  const proxyUrls = [
+    `/digrin-proxy/stocks/detail/${cleanSym}/`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`
+  ];
+
+  for (const proxyUrl of proxyUrls) {
+    try {
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const html = await res.text();
+        const parsed = parseDigrinHtml(html, cleanSym);
+        if (parsed && parsed.events.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Continue to next proxy
+    }
   }
 
   return null;
 }
 
 /**
- * Fetch dividend information prioritizing EODHD and Python yfinance.
+ * Fetch dividend information using Digrin.com as the sole source of truth,
+ * with strict adherence to Payable Dates.
  */
 export const scrapeDividendsForTicker = async (
   rawTicker: string,
@@ -386,17 +445,10 @@ export const scrapeDividendsForTicker = async (
   const shares = Math.max(Number(sharesCount) || 0, 0);
 
   const bareSymbol = cleanTicker.replace(/\.SI$/i, '');
-  const candidateSymbols: string[] = [cleanTicker];
-  if (cleanTicker.endsWith('.SI')) {
-    candidateSymbols.push(bareSymbol);
-  } else {
-    candidateSymbols.push(`${cleanTicker}.SI`);
-  }
-
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
-  // 1. Try local dividend backend service (EODHD or yfinance)
-  const backendResult = await fetchFromDividendBackend(cleanTicker);
+  // 1. Fetch from Digrin.com
+  const backendResult = await fetchFromDigrin(cleanTicker);
 
   let companyName = preset?.name || cleanTicker;
   let currency = preset?.currency || (cleanTicker.endsWith('.SI') ? 'SGD' : 'USD');
@@ -407,18 +459,19 @@ export const scrapeDividendsForTicker = async (
   let latestDPS = preset?.fallbackDPS || 0;
   let rawEventsList: RawDividendItem[] = [];
   let isLive = false;
-  let apiProvider: 'eodhd' | 'yfinance' | undefined = undefined;
-  let warningNote: string | undefined = backendResult?.providerNote;
+  const apiProvider: 'digrin' = 'digrin';
+  let digrinUrl = `https://www.digrin.com/stocks/detail/${cleanTicker}/`;
+  const warningNote: string | undefined = backendResult?.warning;
 
   if (backendResult) {
     isLive = true;
-    apiProvider = backendResult.source || 'yfinance';
     companyName = backendResult.name || companyName;
     currency = backendResult.currency || currency;
     if (backendResult.price) currentPrice = backendResult.price;
     frequency = backendResult.frequency;
     payoutMonths = backendResult.months.length > 0 ? backendResult.months : payoutMonths;
     latestDPS = backendResult.latestDPS;
+    digrinUrl = backendResult.digrinUrl || digrinUrl;
 
     if (backendResult.monthlyDpu) {
       Object.entries(backendResult.monthlyDpu).forEach(([k, v]) => {
@@ -434,7 +487,6 @@ export const scrapeDividendsForTicker = async (
     }
   } else {
     // Fall back to verified benchmark dataset
-    apiProvider = 'yfinance';
     if (preset?.monthlyDpu) {
       monthlyDpu = { ...preset.monthlyDpu };
     }
@@ -520,8 +572,6 @@ export const scrapeDividendsForTicker = async (
     ? 'live_web'
     : (preset ? 'verified_dataset' : 'custom_estimate');
 
-  const apiQueryUrl = undefined;
-
   return {
     ticker: cleanTicker,
     name: companyName,
@@ -540,7 +590,7 @@ export const scrapeDividendsForTicker = async (
     pastPayouts,
     dataSource,
     apiProvider,
-    apiQueryUrl,
+    digrinUrl,
     isEstimated: !isLive,
     warningNote,
   };

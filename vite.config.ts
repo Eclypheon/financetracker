@@ -10,19 +10,19 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function yfinanceDevPlugin() {
+function digrinDevPlugin() {
   const scriptPath = path.resolve(__dirname, 'scripts/fetch_dividends.py');
   const cache = new Map<string, { data: string; time: number }>();
-  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
   return {
-    name: 'yfinance-dev-api',
+    name: 'digrin-dev-api',
     configureServer(server: any) {
       server.middlewares.use(async (req: any, res: any, next: any) => {
         const parsedUrl = new URL(req.url, 'http://localhost');
-        if (parsedUrl.pathname === '/api/dividend' || parsedUrl.pathname === '/api/yfinance') {
+        if (parsedUrl.pathname === '/api/dividend' || parsedUrl.pathname === '/api/digrin') {
           const ticker = parsedUrl.searchParams.get('ticker') || parsedUrl.searchParams.get('symbol');
-          const eodhdKey = (parsedUrl.searchParams.get('eodhd_key') || parsedUrl.searchParams.get('eodhd_token') || process.env.EODHD_API_KEY || process.env.EODHD_API_TOKEN || '').trim();
+          const refresh = parsedUrl.searchParams.get('refresh') === 'true' || parsedUrl.searchParams.get('refresh') === '1';
           if (!ticker) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
@@ -31,9 +31,8 @@ function yfinanceDevPlugin() {
           }
 
           const upper = ticker.trim().toUpperCase();
-          const cacheKey = eodhdKey ? `${upper}_${eodhdKey}` : upper;
-          const cached = cache.get(cacheKey);
-          if (cached && Date.now() - cached.time < CACHE_TTL) {
+          const cached = cache.get(upper);
+          if (!refresh && cached && Date.now() - cached.time < CACHE_TTL) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,19 +40,19 @@ function yfinanceDevPlugin() {
             return;
           }
 
-          // 1. Try local standalone Python server if already running
+          // 1. Try local standalone Python server if running
           try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 600);
             const queryParams = new URLSearchParams({ ticker: upper });
-            if (eodhdKey) queryParams.set('eodhd_key', eodhdKey);
+            if (refresh) queryParams.set('refresh', '1');
             const serverRes = await fetch(`http://127.0.0.1:5001/api/dividend?${queryParams.toString()}`, {
               signal: controller.signal
             });
             clearTimeout(timeout);
             if (serverRes.ok) {
               const body = await serverRes.text();
-              cache.set(cacheKey, { data: body, time: Date.now() });
+              cache.set(upper, { data: body, time: Date.now() });
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
@@ -65,8 +64,7 @@ function yfinanceDevPlugin() {
           }
 
           // 2. Direct python3 execution via Node child_process
-          const pyArgs = eodhdKey ? [scriptPath, upper, eodhdKey] : [scriptPath, upper];
-          execFile('python3', pyArgs, (err, stdout, stderr) => {
+          execFile('python3', [scriptPath, upper], (err, stdout, stderr) => {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
             if (err && !stdout) {
@@ -75,7 +73,6 @@ function yfinanceDevPlugin() {
               return;
             }
             try {
-              // Extract the JSON portion from stdout defensively
               const str = stdout || '';
               const startIdx = str.indexOf('{');
               const endIdx = str.lastIndexOf('}');
@@ -85,7 +82,7 @@ function yfinanceDevPlugin() {
                 res.statusCode = 404;
               } else {
                 res.statusCode = 200;
-                cache.set(cacheKey, { data: jsonStr, time: Date.now() });
+                cache.set(upper, { data: jsonStr, time: Date.now() });
               }
               res.end(jsonStr);
             } catch (parseErr) {
@@ -104,8 +101,21 @@ function yfinanceDevPlugin() {
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
+  server: {
+    proxy: {
+      '/digrin-proxy': {
+        target: 'https://www.digrin.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/digrin-proxy/, ''),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+      }
+    }
+  },
   plugins: [
-    yfinanceDevPlugin(),
+    digrinDevPlugin(),
     react(),
     tailwindcss(),
 

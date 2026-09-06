@@ -42,7 +42,7 @@ import {
   ChevronUp,
   ChevronDown,
   ShieldCheck,
-  Key
+  ExternalLink
 } from 'lucide-react';
 
 interface DividendsTrackerProps {
@@ -89,8 +89,6 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [scrapedResult, setScrapedResult] = useState<ScrapedDividendResult | null>(null);
   const [showPayoutHistory, setShowPayoutHistory] = useState(false);
-  const [eodhdKey, setEodhdKey] = useState<string>(() => (typeof window !== 'undefined' ? (localStorage.getItem('eodhd_api_key') || localStorage.getItem('eodhd_api_token') || '') : ''));
-  const [showKeyInput, setShowKeyInput] = useState(false);
 
   // Re-scrape All State
   const [isReScrapingAll, setIsReScrapingAll] = useState(false);
@@ -1361,18 +1359,18 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                 </div>
 
                 {/* Data Pipeline Information Bar */}
-                <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800/80 text-[10px] space-y-1">
+                <div className="p-2.5 rounded-xl bg-slate-950/70 border border-cyan-500/30 text-[10px] space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="flex items-center gap-1 font-medium text-slate-300">
-                      <Info className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                      <span>Data Pipeline: <strong>EODHD &amp; yfinance</strong></span>
+                    <span className="flex items-center gap-1.5 font-medium text-slate-200">
+                      <Info className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                      <span>Data Source: <strong className="text-white">Digrin.com</strong> (Sole Source of Truth)</span>
                     </span>
-                    <span className="text-[9px] text-emerald-400 font-mono font-bold">
-                      {eodhdKey ? 'EODHD Active' : 'yfinance Active'}
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Payable Date Verified
                     </span>
                   </div>
-                  <p className="text-[9px] text-slate-500 leading-relaxed">
-                    Supports <strong>all global tickers</strong>. SGX symbols (e.g. <code>A35</code>, <code>5DD</code>, <code>D05</code>, <code>A17U</code>) are automatically formatted for EODHD (<code>.XSES</code>/<code>.SG</code>) and yfinance (<code>.SI</code>).
+                  <p className="text-[9px] text-slate-400 leading-relaxed">
+                    All dividend data is scraped directly from <code className="text-cyan-300">https://www.digrin.com/stocks/detail/[ticker]/</code>. Payout schedules, frequencies, and annual distributions are strictly derived from the <strong>Payable Date</strong> (not Ex-Dividend date).
                   </p>
                 </div>
 
@@ -1381,16 +1379,15 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   <span className="text-[10px] text-slate-500 block mb-1">Popular Quick Fill:</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[
-                      { label: 'A35 (ABF Bond)', symbol: 'A35', shares: '1000' },
-                      { label: '5DD (Micro-Mech)', symbol: '5DD', shares: '1000' },
-                      { label: 'DBS', symbol: 'D05', shares: '1000' },
-                      { label: 'OCBC', symbol: 'O39', shares: '1000' },
-                      { label: 'UOB', symbol: 'U11', shares: '1000' },
-                      { label: 'Singtel', symbol: 'Z74', shares: '5000' },
-                      { label: 'CLAR', symbol: 'A17U', shares: '2000' },
-                      { label: 'CICT', symbol: 'C38U', shares: '2000' },
-                      { label: 'VOO', symbol: 'VOO', shares: '100' },
-                      { label: 'SCHD', symbol: 'SCHD', shares: '200' },
+                      { label: '5DD (Micro-Mech)', symbol: '5DD.SI', shares: '1000' },
+                      { label: 'DBS', symbol: 'D05.SI', shares: '1000' },
+                      { label: 'SGX', symbol: 'S68.SI', shares: '1000' },
+                      { label: 'OCBC', symbol: 'O39.SI', shares: '1000' },
+                      { label: 'UOB', symbol: 'U11.SI', shares: '1000' },
+                      { label: 'Singtel', symbol: 'Z74.SI', shares: '5000' },
+                      { label: 'CLAR', symbol: 'A17U.SI', shares: '2000' },
+                      { label: 'CICT', symbol: 'C38U.SI', shares: '2000' },
+                      { label: 'Apple', symbol: 'AAPL', shares: '100' },
                       { label: 'Realty Income', symbol: 'O', shares: '150' },
                     ].map((item) => (
                       <button
@@ -1401,62 +1398,12 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                           setScrapeSharesInput(item.shares);
                           handleRunScraper(item.symbol, item.shares);
                         }}
-                        className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-950 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 transition-colors font-medium"
+                        className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-950 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 transition-colors font-medium cursor-pointer"
                       >
                         {item.label}
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* EODHD API Token Configuration (Optional) */}
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setShowKeyInput(!showKeyInput)}
-                      className="text-slate-300 hover:text-cyan-300 font-medium flex items-center gap-1.5 text-[10px] cursor-pointer"
-                    >
-                      <Key className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>EODHD API Token {eodhdKey ? '(Active)' : '(Optional)'}</span>
-                      <span className="text-[9px] text-cyan-400 font-bold ml-1">{showKeyInput ? '▲' : '▼'}</span>
-                    </button>
-                    <span className="text-[9px] text-slate-500 font-mono">
-                      EODHD → yfinance
-                    </span>
-                  </div>
-                  {showKeyInput && (
-                    <div className="pt-1.5 space-y-1.5 border-t border-slate-800/80">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="password"
-                          placeholder="Enter your EODHD API token..."
-                          value={eodhdKey}
-                          onChange={(e) => {
-                            const val = e.target.value.trim();
-                            setEodhdKey(val);
-                            localStorage.setItem('eodhd_api_key', val);
-                          }}
-                          className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
-                        />
-                        {eodhdKey && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEodhdKey('');
-                              localStorage.removeItem('eodhd_api_key');
-                            }}
-                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-1.5 py-1"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[9px] text-slate-400 leading-tight">
-                        Provides exact dividend payout dates (maps SGX to <code className="text-cyan-400">.XSES</code> / <code className="text-cyan-400">.SG</code>). If not configured, automatically falls back to Python yfinance.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Fetch Button */}
@@ -1543,25 +1490,29 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-200 flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                          {scrapedResult.apiProvider === 'eodhd'
-                            ? 'EODHD Payment Date Verified'
-                            : 'yfinance Verified'}
+                          Digrin.com Verified (Payable Date)
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                          {scrapedResult.apiProvider === 'eodhd'
-                            ? 'EODHD Live'
-                            : scrapedResult.dataSource === 'live_web'
-                            ? 'yfinance Live'
-                            : 'yfinance Verified'}
+                          {scrapedResult.dataSource === 'live_web' ? 'Digrin Live' : 'Digrin Verified'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 leading-snug">
-                        {scrapedResult.apiProvider === 'eodhd'
-                          ? `Live distributions retrieved from EODHD with explicit payment dates (${scrapedResult.pastPayouts.length} payments recorded). SGX tickers auto-mapped to .XSES / .SG.`
-                          : scrapedResult.dataSource === 'live_web'
-                          ? `Live distributions retrieved and verified via Python yfinance (${scrapedResult.pastPayouts.length} past payments recorded).`
-                          : `Distributions verified from authoritative yfinance benchmark dataset (${scrapedResult.pastPayouts.length} past payments recorded).`}
+                        {scrapedResult.dataSource === 'live_web'
+                          ? `Live distributions scraped from Digrin.com with explicit Payable Dates (${scrapedResult.pastPayouts.length} payouts recorded). Payout months and frequencies derived strictly from Payable Dates.`
+                          : `Distributions verified from Digrin.com benchmark dataset (${scrapedResult.pastPayouts.length} payouts recorded). Payout months derived strictly from Payable Dates.`}
                       </p>
+                      <div className="pt-1 flex items-center justify-between">
+                        <a
+                          href={scrapedResult.digrinUrl || `https://www.digrin.com/stocks/detail/${scrapedResult.ticker}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 underline font-medium"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View {scrapedResult.ticker} on Digrin.com ↗
+                        </a>
+                        <span className="text-[10px] text-slate-500">Sole Source of Truth</span>
+                      </div>
                     </div>
 
                     {/* 4 Big Auto-Calculated Metrics (Past 1 Year, YTD, Expected Yearly, Monthly Avg) */}

@@ -13,7 +13,7 @@ from fetch_dividends import fetch_dividend_info
 
 PORT = int(os.environ.get("DIVIDEND_PORT", 5001))
 CACHE = {}
-CACHE_TTL = 600  # 10 minutes
+CACHE_TTL = 3600  # 1 hour in-memory cache (file cache handles 24 hours)
 
 class DividendHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -35,13 +35,13 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "ok", "service": "yfinance-dividend-service"}).encode('utf-8'))
+            self.wfile.write(json.dumps({"status": "ok", "service": "digrin-dividend-service"}).encode('utf-8'))
             return
 
-        if parsed.path in ('/api/dividend', '/api/yfinance'):
+        if parsed.path in ('/api/dividend', '/api/digrin'):
             query_params = urllib.parse.parse_qs(parsed.query)
             ticker = query_params.get('ticker', query_params.get('symbol', ['']))[0].strip()
-            eodhd_key = query_params.get('eodhd_key', query_params.get('eodhd_token', ['']))[0].strip()
+            refresh = query_params.get('refresh', ['0'])[0].lower() in ('1', 'true', 'yes')
             
             if not ticker:
                 self.send_response(400)
@@ -53,13 +53,12 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
 
             now = time.time()
             ticker_upper = ticker.upper()
-            cache_key = f"{ticker_upper}_{eodhd_key}" if eodhd_key else ticker_upper
-            if cache_key in CACHE and (now - CACHE[cache_key]['timestamp'] < CACHE_TTL):
-                data = CACHE[cache_key]['data']
+            if not refresh and ticker_upper in CACHE and (now - CACHE[ticker_upper]['timestamp'] < CACHE_TTL):
+                data = CACHE[ticker_upper]['data']
             else:
-                data = fetch_dividend_info(ticker_upper, eodhd_key)
+                data = fetch_dividend_info(ticker_upper, bypass_cache=refresh)
                 if 'error' not in data:
-                    CACHE[cache_key] = {'data': data, 'timestamp': now}
+                    CACHE[ticker_upper] = {'data': data, 'timestamp': now}
 
             status_code = 200 if 'error' not in data else 404
             self.send_response(status_code)
@@ -78,8 +77,8 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
 def run_server():
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), DividendHandler) as httpd:
-        print(f"yfinance Dividend Server running on http://127.0.0.1:{PORT}")
-        print(f"Endpoint: http://127.0.0.1:{PORT}/api/dividend?ticker=S68.SI")
+        print(f"Digrin Dividend Server running on http://127.0.0.1:{PORT}")
+        print(f"Endpoint: http://127.0.0.1:{PORT}/api/dividend?ticker=5DD.SI")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

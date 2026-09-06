@@ -33,3 +33,5 @@ __pycache__/
 scripts/.twelvedata_*.json
 .eodhd_*.json
 scripts/.eodhd_*.json
+.digrin_*.json
+scripts/.digrin_*.json

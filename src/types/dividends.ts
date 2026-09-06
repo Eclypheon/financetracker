@@ -45,7 +45,8 @@ export interface ScrapedDividendResult {
     totalForShares: number;
   }>;
   dataSource?: 'live_web' | 'verified_dataset' | 'custom_estimate';
-  apiProvider?: 'eodhd' | 'yfinance';
+  apiProvider?: 'digrin' | 'manual';
+  digrinUrl?: string;
   apiQueryUrl?: string;
   isEstimated?: boolean;
   warningNote?: string;
