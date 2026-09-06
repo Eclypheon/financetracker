@@ -232,7 +232,7 @@ export interface DividendBackendResult {
     amount: number;
     exDate?: string;
   }>;
-  source?: 'digrin';
+  source?: 'digrin' | 'stockevents';
   digrinUrl?: string;
   providerNote?: string;
   warning?: string;
@@ -426,107 +426,229 @@ export function parseDigrinContent(content: string, rawTicker: string): Dividend
 export const parseDigrinHtml = parseDigrinContent;
 
 /**
- * Fetch dividend information from Digrin.com (Sole Source of Truth)
- * 1. Queries local Vite dev middleware / Python backend
- * 2. Directly fetches via Jina Reader (CORS enabled for GitHub Pages)
- * 3. Falls back to local dev proxy
+ * Generate all ticker candidate variants requested by user:
+ * XX.SI, XX, XX.SG, XX.XSES and lowercase equivalents.
+ * Loops through all until a positive match occurs.
  */
-async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | null> {
-  const cleanSym = normalizeTickerInput(symbol);
-  if (!cleanSym) return null;
+export function getTickerCandidateVariants(rawTicker: string): string[] {
+  const trimmed = rawTicker.trim().toUpperCase().replace(/\([^)]+\)/g, "").trim();
+  if (!trimmed) return [];
 
-  // 1. Try local dev endpoints (if Python server / Vite middleware running)
-  const localEndpoints = [
-    `/api/dividend?ticker=${encodeURIComponent(cleanSym)}`,
-    `/api/digrin?ticker=${encodeURIComponent(cleanSym)}`,
-    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(cleanSym)}`
-  ];
+  const base = trimmed.replace(/\.(SI|SG|XSES|US|O|K)$/i, "").trim();
+  const canonical = POPULAR_TICKERS[trimmed]?.symbol || POPULAR_TICKERS[base]?.symbol || trimmed;
+  const canonicalBase = canonical.replace(/\.(SI|SG|XSES|US|O|K)$/i, "").trim();
 
-  for (const endpoint of localEndpoints) {
-    try {
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const data: DividendBackendResult = await res.json();
-        if (data && data.symbol && !data.error && data.events && data.events.length > 0) {
-          data.source = "digrin";
-          data.digrinUrl = data.digrinUrl || `https://www.digrin.com/stocks/detail/${cleanSym}/`;
-          return data;
+  const list: string[] = [];
+  const add = (v: string) => {
+    if (v && !list.includes(v)) list.push(v);
+  };
+
+  // User requirement: XX.SI, XX, XX.SG, XX.XSES
+  add(`${canonicalBase}.SI`);
+  add(canonicalBase);
+  add(`${canonicalBase}.SG`);
+  add(`${canonicalBase}.XSES`);
+
+  // Lowercase variants
+  add(`${canonicalBase.toLowerCase()}.si`);
+  add(canonicalBase.toLowerCase());
+  add(`${canonicalBase.toLowerCase()}.sg`);
+
+  if (base !== canonicalBase) {
+    add(`${base}.SI`);
+    add(base);
+    add(`${base}.SG`);
+    add(`${base}.XSES`);
+  }
+
+  // Non-SG / US
+  add(`${canonicalBase}.US`);
+
+  return list;
+}
+
+/**
+ * Secondary Source: Parse StockEvents dividends
+ * URL: https://stockevents.app/en/stock/{ticker}/dividends
+ */
+export function parseStockEventsContent(content: string, rawTicker: string): DividendBackendResult | null {
+  if (!content || content.includes("404: Not Found") || content.includes("Page Not Found")) return null;
+  const cleanTicker = normalizeTickerInput(rawTicker);
+
+  let name = cleanTicker;
+  const h2Match = content.match(/##\s*([^(\n]+?)(?:\s*\([^)]+\))?\s*Dividend/i);
+  if (h2Match) name = h2Match[1].trim();
+
+  let price: number | undefined = undefined;
+  const priceMatch = content.match(/(?:S\$|\$|US\$|SGD\s*|USD\s*)([\d\.]+)\s*(?:\n|\+|-)/);
+  if (priceMatch) {
+    const p = parseFloat(priceMatch[1]);
+    if (!isNaN(p)) price = p;
+  }
+
+  let currency = cleanTicker.endsWith(".SI") || cleanTicker.endsWith(".SG") ? "SGD" : "USD";
+  if (content.includes("S$")) currency = "SGD";
+  else if (content.includes("US$")) currency = "USD";
+
+  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
+  const lines = content.split("\n");
+  const monthMap: Record<string, string> = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+  };
+
+  for (const line of lines) {
+    if (!line.includes("|") || line.includes("---")) continue;
+    const dateMatch = line.match(/\[?(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\]?/);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, "0");
+      const mStr = dateMatch[2].toLowerCase();
+      const month = monthMap[mStr];
+      const year = dateMatch[3];
+      if (month) {
+        const isoDate = `${year}-${month}-${day}`;
+        const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+        for (const cell of cells) {
+          const amtM = cell.match(/(?:S\$|\$|US\$)?\s*([\d\.]+)/);
+          if (amtM && !cell.includes(year) && !cell.includes("%") && !cell.includes("-")) {
+            const amt = parseFloat(amtM[1]);
+            if (!isNaN(amt) && amt > 0) {
+              const dt = new Date(isoDate);
+              events.push({
+                date: isoDate,
+                timestamp: !isNaN(dt.getTime()) ? dt.getTime() : 0,
+                amount: Math.round(amt * 10000) / 10000,
+              });
+              break;
+            }
+          }
         }
       }
-    } catch {
-      // Continue to next endpoint
     }
   }
 
-  // 2. Client-side fetching (GitHub Pages / browser)
-  const candidateSymbols = [cleanSym];
-  if (cleanSym.endsWith(".SI")) {
-    candidateSymbols.push(cleanSym.toLowerCase());
+  if (events.length === 0) return null;
+  events.sort((a, b) => b.date.localeCompare(a.date));
+
+  const payoutMonthsSet = new Set<number>();
+  events.slice(0, 12).forEach((e) => {
+    const m = parseInt(e.date.split("-")[1], 10);
+    if (!isNaN(m)) payoutMonthsSet.add(m);
+  });
+
+  let freq: DividendFrequency = "quarterly";
+  let cycleCount = 4;
+  if (payoutMonthsSet.size >= 8) {
+    freq = "monthly";
+    cycleCount = 12;
+  } else if (payoutMonthsSet.size >= 3) {
+    freq = "quarterly";
+    cycleCount = 4;
+  } else if (payoutMonthsSet.size === 2) {
+    freq = "semi-annually";
+    cycleCount = 2;
   } else {
-    candidateSymbols.push(`${cleanSym}.US`);
+    freq = "annually";
+    cycleCount = 1;
   }
 
-  for (const cand of candidateSymbols) {
-    // A. Jina AI Reader: Free, fast (<1s), bypasses Cloudflare, sends CORS headers for GitHub Pages
+  const monthsSet = new Set<number>();
+  const monthlyDpu: Record<number, number> = {};
+  for (const e of events.slice(0, 16)) {
+    const m = parseInt(e.date.split("-")[1], 10);
+    if (!isNaN(m) && monthlyDpu[m] === undefined) {
+      if (monthsSet.size < cycleCount || payoutMonthsSet.has(m)) {
+        monthlyDpu[m] = e.amount;
+        monthsSet.add(m);
+      }
+    }
+    if (monthsSet.size >= cycleCount && cycleCount > 1) break;
+  }
+
+  const months = Array.from(monthsSet).sort((a, b) => a - b);
+  const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
+  const latestDPS = events[0].amount;
+
+  return {
+    symbol: cleanTicker,
+    name,
+    currency,
+    price,
+    annualDps,
+    latestDPS,
+    frequency: freq,
+    months,
+    monthlyDpu,
+    events: events.slice(0, 24),
+    source: "stockevents",
+    digrinUrl: `https://stockevents.app/en/stock/${rawTicker}/dividends`
+  };
+}
+
+/**
+ * Fetch dividend information from Digrin.com (Primary) and StockEvents (Secondary)
+ * Loops through all candidate variants (XX.SI, XX, XX.SG, XX.XSES) until a positive match occurs.
+ */
+async function fetchFromWebSources(symbol: string): Promise<DividendBackendResult | null> {
+  const cleanSym = normalizeTickerInput(symbol);
+  if (!cleanSym) return null;
+
+  const base = cleanSym.replace(/\.(SI|SG|XSES|US|O|K)$/i, '').trim();
+
+  // 1. Try local dev endpoints
+  const localCands = [`${base}.SI`, base];
+  for (const cand of localCands) {
+    try {
+      const res = await fetch(`/api/dividend?ticker=${encodeURIComponent(cand)}`, { signal: AbortSignal.timeout(1200) });
+      if (res.ok) {
+        const data: DividendBackendResult = await res.json();
+        if (data && data.symbol && !data.error && data.events && data.events.length > 0) {
+          data.source = 'digrin';
+          return data;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Primary Source: Digrin.com (XX.SI, XX, xx.si)
+  const digrinCandidates = [`${base}.SI`, base, `${base.toLowerCase()}.si`, base.toLowerCase()];
+  for (const cand of digrinCandidates) {
     try {
       const jinaUrl = `https://r.jina.ai/https://www.digrin.com/stocks/detail/${cand}/`;
-      const res = await fetch(jinaUrl, { signal: AbortSignal.timeout(9000) });
+      const res = await fetch(jinaUrl, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
         const text = await res.text();
-        if (text && !text.includes("404: Not Found") && !text.includes("Sorry, we could not find that page")) {
+        if (text && !text.includes('404: Not Found') && !text.includes('Sorry, we could not find that page')) {
           const parsed = parseDigrinContent(text, cleanSym);
           if (parsed && parsed.events.length > 0) {
             return parsed;
           }
         }
       }
-    } catch {
-      // Continue to next candidate / proxy
-    }
+    } catch {}
+  }
 
-    // B. Local dev proxy (if running via Vite dev)
+  // 3. Secondary Source: StockEvents (XX.SG, XX, XX.SI, XX.XSES)
+  const seCandidates = [`${base}.SG`, base, `${base}.SI`, `${base}.XSES`, `${base.toLowerCase()}.sg`];
+  for (const cand of seCandidates) {
     try {
-      const devProxyUrl = `/digrin-proxy/stocks/detail/${cand}/`;
-      const res = await fetch(devProxyUrl, { signal: AbortSignal.timeout(4000) });
+      const seUrl = `https://r.jina.ai/https://stockevents.app/en/stock/${cand}/dividends`;
+      const res = await fetch(seUrl, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
-        const html = await res.text();
-        const parsed = parseDigrinContent(html, cleanSym);
-        if (parsed && parsed.events.length > 0) {
-          return parsed;
+        const text = await res.text();
+        if (text && !text.includes('404: Not Found') && !text.includes('Page Not Found')) {
+          const parsed = parseStockEventsContent(text, cleanSym);
+          if (parsed && parsed.events.length > 0) {
+            return parsed;
+          }
         }
       }
-    } catch {
-      // Continue
-    }
-
-    // C. Alternate public CORS proxy
-    try {
-      const targetUrl = `https://www.digrin.com/stocks/detail/${cand}/`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const html = await res.text();
-        const parsed = parseDigrinContent(html, cleanSym);
-        if (parsed && parsed.events.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // Continue
-    }
+    } catch {}
   }
 
   return null;
 }
 
-/**
- * Fetch dividend information using Digrin.com as the sole source of truth,
- * with strict adherence to Payable Dates.
- *
- * CRITICAL RULE: NO hardcoded dividend numbers!
- * If Digrin has no data or is unreachable, this throws an Error so the UI
- * can honestly state "Unable to auto-calculate from Digrin.com".
- */
 export const scrapeDividendsForTicker = async (
   rawTicker: string,
   sharesCount: number = 100
@@ -541,10 +663,10 @@ export const scrapeDividendsForTicker = async (
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
   // 1. Fetch from Digrin.com (Sole Source of Truth)
-  const backendResult = await fetchFromDigrin(cleanTicker);
+  const backendResult = await fetchFromWebSources(cleanTicker);
 
   if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
-    throw new Error(`Unable to auto-calculate from Digrin.com for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
+    throw new Error(`Unable to auto-calculate from Digrin.com or StockEvents for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
   }
 
   const companyName = backendResult.name || preset?.name || cleanTicker;
@@ -626,7 +748,7 @@ export const scrapeDividendsForTicker = async (
     monthlyAverageDividends,
     pastPayouts,
     dataSource: "live_web",
-    apiProvider: "digrin",
+    apiProvider: (backendResult.source === "stockevents" ? "stockevents" : "digrin") as any,
     digrinUrl,
     isEstimated: false,
   };
