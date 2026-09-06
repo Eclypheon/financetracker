@@ -1493,47 +1493,38 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       </div>
                     )}
 
-                    {/* Multi-Source Verification (2/3 Consensus Rule) Card */}
-                    {scrapedResult.consensusInfo && (
-                      <div className="p-2.5 rounded-lg bg-slate-900 border border-cyan-500/30 space-y-2">
+                    {/* Yahoo Finance / yfinance Verification Card */}
+                    {scrapedResult.dataSource === 'live_web' && (
+                      <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                            Multi-Source Verification (2/3 Consensus)
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                            Yahoo Finance / yfinance Verified
                           </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            scrapedResult.consensusInfo.sourcesAgreed >= 2
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          }`}>
-                            {scrapedResult.consensusInfo.sourcesAgreed}/{scrapedResult.consensusInfo.sourcesChecked} Agreed
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                            Live Yahoo API
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300 leading-snug">
-                          {scrapedResult.consensusInfo.summary}
+                          Live distributions verified directly from Yahoo Finance ({scrapedResult.pastPayouts.length} past payments recorded). Real dividends are prioritized as authoritative.
                         </p>
-                        <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                          {scrapedResult.consensusInfo.details.map((d, i) => (
-                            <div
-                              key={i}
-                              className={`p-1.5 rounded-md border text-[10px] ${
-                                d.agreed
-                                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
-                                  : 'bg-slate-950/80 border-slate-800 text-slate-400'
-                              }`}
-                            >
-                              <span className="font-medium truncate block">{d.sourceName}</span>
-                              <span className={`font-mono font-bold block mt-0.5 text-xs ${
-                                d.agreed ? 'text-emerald-300' : 'text-slate-500 line-through'
-                              }`}>
-                                ${d.dps > 0 ? d.dps.toFixed(4) : '—'}
-                              </span>
-                              <span className="text-[9px] block">
-                                {d.agreed ? '✓ Confirmed' : '✗ Outlier / Inactive'}
-                              </span>
-                            </div>
-                          ))}
+                      </div>
+                    )}
+
+                    {scrapedResult.isEstimated && (
+                      <div className="p-2.5 rounded-lg bg-slate-900 border border-amber-500/30 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <Info className="w-3.5 h-3.5 text-amber-400" />
+                            Offline Baseline (Yahoo Finance CORS Blocked)
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-500/20 text-amber-300 border-amber-500/40">
+                            Baseline Estimate
+                          </span>
                         </div>
+                        <p className="text-[11px] text-slate-300 leading-snug">
+                          Direct browser query to Yahoo Finance was blocked by browser CORS. Run <code className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[10px]">npm run dev</code> or <code className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[10px]">npm run server</code> locally to fetch live Yahoo Finance / yfinance data.
+                        </p>
                       </div>
                     )}
 

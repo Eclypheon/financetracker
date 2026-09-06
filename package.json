@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "python3 scripts/dividend_server.py",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
