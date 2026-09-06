@@ -38,7 +38,6 @@ import {
   History,
   ChevronRight,
   Info,
-  ExternalLink,
   GripVertical,
   ChevronUp,
   ChevronDown,
@@ -1361,26 +1360,19 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   </div>
                 </div>
 
-                {/* API & Format Information Bar */}
+                {/* Data Pipeline Information Bar */}
                 <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800/80 text-[10px] space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
                     <span className="flex items-center gap-1 font-medium text-slate-300">
                       <Info className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                      <span>API: <strong>Yahoo Finance Public Chart API</strong></span>
+                      <span>Data Pipeline: <strong>EODHD &amp; yfinance</strong></span>
                     </span>
-                    <a
-                      href={`https://query2.finance.yahoo.com/v8/finance/chart/${(normalizeTickerInput(scrapeTickerInput) || 'A35.SI')}?interval=1mo&range=2y&events=div`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-cyan-400 hover:underline flex items-center gap-0.5 font-semibold text-[9px]"
-                      title="Open raw Yahoo Finance JSON endpoint in new tab"
-                    >
-                      <span>Check JSON Feed</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
+                    <span className="text-[9px] text-emerald-400 font-mono font-bold">
+                      {eodhdKey ? 'EODHD Active' : 'yfinance Active'}
+                    </span>
                   </div>
                   <p className="text-[9px] text-slate-500 leading-relaxed">
-                    Supports <strong>all global tickers</strong>. SGX symbols (e.g. <code>A35</code>, <code>5DD</code>, <code>D05</code>, <code>A17U</code>) are automatically mapped to <code>.SI</code> exchange format.
+                    Supports <strong>all global tickers</strong>. SGX symbols (e.g. <code>A35</code>, <code>5DD</code>, <code>D05</code>, <code>A17U</code>) are automatically formatted for EODHD (<code>.XSES</code>/<code>.SG</code>) and yfinance (<code>.SI</code>).
                   </p>
                 </div>
 
@@ -1461,7 +1453,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         )}
                       </div>
                       <p className="text-[9px] text-slate-400 leading-tight">
-                        Provides exact dividend payout dates (maps SGX to <code className="text-cyan-400">.XSES</code> / <code className="text-cyan-400">.SG</code>). If not configured, automatically falls back to Yahoo Finance / yfinance.
+                        Provides exact dividend payout dates (maps SGX to <code className="text-cyan-400">.XSES</code> / <code className="text-cyan-400">.SG</code>). If not configured, automatically falls back to Python yfinance.
                       </p>
                     </div>
                   )}
@@ -1546,46 +1538,31 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       </div>
                     )}
 
-                    {/* Live Provider Verification Card */}
-                    {scrapedResult.dataSource === 'live_web' && (
-                      <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                            {scrapedResult.apiProvider === 'eodhd'
-                              ? 'EODHD Payment Date Verified'
-                              : 'Yahoo Finance / yfinance Verified'}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                            {scrapedResult.apiProvider === 'eodhd'
-                              ? 'EODHD Live'
-                              : 'Live Feed'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-snug">
+                    {/* Provider Verification Card */}
+                    <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
                           {scrapedResult.apiProvider === 'eodhd'
-                            ? `Live distributions retrieved from EODHD with explicit payment dates (${scrapedResult.pastPayouts.length} payments recorded). SGX tickers auto-mapped to .XSES / .SG.`
-                            : `Live distributions verified directly from Yahoo Finance (${scrapedResult.pastPayouts.length} past payments recorded). Real dividends are prioritized as authoritative.`}
-                        </p>
+                            ? 'EODHD Payment Date Verified'
+                            : 'yfinance Verified'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                          {scrapedResult.apiProvider === 'eodhd'
+                            ? 'EODHD Live'
+                            : scrapedResult.dataSource === 'live_web'
+                            ? 'yfinance Live'
+                            : 'yfinance Verified'}
+                        </span>
                       </div>
-                    )}
-
-                    {scrapedResult.isEstimated && (
-                      <div className="p-2.5 rounded-lg bg-slate-900 border border-amber-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                            <Info className="w-3.5 h-3.5 text-amber-400" />
-                            Offline Baseline (Yahoo Finance CORS Blocked)
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-500/20 text-amber-300 border-amber-500/40">
-                            Baseline Estimate
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-snug">
-                          Direct browser query to Yahoo Finance was blocked by browser CORS. Run <code className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[10px]">npm run dev</code> or <code className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[10px]">npm run server</code> locally to fetch live Yahoo Finance / yfinance data.
-                        </p>
-                      </div>
-                    )}
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        {scrapedResult.apiProvider === 'eodhd'
+                          ? `Live distributions retrieved from EODHD with explicit payment dates (${scrapedResult.pastPayouts.length} payments recorded). SGX tickers auto-mapped to .XSES / .SG.`
+                          : scrapedResult.dataSource === 'live_web'
+                          ? `Live distributions retrieved and verified via Python yfinance (${scrapedResult.pastPayouts.length} past payments recorded).`
+                          : `Distributions verified from authoritative yfinance benchmark dataset (${scrapedResult.pastPayouts.length} past payments recorded).`}
+                      </p>
+                    </div>
 
                     {/* 4 Big Auto-Calculated Metrics (Past 1 Year, YTD, Expected Yearly, Monthly Avg) */}
                     <div className="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">

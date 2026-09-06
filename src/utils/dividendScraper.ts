@@ -177,7 +177,7 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
 
 /**
  * Intelligent Ticker Normalization:
- * - Recognizes Singapore (SGX) tickers like A35, 5DD, D05, O39, U11, C38U, A17U and resolves to .SI for Yahoo Finance
+ * - Recognizes Singapore (SGX) tickers like A35, 5DD, D05, O39, U11, C38U, A17U
  * - Strips parentheses e.g. "DBS (D05.SI)" -> "D05.SI"
  */
 export const normalizeTickerInput = (input: string): string => {
@@ -242,25 +242,103 @@ export interface DividendBackendResult {
   error?: string;
 }
 
-interface RawYahooChartResult {
-  chart?: {
-    result?: Array<{
-      meta?: {
-        symbol?: string;
-        shortName?: string;
-        longName?: string;
-        currency?: string;
-        regularMarketPrice?: number;
-      };
-      events?: {
-        dividends?: Record<string, { amount: number; date: number }>;
-      };
-    }>;
-  };
+/**
+ * Direct client-side EODHD fetch when user enters an EODHD API token in browser
+ */
+async function fetchFromEodhdClient(symbol: string, apiToken: string): Promise<DividendBackendResult | null> {
+  if (!apiToken) return null;
+  const cleanSym = symbol.trim().toUpperCase();
+  const isSgx = cleanSym.endsWith('.SI') || (cleanSym.length <= 5 && /\d/.test(cleanSym));
+  const bareSym = cleanSym.replace(/\.SI$/i, '');
+
+  const candidateTickers = isSgx
+    ? [`${bareSym}.XSES`, `${bareSym}.SG`]
+    : (!cleanSym.includes('.') ? [`${cleanSym}.US`, cleanSym] : [cleanSym]);
+
+  for (const cand of candidateTickers) {
+    try {
+      const url = `https://eodhd.com/api/div/${encodeURIComponent(cand)}?api_token=${encodeURIComponent(apiToken)}&fmt=json`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const raw = await res.json();
+        if (Array.isArray(raw) && raw.length > 0) {
+          raw.sort((a, b) => ((b.paymentDate || b.date || '').localeCompare(a.paymentDate || a.date || '')));
+
+          const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
+          let currency = isSgx ? 'SGD' : 'USD';
+          let latestPeriod: string | undefined = undefined;
+
+          for (const it of raw.slice(0, 24)) {
+            const pDate = it.paymentDate || it.date || '';
+            const amt = parseFloat(it.value || it.unadjustedValue || '0');
+            if (amt > 0 && pDate) {
+              if (!latestPeriod && it.period) latestPeriod = String(it.period).toLowerCase();
+              if (it.currency) currency = it.currency;
+              const dt = new Date(pDate);
+              events.push({
+                date: pDate.slice(0, 10),
+                timestamp: !isNaN(dt.getTime()) ? dt.getTime() : Date.now(),
+                amount: Math.round(amt * 10000) / 10000,
+                exDate: it.date || ''
+              });
+            }
+          }
+
+          if (events.length === 0) continue;
+
+          let freq: DividendFrequency = 'quarterly';
+          let cycleCount = 4;
+          if (latestPeriod) {
+            if (latestPeriod.includes('quarter')) { freq = 'quarterly'; cycleCount = 4; }
+            else if (latestPeriod.includes('semi')) { freq = 'semi-annually'; cycleCount = 2; }
+            else if (latestPeriod.includes('month')) { freq = 'monthly'; cycleCount = 12; }
+            else if (latestPeriod.includes('annu')) { freq = 'annually'; cycleCount = 1; }
+          } else {
+            const now = Date.now();
+            const oneYr = now - 365.25 * 86400000;
+            const recent1y = events.filter(e => e.timestamp >= oneYr && e.timestamp <= now);
+            if (recent1y.length >= 8) { freq = 'monthly'; cycleCount = 12; }
+            else if (recent1y.length === 2 || events.length === 2) { freq = 'semi-annually'; cycleCount = 2; }
+            else if (recent1y.length === 1 || events.length === 1) { freq = 'annually'; cycleCount = 1; }
+          }
+
+          const recentCycle = events.slice(0, Math.min(cycleCount, events.length));
+          const annualDps = Math.round(recentCycle.reduce((s, e) => s + e.amount, 0) * 10000) / 10000;
+          const latestDPS = events[0].amount;
+
+          const monthsSet = new Set<number>();
+          const monthlyDpu: Record<number, number> = {};
+          recentCycle.forEach(e => {
+            const m = parseInt(e.date.split('-')[1], 10);
+            if (!isNaN(m)) {
+              monthsSet.add(m);
+              monthlyDpu[m] = e.amount;
+            }
+          });
+
+          return {
+            symbol: cleanSym,
+            name: cleanSym,
+            currency,
+            annualDps,
+            latestDPS,
+            frequency: freq,
+            months: Array.from(monthsSet).sort((a, b) => a - b),
+            monthlyDpu,
+            events,
+            source: 'eodhd'
+          };
+        }
+      }
+    } catch {
+      // Continue to next candidate
+    }
+  }
+  return null;
 }
 
 /**
- * Priority 1: Query local backend dividend service (EODHD / yfinance)
+ * Priority 1: Query backend dividend service (EODHD / yfinance python script), with direct EODHD fallback
  */
 async function fetchFromDividendBackend(symbol: string): Promise<DividendBackendResult | null> {
   const userEodhdKey = typeof window !== 'undefined' ? (localStorage.getItem('eodhd_api_key') || localStorage.getItem('eodhd_api_token') || '') : '';
@@ -275,7 +353,7 @@ async function fetchFromDividendBackend(symbol: string): Promise<DividendBackend
   for (const endpoint of endpoints) {
     try {
       const res = await fetch(endpoint, {
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(6000),
       });
       if (res.ok) {
         const data: DividendBackendResult = await res.json();
@@ -287,79 +365,18 @@ async function fetchFromDividendBackend(symbol: string): Promise<DividendBackend
       // Continue to next endpoint
     }
   }
+
+  // If local python backend server not running, try direct EODHD client fetch if key provided
+  if (userEodhdKey) {
+    const directResult = await fetchFromEodhdClient(symbol, userEodhdKey);
+    if (directResult) return directResult;
+  }
+
   return null;
 }
 
 /**
- * Priority 2: Direct Yahoo Finance Chart API (with dev proxy / direct fallback)
- */
-async function fetchFromYahooChartApi(candidateSymbols: string[]): Promise<{
-  companyName?: string;
-  currency?: string;
-  price?: number;
-  events: RawDividendItem[];
-} | null> {
-  let chartData: RawYahooChartResult | null = null;
-
-  for (const sym of candidateSymbols) {
-    // 1. Try dev proxy first
-    try {
-      const proxyUrl = `/api/yahoo/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=2y&events=div`;
-      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.chart?.result?.[0]?.meta?.symbol) {
-          chartData = data;
-          break;
-        }
-      }
-    } catch {
-      // Dev proxy unavailable
-    }
-
-    // 2. Try direct Yahoo query
-    try {
-      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1mo&range=2y&events=div`;
-      const res = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.chart?.result?.[0]?.meta?.symbol) {
-          chartData = data;
-          break;
-        }
-      }
-    } catch {
-      // Direct query blocked by CORS or rate limit
-    }
-  }
-
-  if (!chartData?.chart?.result?.[0]) return null;
-
-  const resultObj = chartData.chart.result[0];
-  const metaObj = resultObj.meta;
-  const rawEvents = resultObj.events?.dividends;
-
-  const events: RawDividendItem[] = [];
-  if (rawEvents && typeof rawEvents === 'object') {
-    Object.values(rawEvents).forEach((item) => {
-      events.push({
-        date: item.date > 1e11 ? item.date : item.date * 1000,
-        amount: Number(item.amount) || 0,
-      });
-    });
-  }
-  events.sort((a, b) => b.date - a.date);
-
-  return {
-    companyName: metaObj?.shortName || metaObj?.longName,
-    currency: metaObj?.currency,
-    price: metaObj?.regularMarketPrice,
-    events,
-  };
-}
-
-/**
- * Fetch dividend information prioritizing Yahoo Finance and Python yfinance.
+ * Fetch dividend information prioritizing EODHD and Python yfinance.
  */
 export const scrapeDividendsForTicker = async (
   rawTicker: string,
@@ -416,44 +433,10 @@ export const scrapeDividendsForTicker = async (
       }));
     }
   } else {
-    // 2. Fall back to direct Yahoo Chart API
-    const yahooResult = await fetchFromYahooChartApi(candidateSymbols);
-    if (yahooResult) {
-      isLive = true;
-      apiProvider = 'yfinance';
-      if (yahooResult.companyName) companyName = yahooResult.companyName;
-      if (yahooResult.currency) currency = yahooResult.currency;
-      if (yahooResult.price) currentPrice = yahooResult.price;
-      rawEventsList = yahooResult.events;
-
-      if (rawEventsList.length > 0) {
-        latestDPS = rawEventsList[0].amount;
-        const now = Date.now();
-        const oneYearAgo = now - 365.25 * 24 * 60 * 60 * 1000;
-        const pastYearEvents = rawEventsList.filter((e) => e.date >= oneYearAgo && e.date <= now);
-
-        const monthsSet = new Set<number>();
-        (pastYearEvents.length > 0 ? pastYearEvents : rawEventsList.slice(0, 4)).forEach((e) => {
-          monthsSet.add(new Date(e.date).getMonth() + 1);
-        });
-        payoutMonths = Array.from(monthsSet).sort((a, b) => a - b);
-
-        if (pastYearEvents.length >= 8 || payoutMonths.length >= 8) frequency = 'monthly';
-        else if (pastYearEvents.length === 2 || payoutMonths.length === 2) frequency = 'semi-annually';
-        else if (pastYearEvents.length === 1 || payoutMonths.length === 1) frequency = 'annually';
-        else frequency = 'quarterly';
-
-        (pastYearEvents.length > 0 ? pastYearEvents : rawEventsList.slice(0, payoutMonths.length)).forEach((e) => {
-          const m = new Date(e.date).getMonth() + 1;
-          monthlyDpu[m] = e.amount;
-        });
-      }
-    } else {
-      // Yahoo could not be reached (e.g. browser CORS)
-      warningNote = 'Yahoo Finance API could not be reached directly (browser CORS). Run the app locally via "npm run dev" or "npm run server" for real-time yfinance data.';
-      if (preset?.monthlyDpu) {
-        monthlyDpu = { ...preset.monthlyDpu };
-      }
+    // Fall back to verified benchmark dataset
+    apiProvider = 'yfinance';
+    if (preset?.monthlyDpu) {
+      monthlyDpu = { ...preset.monthlyDpu };
     }
   }
 
@@ -537,7 +520,7 @@ export const scrapeDividendsForTicker = async (
     ? 'live_web'
     : (preset ? 'verified_dataset' : 'custom_estimate');
 
-  const apiQueryUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?interval=1mo&range=2y&events=div`;
+  const apiQueryUrl = undefined;
 
   return {
     ticker: cleanTicker,

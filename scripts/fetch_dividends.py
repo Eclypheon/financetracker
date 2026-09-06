@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 import sys
-import json
 import os
-import time
-import urllib.request
-import urllib.parse
-from datetime import datetime, timedelta
-from pathlib import Path
 
-# Suppress stderr warnings
+# Suppress stderr noise during module imports (such as hashlib blake2 issues in pyenv)
+_orig_stderr = sys.stderr
+sys.stderr = open(os.devnull, 'w')
 try:
-    import yfinance as yf
-except ImportError:
-    yf = None
+    import json
+    import time
+    import urllib.request
+    import urllib.parse
+    from datetime import datetime, timedelta
+    from pathlib import Path
+    try:
+        import yfinance as yf
+    except Exception:
+        yf = None
+finally:
+    sys.stderr = _orig_stderr
 
 EODHD_CACHE_FILE = Path(__file__).parent / ".eodhd_cache.json"
 CACHE_TTL = 86400  # 24 hours
