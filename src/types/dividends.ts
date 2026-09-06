@@ -20,6 +20,8 @@ export interface DividendHolding {
   monthlyAverageDividends?: number; // Normalized monthly average
   currency?: string;              // e.g. "USD", "SGD"
   lastFetchedAt?: number;         // Timestamp of last web sync
+  scrapeStatus?: 'success' | 'unable_to_calculate';
+  scrapeError?: string;
   createdAt: number;
 }
 

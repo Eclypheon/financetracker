@@ -6,173 +6,168 @@ interface TickerMeta {
   name: string;
   category: string;
   currency: string;
-  fallbackDPS: number;
-  frequency: DividendFrequency;
-  months: number[];
-  monthlyDpu?: Record<number, number>;
-  price?: number;
 }
 
 export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) ETFS & FUNDS
   // =========================================================================
-  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], monthlyDpu: { 1: 0.0135, 7: 0.0135 }, price: 1.15 },
-  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], monthlyDpu: { 1: 0.0135, 7: 0.0135 }, price: 1.15 },
-  'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.075, frequency: 'semi-annually', months: [1, 7], price: 3.85 },
-  'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.075, frequency: 'semi-annually', months: [1, 7], price: 3.85 },
-  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.068, frequency: 'semi-annually', months: [2, 8], price: 3.82 },
-  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.068, frequency: 'semi-annually', months: [2, 8], price: 3.82 },
-  'CLR.SI': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.025, frequency: 'semi-annually', months: [2, 8], price: 0.88 },
-  'CLR': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.025, frequency: 'semi-annually', months: [2, 8], price: 0.88 },
-  'SRT.SI': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.013, frequency: 'quarterly', months: [2, 5, 8, 11], price: 0.82 },
-  'SRT': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.013, frequency: 'quarterly', months: [2, 5, 8, 11], price: 0.82 },
-  'MBH.SI': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.018, frequency: 'semi-annually', months: [1, 7], price: 1.02 },
-  'MBH': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.018, frequency: 'semi-annually', months: [1, 7], price: 1.02 },
-  'HST.SI': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.026, frequency: 'semi-annually', months: [1, 7], price: 0.85 },
-  'HST': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.026, frequency: 'semi-annually', months: [1, 7], price: 0.85 },
+  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
+  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
+  'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
+  'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
+  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
+  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
+  'CLR.SI': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'CLR': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'SRT.SI': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'SRT': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'MBH.SI': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
+  'MBH': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
+  'HST.SI': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'HST': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD' },
 
   // =========================================================================
   // SINGAPORE (SGX) BLUE CHIPS & INDUSTRIAL / TECH
   // =========================================================================
-  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 1.68 },
-  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.03, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.03 }, price: 1.68 },
-  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
-  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
-  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
-  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
-  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
-  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.47, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 0.57, 8: 0.41 }, price: 16.20 },
-  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
-  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
-  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'quarterly', months: [5, 8], monthlyDpu: { 5: 1.17, 8: 1.10 }, price: 34.80 },
-  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
-  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
-  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.24, frequency: 'quarterly', months: [2, 5, 11], monthlyDpu: { 2: 0.11, 5: 0.1125, 11: 0.1075 }, price: 12.80 },
-  'Z74.SI': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
-  'Z74': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
-  'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
-  'BN4.SI': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.19, frequency: 'semi-annually', months: [5, 8], price: 6.80 },
-  'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.19, frequency: 'semi-annually', months: [5, 8], price: 6.80 },
-  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
-  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
-  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [5, 6, 9, 12], monthlyDpu: { 5: 0.11, 6: 0.04, 9: 0.05, 12: 0.04 }, price: 10.96 },
-  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [5, 6, 9, 12], monthlyDpu: { 5: 0.11, 6: 0.04, 9: 0.05, 12: 0.04 }, price: 10.96 },
-  'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
-  'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
-  'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
-  'V03.SI': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.50, frequency: 'semi-annually', months: [5, 9], price: 13.90 },
-  'V03': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.50, frequency: 'semi-annually', months: [5, 9], price: 13.90 },
-  'OV8.SI': { symbol: 'OV8.SI', name: 'Sheng Siong Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.032, frequency: 'semi-annually', months: [5, 8], price: 1.55 },
-  'OV8': { symbol: 'OV8.SI', name: 'Sheng Siong Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.032, frequency: 'semi-annually', months: [5, 8], price: 1.55 },
-  'BS6.SI': { symbol: 'BS6.SI', name: 'Yangzijiang Shipbuilding Holdings', category: 'Other', currency: 'SGD', fallbackDPS: 0.065, frequency: 'annually', months: [5], price: 2.65 },
-  'BS6': { symbol: 'BS6.SI', name: 'Yangzijiang Shipbuilding Holdings', category: 'Other', currency: 'SGD', fallbackDPS: 0.065, frequency: 'annually', months: [5], price: 2.65 },
-  'F34.SI': { symbol: 'F34.SI', name: 'Wilmar International Limited', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.11, frequency: 'semi-annually', months: [5, 8], price: 3.10 },
-  'F34': { symbol: 'F34.SI', name: 'Wilmar International Limited', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.11, frequency: 'semi-annually', months: [5, 8], price: 3.10 },
-  'U96.SI': { symbol: 'U96.SI', name: 'Sembcorp Industries Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.08, frequency: 'semi-annually', months: [5, 8], price: 5.40 },
-  'U96': { symbol: 'U96.SI', name: 'Sembcorp Industries Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.08, frequency: 'semi-annually', months: [5, 8], price: 5.40 },
-  'C52.SI': { symbol: 'C52.SI', name: 'ComfortDelGro Corporation Ltd', category: 'Other', currency: 'SGD', fallbackDPS: 0.038, frequency: 'semi-annually', months: [5, 9], price: 1.45 },
-  'C52': { symbol: 'C52.SI', name: 'ComfortDelGro Corporation Ltd', category: 'Other', currency: 'SGD', fallbackDPS: 0.038, frequency: 'semi-annually', months: [5, 9], price: 1.45 },
-  'S58.SI': { symbol: 'S58.SI', name: 'SATS Ltd', category: 'Other', currency: 'SGD', fallbackDPS: 0.015, frequency: 'semi-annually', months: [6, 12], price: 3.80 },
-  'S58': { symbol: 'S58.SI', name: 'SATS Ltd', category: 'Other', currency: 'SGD', fallbackDPS: 0.015, frequency: 'semi-annually', months: [6, 12], price: 3.80 },
-  'BSL.SI': { symbol: 'BSL.SI', name: 'Raffles Medical Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.024, frequency: 'annually', months: [5], price: 0.90 },
-  'BSL': { symbol: 'BSL.SI', name: 'Raffles Medical Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.024, frequency: 'annually', months: [5], price: 0.90 },
-  'AWX.SI': { symbol: 'AWX.SI', name: 'AEM Holdings Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.025, frequency: 'semi-annually', months: [6, 9], price: 1.35 },
-  'AWX': { symbol: 'AWX.SI', name: 'AEM Holdings Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.025, frequency: 'semi-annually', months: [6, 9], price: 1.35 },
-  'Q0F.SI': { symbol: 'Q0F.SI', name: 'Frencken Group Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.033, frequency: 'annually', months: [5], price: 1.38 },
-  'Q0F': { symbol: 'Q0F.SI', name: 'Frencken Group Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.033, frequency: 'annually', months: [5], price: 1.38 },
-  'CC3.SI': { symbol: 'CC3.SI', name: 'StarHub Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [4, 9], price: 1.22 },
-  'CC3': { symbol: 'CC3.SI', name: 'StarHub Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [4, 9], price: 1.22 },
-  'G13.SI': { symbol: 'G13.SI', name: 'Genting Singapore Limited', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.02, frequency: 'semi-annually', months: [4, 9], price: 0.82 },
-  'G13': { symbol: 'G13.SI', name: 'Genting Singapore Limited', category: 'Healthcare & Consumer', currency: 'SGD', fallbackDPS: 0.02, frequency: 'semi-annually', months: [4, 9], price: 0.82 },
-  'U10.SI': { symbol: 'U10.SI', name: 'UMS Holdings Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.012, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.05 },
-  'U10': { symbol: 'U10.SI', name: 'UMS Holdings Limited', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.012, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.05 },
+  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
+  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
+  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
+  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
+  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
+  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
+  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
+  'Z74.SI': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
+  'Z74': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
+  'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
+  'BN4.SI': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD' },
+  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD' },
+  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
+  'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
+  'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
+  'V03.SI': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD' },
+  'V03': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD' },
+  'OV8.SI': { symbol: 'OV8.SI', name: 'Sheng Siong Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'OV8': { symbol: 'OV8.SI', name: 'Sheng Siong Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'BS6.SI': { symbol: 'BS6.SI', name: 'Yangzijiang Shipbuilding Holdings', category: 'Other', currency: 'SGD' },
+  'BS6': { symbol: 'BS6.SI', name: 'Yangzijiang Shipbuilding Holdings', category: 'Other', currency: 'SGD' },
+  'F34.SI': { symbol: 'F34.SI', name: 'Wilmar International Limited', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'F34': { symbol: 'F34.SI', name: 'Wilmar International Limited', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'U96.SI': { symbol: 'U96.SI', name: 'Sembcorp Industries Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'U96': { symbol: 'U96.SI', name: 'Sembcorp Industries Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'C52.SI': { symbol: 'C52.SI', name: 'ComfortDelGro Corporation Ltd', category: 'Other', currency: 'SGD' },
+  'C52': { symbol: 'C52.SI', name: 'ComfortDelGro Corporation Ltd', category: 'Other', currency: 'SGD' },
+  'S58.SI': { symbol: 'S58.SI', name: 'SATS Ltd', category: 'Other', currency: 'SGD' },
+  'S58': { symbol: 'S58.SI', name: 'SATS Ltd', category: 'Other', currency: 'SGD' },
+  'BSL.SI': { symbol: 'BSL.SI', name: 'Raffles Medical Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'BSL': { symbol: 'BSL.SI', name: 'Raffles Medical Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'AWX.SI': { symbol: 'AWX.SI', name: 'AEM Holdings Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  'AWX': { symbol: 'AWX.SI', name: 'AEM Holdings Ltd', category: 'Technology & Growth', currency: 'SGD' },
+  'Q0F.SI': { symbol: 'Q0F.SI', name: 'Frencken Group Limited', category: 'Technology & Growth', currency: 'SGD' },
+  'Q0F': { symbol: 'Q0F.SI', name: 'Frencken Group Limited', category: 'Technology & Growth', currency: 'SGD' },
+  'CC3.SI': { symbol: 'CC3.SI', name: 'StarHub Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'CC3': { symbol: 'CC3.SI', name: 'StarHub Ltd', category: 'Energy & Utilities', currency: 'SGD' },
+  'G13.SI': { symbol: 'G13.SI', name: 'Genting Singapore Limited', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'G13': { symbol: 'G13.SI', name: 'Genting Singapore Limited', category: 'Healthcare & Consumer', currency: 'SGD' },
+  'U10.SI': { symbol: 'U10.SI', name: 'UMS Holdings Limited', category: 'Technology & Growth', currency: 'SGD' },
+  'U10': { symbol: 'U10.SI', name: 'UMS Holdings Limited', category: 'Technology & Growth', currency: 'SGD' },
 
   // =========================================================================
   // SINGAPORE (SGX) REITS & BUSINESS TRUSTS
   // =========================================================================
-  'A17U.SI': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.076, frequency: 'semi-annually', months: [3, 9], price: 2.85 },
-  'A17U': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.076, frequency: 'semi-annually', months: [3, 9], price: 2.85 },
-  'CLAR': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.076, frequency: 'semi-annually', months: [3, 9], price: 2.85 },
-  'C38U.SI': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.054, frequency: 'semi-annually', months: [2, 8], price: 2.05 },
-  'C38U': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.054, frequency: 'semi-annually', months: [2, 8], price: 2.05 },
-  'CICT': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.054, frequency: 'semi-annually', months: [2, 8], price: 2.05 },
-  'M44U.SI': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.021, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.35 },
-  'M44U': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.021, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.35 },
-  'MLT': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.021, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.35 },
-  'ME8U.SI': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'quarterly', months: [3, 6, 9, 12], price: 2.25 },
-  'ME8U': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'quarterly', months: [3, 6, 9, 12], price: 2.25 },
-  'MIT': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'quarterly', months: [3, 6, 9, 12], price: 2.25 },
-  'N2IU.SI': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.022, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.25 },
-  'N2IU': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.022, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.25 },
-  'MPACT': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.022, frequency: 'quarterly', months: [3, 6, 9, 12], price: 1.25 },
-  'AJBU.SI': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.0505, frequency: 'semi-annually', months: [3, 9], price: 2.15 },
-  'AJBU': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.0505, frequency: 'semi-annually', months: [3, 9], price: 2.15 },
-  'KDCREIT': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.0505, frequency: 'semi-annually', months: [3, 9], price: 2.15 },
-  'K71U.SI': { symbol: 'K71U.SI', name: 'Keppel REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.028, frequency: 'semi-annually', months: [2, 8], price: 0.90 },
-  'K71U': { symbol: 'K71U.SI', name: 'Keppel REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.028, frequency: 'semi-annually', months: [2, 8], price: 0.90 },
-  'T82U.SI': { symbol: 'T82U.SI', name: 'Suntec Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [2, 8], price: 1.20 },
-  'T82U': { symbol: 'T82U.SI', name: 'Suntec Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [2, 8], price: 1.20 },
-  'C2PU.SI': { symbol: 'C2PU.SI', name: 'Parkway Life REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.074, frequency: 'semi-annually', months: [3, 9], price: 3.80 },
-  'C2PU': { symbol: 'C2PU.SI', name: 'Parkway Life REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.074, frequency: 'semi-annually', months: [3, 9], price: 3.80 },
-  'BUOU.SI': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [6, 12], price: 1.05 },
-  'BUOU': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [6, 12], price: 1.05 },
-  'FLCT': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.034, frequency: 'semi-annually', months: [6, 12], price: 1.05 },
-  'J69U.SI': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.061, frequency: 'semi-annually', months: [5, 11], price: 2.25 },
-  'J69U': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.061, frequency: 'semi-annually', months: [5, 11], price: 2.25 },
-  'FCT': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.061, frequency: 'semi-annually', months: [5, 11], price: 2.25 },
-  'J91U.SI': { symbol: 'J91U.SI', name: 'ESR-LOGOS REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.013, frequency: 'semi-annually', months: [3, 9], price: 0.28 },
-  'J91U': { symbol: 'J91U.SI', name: 'ESR-LOGOS REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.013, frequency: 'semi-annually', months: [3, 9], price: 0.28 },
-  'P40U.SI': { symbol: 'P40U.SI', name: 'Starhill Global REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.019, frequency: 'semi-annually', months: [2, 8], price: 0.49 },
-  'P40U': { symbol: 'P40U.SI', name: 'Starhill Global REIT', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.019, frequency: 'semi-annually', months: [2, 8], price: 0.49 },
-  'TS0U.SI': { symbol: 'TS0U.SI', name: 'OUE Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.0105, frequency: 'semi-annually', months: [3, 9], price: 0.28 },
-  'TS0U': { symbol: 'TS0U.SI', name: 'OUE Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.0105, frequency: 'semi-annually', months: [3, 9], price: 0.28 },
-  'HMN.SI': { symbol: 'HMN.SI', name: 'CapitaLand India Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.038, frequency: 'semi-annually', months: [2, 8], price: 1.12 },
-  'HMN': { symbol: 'HMN.SI', name: 'CapitaLand India Trust', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.038, frequency: 'semi-annually', months: [2, 8], price: 1.12 },
-  'J85.SI': { symbol: 'J85.SI', name: 'CDL Hospitality Trusts', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [2, 8], price: 0.95 },
-  'J85': { symbol: 'J85.SI', name: 'CDL Hospitality Trusts', category: 'REITs & Real Estate', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [2, 8], price: 0.95 },
-  'CWBU.SI': { symbol: 'CWBU.SI', name: 'Cromwell European Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'EUR', fallbackDPS: 0.075, frequency: 'semi-annually', months: [3, 9], price: 1.45 },
-  'CWBU': { symbol: 'CWBU.SI', name: 'Cromwell European Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'EUR', fallbackDPS: 0.075, frequency: 'semi-annually', months: [3, 9], price: 1.45 },
+  'A17U.SI': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'A17U': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'CLAR': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'C38U.SI': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'C38U': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'CICT': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'M44U.SI': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'M44U': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'MLT': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'ME8U.SI': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'ME8U': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'MIT': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'N2IU.SI': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'N2IU': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'MPACT': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'AJBU.SI': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'AJBU': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'KDCREIT': { symbol: 'AJBU.SI', name: 'Keppel DC REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'K71U.SI': { symbol: 'K71U.SI', name: 'Keppel REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'K71U': { symbol: 'K71U.SI', name: 'Keppel REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'T82U.SI': { symbol: 'T82U.SI', name: 'Suntec Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'T82U': { symbol: 'T82U.SI', name: 'Suntec Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'C2PU.SI': { symbol: 'C2PU.SI', name: 'Parkway Life REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'C2PU': { symbol: 'C2PU.SI', name: 'Parkway Life REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'BUOU.SI': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'BUOU': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'FLCT': { symbol: 'BUOU.SI', name: 'Frasers Logistics & Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J69U.SI': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J69U': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'FCT': { symbol: 'J69U.SI', name: 'Frasers Centrepoint Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J91U.SI': { symbol: 'J91U.SI', name: 'ESR-LOGOS REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J91U': { symbol: 'J91U.SI', name: 'ESR-LOGOS REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'P40U.SI': { symbol: 'P40U.SI', name: 'Starhill Global REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'P40U': { symbol: 'P40U.SI', name: 'Starhill Global REIT', category: 'REITs & Real Estate', currency: 'SGD' },
+  'TS0U.SI': { symbol: 'TS0U.SI', name: 'OUE Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'TS0U': { symbol: 'TS0U.SI', name: 'OUE Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'HMN.SI': { symbol: 'HMN.SI', name: 'CapitaLand India Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'HMN': { symbol: 'HMN.SI', name: 'CapitaLand India Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J85.SI': { symbol: 'J85.SI', name: 'CDL Hospitality Trusts', category: 'REITs & Real Estate', currency: 'SGD' },
+  'J85': { symbol: 'J85.SI', name: 'CDL Hospitality Trusts', category: 'REITs & Real Estate', currency: 'SGD' },
+  'CWBU.SI': { symbol: 'CWBU.SI', name: 'Cromwell European Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'EUR' },
+  'CWBU': { symbol: 'CWBU.SI', name: 'Cromwell European Real Estate Investment Trust', category: 'REITs & Real Estate', currency: 'EUR' },
 
   // =========================================================================
   // US POPULAR DIVIDEND STOCKS & ETFS
   // =========================================================================
-  'AAPL': { symbol: 'AAPL', name: 'Apple Inc.', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 0.27, frequency: 'quarterly', months: [2, 5, 8, 11], price: 235.00 },
-  'MSFT': { symbol: 'MSFT', name: 'Microsoft Corporation', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 0.83, frequency: 'quarterly', months: [3, 6, 9, 12], price: 440.00 },
-  'NVDA': { symbol: 'NVDA', name: 'NVIDIA Corporation', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 0.01, frequency: 'quarterly', months: [3, 6, 9, 12], price: 125.00 },
-  'VOO': { symbol: 'VOO', name: 'Vanguard S&P 500 ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 1.96, frequency: 'quarterly', months: [3, 6, 9, 12], price: 530.00 },
-  'SPY': { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 2.05, frequency: 'quarterly', months: [3, 6, 9, 12], price: 580.00 },
-  'IVV': { symbol: 'IVV', name: 'iShares Core S&P 500 ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 2.10, frequency: 'quarterly', months: [3, 6, 9, 12], price: 585.00 },
-  'QQQ': { symbol: 'QQQ', name: 'Invesco QQQ Trust (Nasdaq 100)', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.72, frequency: 'quarterly', months: [3, 6, 9, 12], price: 490.00 },
-  'SCHD': { symbol: 'SCHD', name: 'Schwab US Dividend Equity ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.28, frequency: 'quarterly', months: [3, 6, 9, 12], price: 29.50 },
-  'VYM': { symbol: 'VYM', name: 'Vanguard High Dividend Yield ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 1.15, frequency: 'quarterly', months: [3, 6, 9, 12], price: 130.00 },
-  'VIG': { symbol: 'VIG', name: 'Vanguard Dividend Appreciation ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.95, frequency: 'quarterly', months: [3, 6, 9, 12], price: 195.00 },
-  'DGRO': { symbol: 'DGRO', name: 'iShares Core Dividend Growth ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.36, frequency: 'quarterly', months: [3, 6, 9, 12], price: 60.00 },
-  'NOBL': { symbol: 'NOBL', name: 'ProShares S&P 500 Dividend Aristocrats ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.58, frequency: 'quarterly', months: [3, 6, 9, 12], price: 102.00 },
-  'JEPI': { symbol: 'JEPI', name: 'JPMorgan Equity Premium Income ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.35, frequency: 'monthly', months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], price: 58.00 },
-  'JEPQ': { symbol: 'JEPQ', name: 'JPMorgan Nasdaq Equity Premium Income ETF', category: 'ETFs & Index Funds', currency: 'USD', fallbackDPS: 0.42, frequency: 'monthly', months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], price: 54.00 },
-  'O': { symbol: 'O', name: 'Realty Income Corporation', category: 'REITs & Real Estate', currency: 'USD', fallbackDPS: 0.269, frequency: 'monthly', months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], price: 56.00 },
-  'MAIN': { symbol: 'MAIN', name: 'Main Street Capital Corporation', category: 'Banking & Financials', currency: 'USD', fallbackDPS: 0.25, frequency: 'monthly', months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], price: 52.00 },
-  'KO': { symbol: 'KO', name: 'The Coca-Cola Company', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 0.51, frequency: 'quarterly', months: [4, 7, 10, 12], price: 68.00 },
-  'PEP': { symbol: 'PEP', name: 'PepsiCo, Inc.', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.41, frequency: 'quarterly', months: [1, 3, 6, 9], price: 172.00 },
-  'JNJ': { symbol: 'JNJ', name: 'Johnson & Johnson', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.30, frequency: 'quarterly', months: [3, 6, 9, 12], price: 162.00 },
-  'PG': { symbol: 'PG', name: 'Procter & Gamble Company', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.056, frequency: 'quarterly', months: [2, 5, 8, 11], price: 175.00 },
-  'ABBV': { symbol: 'ABBV', name: 'AbbVie Inc.', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.64, frequency: 'quarterly', months: [2, 5, 8, 11], price: 195.00 },
-  'CVX': { symbol: 'CVX', name: 'Chevron Corporation', category: 'Energy & Utilities', currency: 'USD', fallbackDPS: 1.71, frequency: 'quarterly', months: [3, 6, 9, 12], price: 155.00 },
-  'XOM': { symbol: 'XOM', name: 'Exxon Mobil Corporation', category: 'Energy & Utilities', currency: 'USD', fallbackDPS: 0.99, frequency: 'quarterly', months: [3, 6, 9, 12], price: 118.00 },
-  'IBM': { symbol: 'IBM', name: 'International Business Machines (IBM)', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 1.68, frequency: 'quarterly', months: [3, 6, 9, 12], price: 215.00 },
-  'MO': { symbol: 'MO', name: 'Altria Group, Inc.', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.06, frequency: 'quarterly', months: [1, 4, 7, 10], price: 54.00 },
-  'T': { symbol: 'T', name: 'AT&T Inc.', category: 'Energy & Utilities', currency: 'USD', fallbackDPS: 0.2775, frequency: 'quarterly', months: [2, 5, 8, 11], price: 22.50 },
-  'VZ': { symbol: 'VZ', name: 'Verizon Communications Inc.', category: 'Energy & Utilities', currency: 'USD', fallbackDPS: 0.6775, frequency: 'quarterly', months: [2, 5, 8, 11], price: 44.00 },
-  'MCD': { symbol: 'MCD', name: "McDonald's Corporation", category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 1.77, frequency: 'quarterly', months: [3, 6, 9, 12], price: 298.00 },
-  'WMT': { symbol: 'WMT', name: 'Walmart Inc.', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 0.2075, frequency: 'quarterly', months: [1, 4, 6, 9], price: 88.00 },
-  'HD': { symbol: 'HD', name: 'The Home Depot, Inc.', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 2.25, frequency: 'quarterly', months: [3, 6, 9, 12], price: 410.00 },
-  'MMM': { symbol: 'MMM', name: '3M Company', category: 'Other', currency: 'USD', fallbackDPS: 0.70, frequency: 'quarterly', months: [3, 6, 9, 12], price: 135.00 },
-  'BTI': { symbol: 'BTI', name: 'British American Tobacco (ADR)', category: 'Healthcare & Consumer', currency: 'USD', fallbackDPS: 0.74, frequency: 'quarterly', months: [2, 5, 8, 11], price: 38.00 },
-  'JPM': { symbol: 'JPM', name: 'JPMorgan Chase & Co.', category: 'Banking & Financials', currency: 'USD', fallbackDPS: 1.25, frequency: 'quarterly', months: [1, 4, 7, 10], price: 225.00 },
-  'BAC': { symbol: 'BAC', name: 'Bank of America Corporation', category: 'Banking & Financials', currency: 'USD', fallbackDPS: 0.26, frequency: 'quarterly', months: [3, 6, 9, 12], price: 42.00 },
-  'CSCO': { symbol: 'CSCO', name: 'Cisco Systems, Inc.', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 0.40, frequency: 'quarterly', months: [1, 4, 7, 10], price: 58.00 },
-  'TXN': { symbol: 'TXN', name: 'Texas Instruments Incorporated', category: 'Technology & Growth', currency: 'USD', fallbackDPS: 1.36, frequency: 'quarterly', months: [2, 5, 8, 11], price: 205.00 },
+  'AAPL': { symbol: 'AAPL', name: 'Apple Inc.', category: 'Technology & Growth', currency: 'USD' },
+  'MSFT': { symbol: 'MSFT', name: 'Microsoft Corporation', category: 'Technology & Growth', currency: 'USD' },
+  'NVDA': { symbol: 'NVDA', name: 'NVIDIA Corporation', category: 'Technology & Growth', currency: 'USD' },
+  'VOO': { symbol: 'VOO', name: 'Vanguard S&P 500 ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'SPY': { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', category: 'ETFs & Index Funds', currency: 'USD' },
+  'IVV': { symbol: 'IVV', name: 'iShares Core S&P 500 ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'QQQ': { symbol: 'QQQ', name: 'Invesco QQQ Trust (Nasdaq 100)', category: 'ETFs & Index Funds', currency: 'USD' },
+  'SCHD': { symbol: 'SCHD', name: 'Schwab US Dividend Equity ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'VYM': { symbol: 'VYM', name: 'Vanguard High Dividend Yield ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'VIG': { symbol: 'VIG', name: 'Vanguard Dividend Appreciation ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'DGRO': { symbol: 'DGRO', name: 'iShares Core Dividend Growth ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'NOBL': { symbol: 'NOBL', name: 'ProShares S&P 500 Dividend Aristocrats ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'JEPI': { symbol: 'JEPI', name: 'JPMorgan Equity Premium Income ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'JEPQ': { symbol: 'JEPQ', name: 'JPMorgan Nasdaq Equity Premium Income ETF', category: 'ETFs & Index Funds', currency: 'USD' },
+  'O': { symbol: 'O', name: 'Realty Income Corporation', category: 'REITs & Real Estate', currency: 'USD' },
+  'MAIN': { symbol: 'MAIN', name: 'Main Street Capital Corporation', category: 'Banking & Financials', currency: 'USD' },
+  'KO': { symbol: 'KO', name: 'The Coca-Cola Company', category: 'Healthcare & Consumer', currency: 'USD' },
+  'PEP': { symbol: 'PEP', name: 'PepsiCo, Inc.', category: 'Healthcare & Consumer', currency: 'USD' },
+  'JNJ': { symbol: 'JNJ', name: 'Johnson & Johnson', category: 'Healthcare & Consumer', currency: 'USD' },
+  'PG': { symbol: 'PG', name: 'Procter & Gamble Company', category: 'Healthcare & Consumer', currency: 'USD' },
+  'ABBV': { symbol: 'ABBV', name: 'AbbVie Inc.', category: 'Healthcare & Consumer', currency: 'USD' },
+  'CVX': { symbol: 'CVX', name: 'Chevron Corporation', category: 'Energy & Utilities', currency: 'USD' },
+  'XOM': { symbol: 'XOM', name: 'Exxon Mobil Corporation', category: 'Energy & Utilities', currency: 'USD' },
+  'IBM': { symbol: 'IBM', name: 'International Business Machines (IBM)', category: 'Technology & Growth', currency: 'USD' },
+  'MO': { symbol: 'MO', name: 'Altria Group, Inc.', category: 'Healthcare & Consumer', currency: 'USD' },
+  'T': { symbol: 'T', name: 'AT&T Inc.', category: 'Energy & Utilities', currency: 'USD' },
+  'VZ': { symbol: 'VZ', name: 'Verizon Communications Inc.', category: 'Energy & Utilities', currency: 'USD' },
+  'MCD': { symbol: 'MCD', name: "McDonald's Corporation", category: 'Healthcare & Consumer', currency: 'USD' },
+  'WMT': { symbol: 'WMT', name: 'Walmart Inc.', category: 'Healthcare & Consumer', currency: 'USD' },
+  'HD': { symbol: 'HD', name: 'The Home Depot, Inc.', category: 'Healthcare & Consumer', currency: 'USD' },
+  'MMM': { symbol: 'MMM', name: '3M Company', category: 'Other', currency: 'USD' },
+  'BTI': { symbol: 'BTI', name: 'British American Tobacco (ADR)', category: 'Healthcare & Consumer', currency: 'USD' },
+  'JPM': { symbol: 'JPM', name: 'JPMorgan Chase & Co.', category: 'Banking & Financials', currency: 'USD' },
+  'BAC': { symbol: 'BAC', name: 'Bank of America Corporation', category: 'Banking & Financials', currency: 'USD' },
+  'CSCO': { symbol: 'CSCO', name: 'Cisco Systems, Inc.', category: 'Technology & Growth', currency: 'USD' },
+  'TXN': { symbol: 'TXN', name: 'Texas Instruments Incorporated', category: 'Technology & Growth', currency: 'USD' },
 };
 
 /**
@@ -245,68 +240,117 @@ export interface DividendBackendResult {
 }
 
 /**
- * Parse raw HTML from Digrin.com (https://www.digrin.com/stocks/detail/{ticker}/)
+ * Parse Digrin.com content (supporting both Jina AI Markdown and raw HTML)
  * CRITICAL RULE: Uses column 1 "Payable date" to derive payout schedules, months, and distributions.
+ * Zero hardcoded numbers.
  */
-export function parseDigrinHtml(html: string, rawTicker: string): DividendBackendResult | null {
-  if (!html) return null;
+export function parseDigrinContent(content: string, rawTicker: string): DividendBackendResult | null {
+  if (!content) return null;
   const cleanTicker = normalizeTickerInput(rawTicker);
 
   // 1. Company Name
-  const titleMatch = html.match(/<h1>([^<]+)<\/h1>/i);
-  const headerText = titleMatch ? titleMatch[1].trim() : cleanTicker;
-  const nameMatch = headerText.match(/^(.*?)\s*(?:\([^)]+\))?\s*Dividends/i);
-  const companyName = nameMatch ? nameMatch[1].trim() : headerText;
+  let companyName = cleanTicker;
+  const mdHeaderMatch = content.match(/##\s*([^(\n]+?)(?:\s*\([^)]+\))?\s*Dividends/i);
+  const h1Match = content.match(/<h1>([^<]+)<\/h1>/i);
+  if (mdHeaderMatch) {
+    companyName = mdHeaderMatch[1].trim();
+  } else if (h1Match) {
+    const h1Text = h1Match[1].trim();
+    const nameMatch = h1Text.match(/^(.*?)\s*(?:\([^)]+\))?\s*Dividends/i);
+    companyName = nameMatch ? nameMatch[1].trim() : h1Text;
+  }
 
-  // 2. Extract Table containing Payable date
-  const tableMatch = html.match(/<th>Payable date<\/th>[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
-  if (!tableMatch) return null;
-
-  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
   let latestPrice: number | undefined = undefined;
-  let currency = cleanTicker.endsWith('.SI') ? 'SGD' : 'USD';
+  let currency = cleanTicker.endsWith(".SI") ? "SGD" : "USD";
+  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
 
-  let rowMatch;
-  while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
-    const rowContent = rowMatch[1];
-    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-    const tds: string[] = [];
-    let tdMatch;
-    while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
-      tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim());
-    }
+  // Case A: Markdown Table (from Jina Reader)
+  if (content.includes("Payable date") && content.includes("| --- |")) {
+    const lines = content.split("\n");
+    for (const line of lines) {
+      if (!line.includes("|") || line.includes("Ex-dividend date") || line.includes("---")) continue;
+      const cells = line.split("|").map((c) => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      if (cells.length < 3) continue;
 
-    if (tds.length < 3) continue;
+      const exDate = cells[0];
+      const payableDate = cells[1];
+      const divRaw = cells[2];
+      const closeRaw = cells.length >= 5 ? cells[4] : (cells.length >= 4 ? cells[3] : "");
 
-    const exDate = tds[0];
-    const payableDate = tds[1];
-    const divRaw = tds[2];
+      if (latestPrice === undefined && closeRaw) {
+        const pm = closeRaw.match(/([\d\.]+)/);
+        if (pm) {
+          const p = parseFloat(pm[1]);
+          if (!isNaN(p)) latestPrice = Math.round(p * 100) / 100;
+        }
+      }
 
-    if (latestPrice === undefined && tds.length >= 5) {
-      const pm = tds[4].match(/([\d\.]+)/);
-      if (pm) {
-        const p = parseFloat(pm[1]);
-        if (!isNaN(p)) latestPrice = Math.round(p * 100) / 100;
+      const amtMatch = divRaw.match(/([\d\.]+)/);
+      const currMatch = divRaw.match(/([A-Za-z]{3})/);
+      if (currMatch) currency = currMatch[1].toUpperCase();
+
+      if (amtMatch && payableDate && /^\d{4}-\d{2}-\d{2}$/.test(payableDate)) {
+        const amt = parseFloat(amtMatch[1]);
+        if (!isNaN(amt) && amt > 0) {
+          const dt = new Date(payableDate);
+          const ts = !isNaN(dt.getTime()) ? dt.getTime() : 0;
+          events.push({
+            date: payableDate,
+            timestamp: ts,
+            amount: Math.round(amt * 10000) / 10000,
+            exDate: /^\d{4}-\d{2}-\d{2}$/.test(exDate) ? exDate : undefined,
+          });
+        }
       }
     }
+  }
 
-    const amtMatch = divRaw.match(/([\d\.]+)/);
-    const currMatch = divRaw.match(/([A-Za-z]{3})/);
-    if (currMatch) currency = currMatch[1].toUpperCase();
+  // Case B: HTML Table (from local proxy or raw HTML)
+  if (events.length === 0) {
+    const tableMatch = content.match(/<th>Payable date<\/th>[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+    if (tableMatch) {
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      let rowMatch;
+      while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
+        const rowContent = rowMatch[1];
+        const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        const tds: string[] = [];
+        let tdMatch;
+        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
+          tds.push(tdMatch[1].replace(/<[^>]+>/g, "").trim());
+        }
 
-    // MUST use Payable Date!
-    if (amtMatch && payableDate && /^\d{4}-\d{2}-\d{2}$/.test(payableDate)) {
-      const amt = parseFloat(amtMatch[1]);
-      if (!isNaN(amt) && amt > 0) {
-        const dt = new Date(payableDate);
-        const ts = !isNaN(dt.getTime()) ? dt.getTime() : 0;
-        events.push({
-          date: payableDate,
-          timestamp: ts,
-          amount: Math.round(amt * 10000) / 10000,
-          exDate: /^\d{4}-\d{2}-\d{2}$/.test(exDate) ? exDate : undefined,
-        });
+        if (tds.length < 3) continue;
+
+        const exDate = tds[0];
+        const payableDate = tds[1];
+        const divRaw = tds[2];
+
+        if (latestPrice === undefined && tds.length >= 5) {
+          const pm = tds[4].match(/([\d\.]+)/);
+          if (pm) {
+            const p = parseFloat(pm[1]);
+            if (!isNaN(p)) latestPrice = Math.round(p * 100) / 100;
+          }
+        }
+
+        const amtMatch = divRaw.match(/([\d\.]+)/);
+        const currMatch = divRaw.match(/([A-Za-z]{3})/);
+        if (currMatch) currency = currMatch[1].toUpperCase();
+
+        if (amtMatch && payableDate && /^\d{4}-\d{2}-\d{2}$/.test(payableDate)) {
+          const amt = parseFloat(amtMatch[1]);
+          if (!isNaN(amt) && amt > 0) {
+            const dt = new Date(payableDate);
+            const ts = !isNaN(dt.getTime()) ? dt.getTime() : 0;
+            events.push({
+              date: payableDate,
+              timestamp: ts,
+              amount: Math.round(amt * 10000) / 10000,
+              exDate: /^\d{4}-\d{2}-\d{2}$/.test(exDate) ? exDate : undefined,
+            });
+          }
+        }
       }
     }
   }
@@ -319,7 +363,7 @@ export function parseDigrinHtml(html: string, rawTicker: string): DividendBacken
   // Determine frequency and payout months from actual Payable Dates
   const payoutMonthsSet = new Set<number>();
   events.slice(0, 12).forEach((e) => {
-    const m = parseInt(e.date.split('-')[1], 10);
+    const m = parseInt(e.date.split("-")[1], 10);
     if (!isNaN(m)) payoutMonthsSet.add(m);
   });
 
@@ -327,37 +371,41 @@ export function parseDigrinHtml(html: string, rawTicker: string): DividendBacken
   const oneYearAgo = now - 365.25 * 86400000;
   const recent1y = events.filter((e) => e.timestamp >= oneYearAgo && e.timestamp <= now);
 
-  let freq: DividendFrequency = 'quarterly';
+  let freq: DividendFrequency = "quarterly";
   let cycleCount = 4;
   if (payoutMonthsSet.size >= 8 || recent1y.length >= 8) {
-    freq = 'monthly';
+    freq = "monthly";
     cycleCount = 12;
   } else if (payoutMonthsSet.size >= 3 || recent1y.length >= 3) {
-    freq = 'quarterly';
+    freq = "quarterly";
     cycleCount = 4;
   } else if (payoutMonthsSet.size === 2 || recent1y.length === 2) {
-    freq = 'semi-annually';
+    freq = "semi-annually";
     cycleCount = 2;
   } else {
-    freq = 'annually';
+    freq = "annually";
     cycleCount = 1;
   }
 
-  const recentCycle = events.slice(0, Math.min(cycleCount, events.length));
-  const annualDps = Math.round(recentCycle.reduce((s, e) => s + e.amount, 0) * 10000) / 10000;
-  const latestDPS = events[0].amount;
-
+  // Pick the latest payout for each payout month up to cycleCount
   const monthsSet = new Set<number>();
   const monthlyDpu: Record<number, number> = {};
-  recentCycle.forEach((e) => {
-    const m = parseInt(e.date.split('-')[1], 10);
-    if (!isNaN(m)) {
-      monthsSet.add(m);
-      monthlyDpu[m] = Math.round(((monthlyDpu[m] || 0) + e.amount) * 10000) / 10000;
+  for (const e of events.slice(0, 16)) {
+    const m = parseInt(e.date.split("-")[1], 10);
+    if (!isNaN(m) && monthlyDpu[m] === undefined) {
+      if (monthsSet.size < cycleCount || payoutMonthsSet.has(m)) {
+        monthlyDpu[m] = e.amount;
+        monthsSet.add(m);
+      }
     }
-  });
+    if (monthsSet.size >= cycleCount && cycleCount > 1) {
+      break;
+    }
+  }
 
   const months = Array.from(monthsSet).sort((a, b) => a - b);
+  const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
+  const latestDPS = events[0].amount;
 
   return {
     symbol: cleanTicker,
@@ -370,21 +418,24 @@ export function parseDigrinHtml(html: string, rawTicker: string): DividendBacken
     months,
     monthlyDpu,
     events: events.slice(0, 24),
-    source: 'digrin',
+    source: "digrin",
     digrinUrl: `https://www.digrin.com/stocks/detail/${cleanTicker}/`
   };
 }
 
+export const parseDigrinHtml = parseDigrinContent;
+
 /**
  * Fetch dividend information from Digrin.com (Sole Source of Truth)
  * 1. Queries local Vite dev middleware / Python backend
- * 2. If running client-only (production / GitHub Pages), queries via proxy
+ * 2. Directly fetches via Jina Reader (CORS enabled for GitHub Pages)
+ * 3. Falls back to local dev proxy
  */
 async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | null> {
   const cleanSym = normalizeTickerInput(symbol);
   if (!cleanSym) return null;
 
-  // 1. Try local dev endpoints
+  // 1. Try local dev endpoints (if Python server / Vite middleware running)
   const localEndpoints = [
     `/api/dividend?ticker=${encodeURIComponent(cleanSym)}`,
     `/api/digrin?ticker=${encodeURIComponent(cleanSym)}`,
@@ -393,11 +444,11 @@ async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | 
 
   for (const endpoint of localEndpoints) {
     try {
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(endpoint, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
         const data: DividendBackendResult = await res.json();
         if (data && data.symbol && !data.error && data.events && data.events.length > 0) {
-          data.source = 'digrin';
+          data.source = "digrin";
           data.digrinUrl = data.digrinUrl || `https://www.digrin.com/stocks/detail/${cleanSym}/`;
           return data;
         }
@@ -407,26 +458,61 @@ async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | 
     }
   }
 
-  // 2. Direct HTML fetch via proxies (local Vite dev proxy or public CORS proxies for GitHub Pages)
-  const targetUrl = `https://www.digrin.com/stocks/detail/${cleanSym}/`;
-  const proxyUrls = [
-    `/digrin-proxy/stocks/detail/${cleanSym}/`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`
-  ];
+  // 2. Client-side fetching (GitHub Pages / browser)
+  const candidateSymbols = [cleanSym];
+  if (cleanSym.endsWith(".SI")) {
+    candidateSymbols.push(cleanSym.toLowerCase());
+  } else {
+    candidateSymbols.push(`${cleanSym}.US`);
+  }
 
-  for (const proxyUrl of proxyUrls) {
+  for (const cand of candidateSymbols) {
+    // A. Jina AI Reader: Free, fast (<1s), bypasses Cloudflare, sends CORS headers for GitHub Pages
     try {
-      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
+      const jinaUrl = `https://r.jina.ai/https://www.digrin.com/stocks/detail/${cand}/`;
+      const res = await fetch(jinaUrl, { signal: AbortSignal.timeout(9000) });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && !text.includes("404: Not Found") && !text.includes("Sorry, we could not find that page")) {
+          const parsed = parseDigrinContent(text, cleanSym);
+          if (parsed && parsed.events.length > 0) {
+            return parsed;
+          }
+        }
+      }
+    } catch {
+      // Continue to next candidate / proxy
+    }
+
+    // B. Local dev proxy (if running via Vite dev)
+    try {
+      const devProxyUrl = `/digrin-proxy/stocks/detail/${cand}/`;
+      const res = await fetch(devProxyUrl, { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const html = await res.text();
-        const parsed = parseDigrinHtml(html, cleanSym);
+        const parsed = parseDigrinContent(html, cleanSym);
         if (parsed && parsed.events.length > 0) {
           return parsed;
         }
       }
     } catch {
-      // Continue to next proxy
+      // Continue
+    }
+
+    // C. Alternate public CORS proxy
+    try {
+      const targetUrl = `https://www.digrin.com/stocks/detail/${cand}/`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const html = await res.text();
+        const parsed = parseDigrinContent(html, cleanSym);
+        if (parsed && parsed.events.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Continue
     }
   }
 
@@ -436,96 +522,51 @@ async function fetchFromDigrin(symbol: string): Promise<DividendBackendResult | 
 /**
  * Fetch dividend information using Digrin.com as the sole source of truth,
  * with strict adherence to Payable Dates.
+ *
+ * CRITICAL RULE: NO hardcoded dividend numbers!
+ * If Digrin has no data or is unreachable, this throws an Error so the UI
+ * can honestly state "Unable to auto-calculate from Digrin.com".
  */
 export const scrapeDividendsForTicker = async (
   rawTicker: string,
   sharesCount: number = 100
 ): Promise<ScrapedDividendResult> => {
   const cleanTicker = normalizeTickerInput(rawTicker);
-  const shares = Math.max(Number(sharesCount) || 0, 0);
-
-  const bareSymbol = cleanTicker.replace(/\.SI$/i, '');
-  const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
-
-  // 1. Fetch from Digrin.com
-  const backendResult = await fetchFromDigrin(cleanTicker);
-
-  let companyName = preset?.name || cleanTicker;
-  let currency = preset?.currency || (cleanTicker.endsWith('.SI') ? 'SGD' : 'USD');
-  let currentPrice = preset?.price;
-  let frequency: DividendFrequency = preset?.frequency || 'quarterly';
-  let payoutMonths: number[] = preset?.months ? [...preset.months] : [3, 6, 9, 12];
-  let monthlyDpu: Record<number, number> = {};
-  let latestDPS = preset?.fallbackDPS || 0;
-  let rawEventsList: RawDividendItem[] = [];
-  let isLive = false;
-  const apiProvider: 'digrin' = 'digrin';
-  let digrinUrl = `https://www.digrin.com/stocks/detail/${cleanTicker}/`;
-  const warningNote: string | undefined = backendResult?.warning;
-
-  if (backendResult) {
-    isLive = true;
-    companyName = backendResult.name || companyName;
-    currency = backendResult.currency || currency;
-    if (backendResult.price) currentPrice = backendResult.price;
-    frequency = backendResult.frequency;
-    payoutMonths = backendResult.months.length > 0 ? backendResult.months : payoutMonths;
-    latestDPS = backendResult.latestDPS;
-    digrinUrl = backendResult.digrinUrl || digrinUrl;
-
-    if (backendResult.monthlyDpu) {
-      Object.entries(backendResult.monthlyDpu).forEach(([k, v]) => {
-        monthlyDpu[Number(k)] = Number(v);
-      });
-    }
-
-    if (backendResult.events && backendResult.events.length > 0) {
-      rawEventsList = backendResult.events.map((e) => ({
-        date: e.timestamp,
-        amount: e.amount,
-      }));
-    }
-  } else {
-    // Fall back to verified benchmark dataset
-    if (preset?.monthlyDpu) {
-      monthlyDpu = { ...preset.monthlyDpu };
-    }
+  if (!cleanTicker) {
+    throw new Error("Please enter a valid ticker symbol.");
   }
 
-  // Ensure payout months and monthlyDpu are aligned
-  payoutMonths = [...payoutMonths].sort((a, b) => a - b);
-  payoutMonths.forEach((m) => {
-    if (monthlyDpu[m] === undefined) {
-      monthlyDpu[m] = latestDPS;
-    }
-  });
+  const shares = Math.max(Number(sharesCount) || 0, 0);
+  const bareSymbol = cleanTicker.replace(/\.SI$/i, "");
+  const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
-  // Calculate annual total DPS from payout months
+  // 1. Fetch from Digrin.com (Sole Source of Truth)
+  const backendResult = await fetchFromDigrin(cleanTicker);
+
+  if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
+    throw new Error(`Unable to auto-calculate from Digrin.com for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
+  }
+
+  const companyName = backendResult.name || preset?.name || cleanTicker;
+  const currency = backendResult.currency || preset?.currency || (cleanTicker.endsWith(".SI") ? "SGD" : "USD");
+  const currentPrice = backendResult.price;
+  const frequency: DividendFrequency = backendResult.frequency;
+  const payoutMonths: number[] = [...backendResult.months].sort((a, b) => a - b);
+  const monthlyDpu: Record<number, number> = { ...backendResult.monthlyDpu };
+  const latestDPS = backendResult.latestDPS;
+  const rawEventsList: RawDividendItem[] = backendResult.events.map((e) => ({
+    date: e.timestamp,
+    amount: e.amount,
+  }));
+  const digrinUrl = backendResult.digrinUrl || `https://www.digrin.com/stocks/detail/${cleanTicker}/`;
+
+  // Calculate annual total DPS strictly from payout months and monthlyDpu
   const expectedYearlyDPS = payoutMonths.reduce((sum, m) => sum + (monthlyDpu[m] ?? latestDPS), 0);
   const expectedYearlyDividends = expectedYearlyDPS * shares;
   const monthlyAverageDividends = expectedYearlyDividends / 12;
 
   // Build past payout events list
-  let parsedEvents: RawDividendItem[] = [];
-  if (rawEventsList.length > 0) {
-    parsedEvents = rawEventsList;
-  } else {
-    // Generate historical baseline events based on payout schedule
-    const now = Date.now();
-    const currentYear = new Date().getFullYear();
-    for (let yr = currentYear; yr >= currentYear - 1; yr--) {
-      for (const m of payoutMonths) {
-        const payoutTime = new Date(yr, m - 1, 15).getTime();
-        if (payoutTime <= now) {
-          parsedEvents.push({
-            date: payoutTime,
-            amount: monthlyDpu[m] ?? latestDPS,
-          });
-        }
-      }
-    }
-  }
-  parsedEvents.sort((a, b) => b.date - a.date);
+  const parsedEvents: RawDividendItem[] = [...rawEventsList].sort((a, b) => b.date - a.date);
 
   const now = Date.now();
   const oneYearAgo = now - 365.25 * 24 * 60 * 60 * 1000;
@@ -545,10 +586,10 @@ export const scrapeDividendsForTicker = async (
     const d = new Date(e.date);
     return {
       date: e.date,
-      dateFormatted: d.toLocaleDateString('en-SG', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
+      dateFormatted: d.toLocaleDateString("en-SG", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
       }),
       amount: e.amount,
       totalForShares: e.amount * shares,
@@ -556,21 +597,17 @@ export const scrapeDividendsForTicker = async (
   });
 
   // Resolve category
-  let category = preset?.category || 'Other';
+  let category = preset?.category || "Other";
   if (!preset) {
     const lowerName = companyName.toLowerCase();
-    if (lowerName.includes('bond') || lowerName.includes('fixed income') || lowerName.includes('treasury')) category = 'Bonds & Fixed Income';
-    else if (lowerName.includes('bank') || lowerName.includes('financial') || lowerName.includes('capital')) category = 'Banking & Financials';
-    else if (lowerName.includes('reit') || lowerName.includes('trust') || lowerName.includes('property') || lowerName.includes('real estate')) category = 'REITs & Real Estate';
-    else if (lowerName.includes('tech') || lowerName.includes('semiconductor') || lowerName.includes('software') || lowerName.includes('mechanics')) category = 'Technology & Growth';
-    else if (lowerName.includes('etf') || lowerName.includes('index') || lowerName.includes('fund')) category = 'ETFs & Index Funds';
-    else if (lowerName.includes('energy') || lowerName.includes('oil') || lowerName.includes('gas') || lowerName.includes('telecom') || lowerName.includes('utility')) category = 'Energy & Utilities';
-    else if (lowerName.includes('health') || lowerName.includes('pharma') || lowerName.includes('consumer') || lowerName.includes('food')) category = 'Healthcare & Consumer';
+    if (lowerName.includes("bond") || lowerName.includes("fixed income") || lowerName.includes("treasury")) category = "Bonds & Fixed Income";
+    else if (lowerName.includes("bank") || lowerName.includes("financial") || lowerName.includes("capital")) category = "Banking & Financials";
+    else if (lowerName.includes("reit") || lowerName.includes("trust") || lowerName.includes("property") || lowerName.includes("real estate")) category = "REITs & Real Estate";
+    else if (lowerName.includes("tech") || lowerName.includes("semiconductor") || lowerName.includes("software") || lowerName.includes("mechanics")) category = "Technology & Growth";
+    else if (lowerName.includes("etf") || lowerName.includes("index") || lowerName.includes("fund")) category = "ETFs & Index Funds";
+    else if (lowerName.includes("energy") || lowerName.includes("oil") || lowerName.includes("gas") || lowerName.includes("telecom") || lowerName.includes("utility")) category = "Energy & Utilities";
+    else if (lowerName.includes("health") || lowerName.includes("pharma") || lowerName.includes("consumer") || lowerName.includes("food")) category = "Healthcare & Consumer";
   }
-
-  const dataSource: 'live_web' | 'verified_dataset' | 'custom_estimate' = isLive
-    ? 'live_web'
-    : (preset ? 'verified_dataset' : 'custom_estimate');
 
   return {
     ticker: cleanTicker,
@@ -588,10 +625,9 @@ export const scrapeDividendsForTicker = async (
     expectedYearlyDividends,
     monthlyAverageDividends,
     pastPayouts,
-    dataSource,
-    apiProvider,
+    dataSource: "live_web",
+    apiProvider: "digrin",
     digrinUrl,
-    isEstimated: !isLive,
-    warningNote,
+    isEstimated: false,
   };
 };

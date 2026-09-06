@@ -483,12 +483,20 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           monthlyAverageDividends: calculatedAnnual / 12,
           currency: result.currency || holding.currency,
           lastFetchedAt: Date.now(),
+          scrapeStatus: 'success',
+          scrapeError: undefined,
         };
 
         updatedMap.set(holding.id, updated);
         successCount++;
-      } catch (err) {
+      } catch (err: any) {
         console.warn(`Could not re-scrape ${holding.tickerOrName}:`, err);
+        const updated: DividendHolding = {
+          ...holding,
+          scrapeStatus: 'unable_to_calculate',
+          scrapeError: err?.message || 'Unable to auto-calculate from Digrin.com',
+        };
+        updatedMap.set(holding.id, updated);
       }
     }
 
@@ -502,7 +510,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
     setIsReScrapingAll(false);
     setReScrapeProgress(null);
-    setReScrapeStatusMessage(`${successCount}/${eligibleHoldings.length} updated`);
+    setReScrapeStatusMessage(`${successCount}/${eligibleHoldings.length} updated from Digrin.com`);
 
     setTimeout(() => {
       setReScrapeStatusMessage(null);
@@ -547,6 +555,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       paymentMethodOrAccount: formAccount.trim() || undefined,
       notes: formNotes.trim() || undefined,
       lastFetchedAt: Date.now(),
+      scrapeStatus: 'success',
+      scrapeError: undefined,
       createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : (existingHolding?.createdAt || Date.now()),
     };
 
@@ -592,11 +602,19 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         monthlyAverageDividends: calculatedAnnual / 12,
         currency: result.currency,
         lastFetchedAt: Date.now(),
+        scrapeStatus: 'success',
+        scrapeError: undefined,
       };
       onUpdateHolding(updated);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Refresh error:', err);
-      alert(`Could not refresh ${holding.tickerOrName}. Please check internet connection.`);
+      const updated: DividendHolding = {
+        ...holding,
+        scrapeStatus: 'unable_to_calculate',
+        scrapeError: err?.message || 'Unable to auto-calculate from Digrin.com',
+      };
+      onUpdateHolding(updated);
+      alert(`Unable to auto-calculate from Digrin.com for ${holding.tickerOrName}. No dividend payout data found on https://www.digrin.com/stocks/detail/${clean}/`);
     } finally {
       setRefreshingId(null);
     }
@@ -1119,6 +1137,24 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                               <span>Pays in {MONTH_NAMES[currentMonthNum - 1]}</span>
                             </span>
                           )}
+                          {h.scrapeStatus === 'unable_to_calculate' && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.2 rounded-md font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1"
+                              title={h.scrapeError || 'Unable to auto-calculate from Digrin.com'}
+                            >
+                              <AlertCircle className="w-2.5 h-2.5 text-rose-400" />
+                              <span>Unable to auto-calculate from Digrin.com</span>
+                            </span>
+                          )}
+                          {h.scrapeStatus === 'success' && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.2 rounded-md font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5"
+                              title="Verified via Digrin.com Payable Dates"
+                            >
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <span>Digrin Verified</span>
+                            </span>
+                          )}
                         </div>
 
                         {h.shares ? (
@@ -1227,14 +1263,13 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         if (!isPaying) return null;
                         const isCurrent = mNum === currentMonthNum;
                         const specificDpu = h.monthlyDpu?.[mNum];
-                        const monthPayout = specificDpu !== undefined
-                          ? (h.shares ? h.shares * specificDpu : specificDpu)
-                          : (h.shares && h.dividendPerShare ? h.shares * h.dividendPerShare : h.amount);
+                        const dpuValue = specificDpu !== undefined ? specificDpu : (h.dividendPerShare || 0);
+                        const monthPayout = h.shares ? h.shares * dpuValue : (specificDpu !== undefined ? specificDpu : h.amount);
 
                         return (
                           <span 
                             key={mName}
-                            title={`${mName} Payout: ${specificDpu !== undefined ? `$${specificDpu.toFixed(4)}/sh` : ''} (${formatCurrency(monthPayout)})`}
+                            title={`${mName} Payout: ${dpuValue > 0 ? `$${dpuValue.toFixed(4)}/sh ` : ''}(${formatCurrency(monthPayout)})`}
                             className={`text-[9px] px-1.5 py-0.5 rounded font-mono flex items-center gap-1 ${
                               isCurrent
                                 ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 ring-1 ring-cyan-400/40'
@@ -1242,11 +1277,16 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                             }`}
                           >
                             <span>{mName}</span>
-                            {specificDpu !== undefined && (
+                            {dpuValue > 0 && (
                               <span className="text-[8.5px] text-cyan-400 font-semibold font-mono-num">
-                                {formatDpuDisplay(specificDpu)}
+                                {formatDpuDisplay(dpuValue)}
                               </span>
                             )}
+                            {monthPayout > 0 && h.shares ? (
+                              <span className="text-[8.5px] text-emerald-400 font-bold font-mono-num">
+                                ({formatCurrency(monthPayout)})
+                              </span>
+                            ) : null}
                           </span>
                         );
                       })}
