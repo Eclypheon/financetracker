@@ -17,8 +17,8 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', sgxName: 'ABF SPORE BOND INDEX FUND ETF' },
   'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'NIKKO AM SINGAPORE STI ETF' },
   'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'NIKKO AM SINGAPORE STI ETF' },
-  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SPDR STRAITS TIMES INDEX ETF' },
-  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SPDR STRAITS TIMES INDEX ETF' },
+  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SS SPDR STI ETF' },
+  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SS SPDR STI ETF' },
   'CLR.SI': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'LION-PHILLIP S-REIT ETF' },
   'CLR': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'LION-PHILLIP S-REIT ETF' },
   'SRT.SI': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'NIKKO AM-ST ASIA EX JP REIT' },
@@ -570,7 +570,7 @@ export function parseSgxCorporateActionsContent(content: string, rawTicker: stri
   // e.g. ABF SPORE BOND INDEX FUND ETF DIVIDEND 01 Jul 2026 02 Jul 2026 15 Jul 2026[Rate: SGD 0.0133 Per Security]
   const regex = /(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s*\[?(?:Rate:\s*)?([A-Za-z]{3})\s*([\d\.]+)/gi;
 
-  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
+  const eventMap = new Map<string, { date: string; timestamp: number; amount: number; exDate?: string }>();
   let currency = 'SGD';
 
   let match: RegExpExecArray | null;
@@ -594,16 +594,23 @@ export function parseSgxCorporateActionsContent(content: string, rawTicker: stri
       if (month && year) {
         const isoDate = `${year}-${month}-${day}`;
         const dt = new Date(isoDate);
-        events.push({
-          date: isoDate,
-          timestamp: !isNaN(dt.getTime()) ? dt.getTime() : 0,
-          amount: Math.round(rate * 10000) / 10000,
-          exDate: exDateStr,
-        });
+        const existing = eventMap.get(isoDate);
+        if (existing) {
+          // Sum multi-component distributions on the same payment date (e.g. taxable + tax-exempt + capital distribution)
+          existing.amount = Math.round((existing.amount + rate) * 10000) / 10000;
+        } else {
+          eventMap.set(isoDate, {
+            date: isoDate,
+            timestamp: !isNaN(dt.getTime()) ? dt.getTime() : 0,
+            amount: Math.round(rate * 10000) / 10000,
+            exDate: exDateStr,
+          });
+        }
       }
     }
   }
 
+  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = Array.from(eventMap.values());
   if (events.length === 0) return null;
   events.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -661,6 +668,14 @@ export async function fetchSgxCorporateActions(symbol: string, companyName?: str
     searchTerms.push(preset.sgxName);
   }
 
+  // Common SGX ETF shortcuts
+  if (cleanSym.startsWith('ES3') && !searchTerms.includes('SS SPDR STI ETF')) {
+    searchTerms.push('SS SPDR STI ETF');
+  }
+  if (cleanSym.startsWith('A35') && !searchTerms.includes('ABF SPORE BOND INDEX FUND ETF')) {
+    searchTerms.push('ABF SPORE BOND INDEX FUND ETF');
+  }
+
   const nameToUse = companyName || preset?.name || '';
   if (nameToUse) {
     const upperName = nameToUse.toUpperCase();
@@ -672,7 +687,10 @@ export async function fetchSgxCorporateActions(symbol: string, companyName?: str
   for (const term of searchTerms) {
     try {
       const url = `https://r.jina.ai/https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(term)}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const res = await fetch(url, {
+        headers: { 'X-Wait-For-Selector': 'tbody' },
+        signal: AbortSignal.timeout(5000),
+      });
       if (res.ok) {
         const text = await res.text();
         if (text && text.includes('Per Security') && text.includes('DIVIDEND')) {
