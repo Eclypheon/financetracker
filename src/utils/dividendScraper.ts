@@ -6,56 +6,57 @@ interface TickerMeta {
   name: string;
   category: string;
   currency: string;
+  sgxName?: string;
 }
 
 export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) ETFS & FUNDS
   // =========================================================================
-  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
-  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
-  'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
-  'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
-  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
-  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD' },
-  'CLR.SI': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
-  'CLR': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
-  'SRT.SI': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
-  'SRT': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD' },
-  'MBH.SI': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
-  'MBH': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD' },
-  'HST.SI': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD' },
-  'HST': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD' },
+  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', sgxName: 'ABF SPORE BOND INDEX FUND ETF' },
+  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', sgxName: 'ABF SPORE BOND INDEX FUND ETF' },
+  'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'NIKKO AM SINGAPORE STI ETF' },
+  'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'NIKKO AM SINGAPORE STI ETF' },
+  'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SPDR STRAITS TIMES INDEX ETF' },
+  'ES3': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', sgxName: 'SPDR STRAITS TIMES INDEX ETF' },
+  'CLR.SI': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'LION-PHILLIP S-REIT ETF' },
+  'CLR': { symbol: 'CLR.SI', name: 'Lion-Phillip S-REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'LION-PHILLIP S-REIT ETF' },
+  'SRT.SI': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'NIKKO AM-ST ASIA EX JP REIT' },
+  'SRT': { symbol: 'SRT.SI', name: 'NikkoAM-StraitsTrading Asia Ex Japan REIT ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'NIKKO AM-ST ASIA EX JP REIT' },
+  'MBH.SI': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD', sgxName: 'NIKKO AM SGD INVESTMENT GRADE' },
+  'MBH': { symbol: 'MBH.SI', name: 'Nikko AM SGD Investment Grade Corp Bond ETF', category: 'Bonds & Fixed Income', currency: 'SGD', sgxName: 'NIKKO AM SGD INVESTMENT GRADE' },
+  'HST.SI': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CSOP SIEDGE SREIT ETF' },
+  'HST': { symbol: 'HST.SI', name: 'CSOP iEdge S-REIT Leaders Index ETF', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CSOP SIEDGE SREIT ETF' },
 
   // =========================================================================
   // SINGAPORE (SGX) BLUE CHIPS & INDUSTRIAL / TECH
   // =========================================================================
-  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD' },
-  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD' },
-  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD' },
-  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
-  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
-  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD' },
-  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
-  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
-  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD' },
-  'Z74.SI': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
-  'Z74': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
-  'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD' },
-  'BN4.SI': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD' },
-  'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD' },
-  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD' },
-  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD' },
-  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD' },
-  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD' },
-  'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
-  'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
-  'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD' },
+  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', sgxName: 'MICRO-MECHANICS (HOLDINGS) LTD' },
+  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', sgxName: 'MICRO-MECHANICS (HOLDINGS) LTD' },
+  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'DBS GROUP HOLDINGS LTD' },
+  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'DBS GROUP HOLDINGS LTD' },
+  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'DBS GROUP HOLDINGS LTD' },
+  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'OVERSEA-CHINESE BANKING CORP' },
+  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'OVERSEA-CHINESE BANKING CORP' },
+  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', sgxName: 'OVERSEA-CHINESE BANKING CORP' },
+  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'UNITED OVERSEAS BANK LTD' },
+  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'UNITED OVERSEAS BANK LTD' },
+  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'UNITED OVERSEAS BANK LTD' },
+  'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'SINGAPORE EXCHANGE LIMITED' },
+  'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'SINGAPORE EXCHANGE LIMITED' },
+  'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', sgxName: 'SINGAPORE EXCHANGE LIMITED' },
+  'Z74.SI': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'SINGAPORE TELECOMMUNICATIONS' },
+  'Z74': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'SINGAPORE TELECOMMUNICATIONS' },
+  'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'SINGAPORE TELECOMMUNICATIONS' },
+  'BN4.SI': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'KEPPEL LTD.' },
+  'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'KEPPEL LTD.' },
+  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', sgxName: 'SINGAPORE AIRLINES LTD' },
+  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', sgxName: 'SINGAPORE AIRLINES LTD' },
+  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD', sgxName: 'SINGAPORE TECH ENGINEERING LTD' },
+  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering Ltd', category: 'Technology & Growth', currency: 'SGD', sgxName: 'SINGAPORE TECH ENGINEERING LTD' },
+  'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'NETLINK NBN TRUST' },
+  'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'NETLINK NBN TRUST' },
+  'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', sgxName: 'NETLINK NBN TRUST' },
   'V03.SI': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD' },
   'V03': { symbol: 'V03.SI', name: 'Venture Corporation Limited', category: 'Technology & Growth', currency: 'SGD' },
   'OV8.SI': { symbol: 'OV8.SI', name: 'Sheng Siong Group Ltd', category: 'Healthcare & Consumer', currency: 'SGD' },
@@ -86,17 +87,17 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) REITS & BUSINESS TRUSTS
   // =========================================================================
-  'A17U.SI': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
-  'A17U': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
-  'CLAR': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD' },
-  'C38U.SI': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'C38U': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'CICT': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'M44U.SI': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'M44U': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'MLT': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'ME8U.SI': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
-  'ME8U': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
+  'A17U.SI': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND ASCENDAS REIT' },
+  'A17U': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND ASCENDAS REIT' },
+  'CLAR': { symbol: 'A17U.SI', name: 'CapitaLand Ascendas REIT', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND ASCENDAS REIT' },
+  'C38U.SI': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND INTEGRATED COM TRUST' },
+  'C38U': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND INTEGRATED COM TRUST' },
+  'CICT': { symbol: 'C38U.SI', name: 'CapitaLand Integrated Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'CAPITALAND INTEGRATED COM TRUST' },
+  'M44U.SI': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'MAPLETREE LOGISTICS TRUST' },
+  'M44U': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'MAPLETREE LOGISTICS TRUST' },
+  'MLT': { symbol: 'M44U.SI', name: 'Mapletree Logistics Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'MAPLETREE LOGISTICS TRUST' },
+  'ME8U.SI': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'MAPLETREE INDUSTRIAL TRUST' },
+  'ME8U': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD', sgxName: 'MAPLETREE INDUSTRIAL TRUST' },
   'MIT': { symbol: 'ME8U.SI', name: 'Mapletree Industrial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
   'N2IU.SI': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
   'N2IU': { symbol: 'N2IU.SI', name: 'Mapletree Pan Asia Commercial Trust', category: 'REITs & Real Estate', currency: 'SGD' },
@@ -232,7 +233,7 @@ export interface DividendBackendResult {
     amount: number;
     exDate?: string;
   }>;
-  source?: 'digrin' | 'stockevents';
+  source?: 'digrin' | 'stockevents' | 'sgx';
   digrinUrl?: string;
   providerNote?: string;
   warning?: string;
@@ -552,6 +553,142 @@ export function parseStockEventsContent(content: string, rawTicker: string): Div
 }
 
 /**
+ * Parse SGX Corporate Actions portal content (via Jina Reader)
+ * URL: https://www.sgx.com/stock-exchange/corporate-actions?value={term}
+ * Provides exact unrounded rates (e.g. SGD 0.0133 per security) and explicit Payment Dates.
+ */
+export function parseSgxCorporateActionsContent(content: string, rawTicker: string, queryTerm: string): DividendBackendResult | null {
+  if (!content || !content.includes('DIVIDEND')) return null;
+  const cleanTicker = normalizeTickerInput(rawTicker);
+
+  const monthMap: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+  };
+
+  // Match rows with Ex Date, Record Date, Payment Date, Currency, and unrounded Rate
+  // e.g. ABF SPORE BOND INDEX FUND ETF DIVIDEND 01 Jul 2026 02 Jul 2026 15 Jul 2026[Rate: SGD 0.0133 Per Security]
+  const regex = /(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s*\[?(?:Rate:\s*)?([A-Za-z]{3})\s*([\d\.]+)/gi;
+
+  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
+  let currency = 'SGD';
+
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    const exDateStr = match[1].trim();
+    const payDateStr = match[3].trim(); // 3rd date is the actual Payment Date!
+    const currStr = match[4].trim();
+    const rateStr = match[5].trim();
+
+    if (currStr) currency = currStr;
+    const rate = parseFloat(rateStr);
+    if (isNaN(rate) || rate <= 0) continue;
+
+    // Parse payment date e.g. "15 Jul 2026"
+    const pParts = payDateStr.split(/\s+/);
+    if (pParts.length === 3) {
+      const day = pParts[0].padStart(2, '0');
+      const mStr = pParts[1].toLowerCase();
+      const month = monthMap[mStr];
+      const year = pParts[2];
+      if (month && year) {
+        const isoDate = `${year}-${month}-${day}`;
+        const dt = new Date(isoDate);
+        events.push({
+          date: isoDate,
+          timestamp: !isNaN(dt.getTime()) ? dt.getTime() : 0,
+          amount: Math.round(rate * 10000) / 10000,
+          exDate: exDateStr,
+        });
+      }
+    }
+  }
+
+  if (events.length === 0) return null;
+  events.sort((a, b) => b.date.localeCompare(a.date));
+
+  // Determine cycle from latest events (past 365 days or recent 2)
+  const latestTimestamp = events[0].timestamp || Date.now();
+  const cycleCutoff = latestTimestamp - 365 * 24 * 60 * 60 * 1000;
+  const cycleEvents = events.filter((e) => e.timestamp >= cycleCutoff && e.timestamp <= latestTimestamp);
+  const effectiveEvents = cycleEvents.length > 0 ? cycleEvents : events.slice(0, 2);
+
+  const monthsSet = new Set<number>();
+  const monthlyDpu: Record<number, number> = {};
+  for (const e of effectiveEvents) {
+    const m = parseInt(e.date.split('-')[1], 10);
+    if (!isNaN(m) && monthlyDpu[m] === undefined) {
+      monthsSet.add(m);
+      monthlyDpu[m] = e.amount;
+    }
+  }
+
+  const months = Array.from(monthsSet).sort((a, b) => a - b);
+  const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
+  const latestDPS = events[0].amount;
+
+  let freq: DividendFrequency = 'semi-annually';
+  if (months.length >= 8) freq = 'monthly';
+  else if (months.length >= 3) freq = 'quarterly';
+  else if (months.length === 2) freq = 'semi-annually';
+  else freq = 'annually';
+
+  return {
+    symbol: cleanTicker,
+    name: queryTerm,
+    currency,
+    annualDps,
+    latestDPS,
+    frequency: freq,
+    months,
+    monthlyDpu,
+    events: events.slice(0, 24),
+    source: 'sgx',
+    digrinUrl: `https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(queryTerm)}`
+  };
+}
+
+/**
+ * Fetch dividend actions from SGX Corporate Actions portal
+ */
+export async function fetchSgxCorporateActions(symbol: string, companyName?: string): Promise<DividendBackendResult | null> {
+  const cleanSym = normalizeTickerInput(symbol);
+  const bareSymbol = cleanSym.replace(/\.(SI|SG|XSES)$/i, '').trim();
+  const preset = POPULAR_TICKERS[cleanSym] || POPULAR_TICKERS[bareSymbol];
+
+  const searchTerms: string[] = [];
+  if (preset?.sgxName) {
+    searchTerms.push(preset.sgxName);
+  }
+
+  const nameToUse = companyName || preset?.name || '';
+  if (nameToUse) {
+    const upperName = nameToUse.toUpperCase();
+    if (!searchTerms.includes(upperName)) searchTerms.push(upperName);
+    const sporeName = upperName.replace(/SINGAPORE/gi, 'SPORE');
+    if (!searchTerms.includes(sporeName)) searchTerms.push(sporeName);
+  }
+
+  for (const term of searchTerms) {
+    try {
+      const url = `https://r.jina.ai/https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(term)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.includes('Per Security') && text.includes('DIVIDEND')) {
+          const parsed = parseSgxCorporateActionsContent(text, cleanSym, term);
+          if (parsed && parsed.events.length > 0) {
+            return parsed;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+/**
  * Fetch dividend information from Digrin.com (Primary) and StockEvents (Secondary)
  * Loops through all candidate variants (XX.SI, XX, XX.SG, XX.XSES) until a positive match occurs.
  */
@@ -629,10 +766,32 @@ export const scrapeDividendsForTicker = async (
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
   // 1. Fetch from Digrin.com (Sole Source of Truth)
-  const backendResult = await fetchFromWebSources(cleanTicker);
+  let backendResult = await fetchFromWebSources(cleanTicker);
+
+  // 2. High precision check / SGX Corporate Actions verification:
+  // For small dividend payouts (< 0.20 SGD) or SG stocks verified via StockEvents (where StockEvents rounds to 2 decimals, e.g. A35 0.01 vs 0.0133),
+  // or if preset specifically provides an sgxName, verify with SGX Corporate Actions to get unrounded rates.
+  const isSgxEligible = cleanTicker.endsWith('.SI') || cleanTicker.endsWith('.SG') || preset?.currency === 'SGD' || backendResult?.currency === 'SGD';
+  if (isSgxEligible) {
+    const shouldCheckSgx = Boolean(preset?.sgxName) ||
+      !backendResult ||
+      (backendResult.latestDPS !== undefined && backendResult.latestDPS < 0.20) ||
+      backendResult?.source === 'stockevents';
+
+    if (shouldCheckSgx) {
+      try {
+        const sgxResult = await fetchSgxCorporateActions(cleanTicker, backendResult?.name || preset?.name);
+        if (sgxResult && sgxResult.events && sgxResult.events.length > 0) {
+          backendResult = sgxResult;
+        }
+      } catch (err) {
+        console.warn(`SGX corporate actions check failed for ${cleanTicker}:`, err);
+      }
+    }
+  }
 
   if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
-    throw new Error(`Unable to auto-calculate from Digrin.com or StockEvents for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
+    throw new Error(`Unable to auto-calculate from Digrin.com, StockEvents, or SGX for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
   }
 
   const companyName = backendResult.name || preset?.name || cleanTicker;
@@ -714,7 +873,7 @@ export const scrapeDividendsForTicker = async (
     monthlyAverageDividends,
     pastPayouts,
     dataSource: "live_web",
-    apiProvider: (backendResult.source === "stockevents" ? "stockevents" : "digrin") as any,
+    apiProvider: (backendResult.source === "sgx" ? "sgx" : (backendResult.source === "stockevents" ? "stockevents" : "digrin")) as any,
     digrinUrl,
     isEstimated: false,
   };

@@ -485,7 +485,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           lastFetchedAt: Date.now(),
           scrapeStatus: 'success',
           scrapeError: undefined,
-          source: (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
+          source: (result.apiProvider === 'sgx' ? 'sgx' : (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
         };
 
         updatedMap.set(holding.id, updated);
@@ -558,7 +558,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       lastFetchedAt: Date.now(),
       scrapeStatus: 'success',
       scrapeError: undefined,
-      source: (scrapedResult.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
+      source: (scrapedResult.apiProvider === 'sgx' ? 'sgx' : (scrapedResult.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
       createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : (existingHolding?.createdAt || Date.now()),
     };
 
@@ -606,7 +606,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         lastFetchedAt: Date.now(),
         scrapeStatus: 'success',
         scrapeError: undefined,
-        source: (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin'),
+        source: (result.apiProvider === 'sgx' ? 'sgx' : (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
       };
       onUpdateHolding(updated);
     } catch (err: any) {
@@ -1151,11 +1151,17 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                           )}
                           {h.scrapeStatus === 'success' && (
                             <span
-                              className="text-[9px] px-1.5 py-0.2 rounded-md font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5"
-                              title={`Verified via ${h.source === 'stockevents' ? 'StockEvents.app' : 'Digrin.com'} Payment Dates`}
+                              className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold border flex items-center gap-0.5 ${
+                                h.source === 'sgx'
+                                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                  : h.source === 'stockevents'
+                                  ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              }`}
+                              title={`Verified via ${h.source === 'sgx' ? 'SGX Corporate Actions Official Rates &' : (h.source === 'stockevents' ? 'StockEvents.app' : 'Digrin.com')} Payment Dates`}
                             >
                               <CheckCircle2 className="w-2.5 h-2.5" />
-                              <span>{h.source === 'stockevents' ? 'StockEvents Verified' : 'Digrin Verified'}</span>
+                              <span>{h.source === 'sgx' ? 'SGX Verified' : (h.source === 'stockevents' ? 'StockEvents Verified' : 'Digrin Verified')}</span>
                             </span>
                           )}
                         </div>
@@ -1168,7 +1174,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                                 Variable DPU
                               </span>
                             ) : h.dividendPerShare ? (
-                              <span>@ {formatCurrency(h.dividendPerShare, { showCents: true })} DPS</span>
+                              <span>@ {formatDpuDisplay(h.dividendPerShare)} DPS</span>
                             ) : null}
                           </p>
                         ) : null}
@@ -1529,32 +1535,66 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                     )}
 
                     {/* Provider Verification Card */}
-                    <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 space-y-1.5">
+                    <div className={`p-2.5 rounded-lg bg-slate-900 border space-y-1.5 ${
+                      scrapedResult.apiProvider === 'sgx'
+                        ? 'border-purple-500/30'
+                        : scrapedResult.apiProvider === 'stockevents'
+                        ? 'border-sky-500/30'
+                        : 'border-emerald-500/30'
+                    }`}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                          Digrin.com Verified (Payable Date)
+                          <ShieldCheck className={`w-4 h-4 ${
+                            scrapedResult.apiProvider === 'sgx'
+                              ? 'text-purple-400'
+                              : scrapedResult.apiProvider === 'stockevents'
+                              ? 'text-sky-400'
+                              : 'text-emerald-400'
+                          }`} />
+                          {scrapedResult.apiProvider === 'sgx'
+                            ? 'SGX Corporate Actions (Official Unrounded Rates)'
+                            : scrapedResult.apiProvider === 'stockevents'
+                            ? 'StockEvents.app Verified (Payable Date)'
+                            : 'Digrin.com Verified (Payable Date)'}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                          {scrapedResult.dataSource === 'live_web' ? 'Digrin Live' : 'Digrin Verified'}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          scrapedResult.apiProvider === 'sgx'
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                            : scrapedResult.apiProvider === 'stockevents'
+                            ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        }`}>
+                          {scrapedResult.apiProvider === 'sgx'
+                            ? 'SGX Verified'
+                            : (scrapedResult.dataSource === 'live_web' ? 'Live Scrape' : 'Verified Dataset')}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 leading-snug">
-                        {scrapedResult.dataSource === 'live_web'
-                          ? `Live distributions scraped from Digrin.com with explicit Payable Dates (${scrapedResult.pastPayouts.length} payouts recorded). Payout months and frequencies derived strictly from Payable Dates.`
-                          : `Distributions verified from Digrin.com benchmark dataset (${scrapedResult.pastPayouts.length} payouts recorded). Payout months derived strictly from Payable Dates.`}
+                        {scrapedResult.apiProvider === 'sgx'
+                          ? `Official distributions verified from Singapore Exchange (SGX) Corporate Actions portal with exact unrounded rates (${scrapedResult.pastPayouts.length} payouts recorded). Payout months and frequencies derived strictly from Payment Dates.`
+                          : scrapedResult.apiProvider === 'stockevents'
+                          ? `Distributions verified from StockEvents.app (${scrapedResult.pastPayouts.length} payouts recorded). Payout months derived strictly from Payment Dates.`
+                          : `Live distributions scraped from Digrin.com with explicit Payable Dates (${scrapedResult.pastPayouts.length} payouts recorded). Payout months and frequencies derived strictly from Payable Dates.`}
                       </p>
                       <div className="pt-1 flex items-center justify-between">
                         <a
-                          href={scrapedResult.digrinUrl || `https://www.digrin.com/stocks/detail/${scrapedResult.ticker}/`}
+                          href={scrapedResult.digrinUrl || (scrapedResult.apiProvider === 'sgx'
+                            ? `https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(scrapedResult.ticker)}`
+                            : `https://www.digrin.com/stocks/detail/${scrapedResult.ticker}/`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 underline font-medium"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          View {scrapedResult.ticker} on Digrin.com ↗
+                          {scrapedResult.apiProvider === 'sgx'
+                            ? `View ${scrapedResult.ticker} on SGX Corporate Actions ↗`
+                            : scrapedResult.apiProvider === 'stockevents'
+                            ? `View ${scrapedResult.ticker} on StockEvents.app ↗`
+                            : `View ${scrapedResult.ticker} on Digrin.com ↗`}
                         </a>
-                        <span className="text-[10px] text-slate-500">Sole Source of Truth</span>
+                        <span className="text-[10px] text-slate-500">
+                          {scrapedResult.apiProvider === 'sgx' ? 'Official Exchange Portal' : 'Primary Source of Truth'}
+                        </span>
                       </div>
                     </div>
 
