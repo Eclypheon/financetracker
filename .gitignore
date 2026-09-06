@@ -28,6 +28,8 @@ dist-ssr
 __pycache__/
 *.pyc
 
-# Local Twelve Data cache & rate limit
+# Local Twelve Data & EODHD cache & rate limit
 .twelvedata_*.json
 scripts/.twelvedata_*.json
+.eodhd_*.json
+scripts/.eodhd_*.json

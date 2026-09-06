@@ -23,6 +23,7 @@ function yfinanceDevPlugin() {
         if (parsedUrl.pathname === '/api/dividend' || parsedUrl.pathname === '/api/yfinance') {
           const ticker = parsedUrl.searchParams.get('ticker') || parsedUrl.searchParams.get('symbol');
           const apiKey = (parsedUrl.searchParams.get('apikey') || parsedUrl.searchParams.get('twelvedata_key') || process.env.TWELVEDATA_API_KEY || '').trim();
+          const eodhdKey = (parsedUrl.searchParams.get('eodhd_key') || parsedUrl.searchParams.get('eodhd_token') || process.env.EODHD_API_KEY || process.env.EODHD_API_TOKEN || '').trim();
           if (!ticker) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
@@ -31,7 +32,7 @@ function yfinanceDevPlugin() {
           }
 
           const upper = ticker.trim().toUpperCase();
-          const cacheKey = apiKey ? `${upper}_${apiKey}` : upper;
+          const cacheKey = `${upper}_${apiKey}_${eodhdKey}`;
           const cached = cache.get(cacheKey);
           if (cached && Date.now() - cached.time < CACHE_TTL) {
             res.statusCode = 200;
@@ -47,6 +48,7 @@ function yfinanceDevPlugin() {
             const timeout = setTimeout(() => controller.abort(), 600);
             const queryParams = new URLSearchParams({ ticker: upper });
             if (apiKey) queryParams.set('apikey', apiKey);
+            if (eodhdKey) queryParams.set('eodhd_key', eodhdKey);
             const serverRes = await fetch(`http://127.0.0.1:5001/api/dividend?${queryParams.toString()}`, {
               signal: controller.signal
             });
@@ -65,27 +67,32 @@ function yfinanceDevPlugin() {
           }
 
           // 2. Direct python3 execution via Node child_process
-          const pyArgs = apiKey ? [scriptPath, upper, apiKey] : [scriptPath, upper];
+          const pyArgs = [scriptPath, upper, apiKey || '-', eodhdKey || '-'];
           execFile('python3', pyArgs, (err, stdout, stderr) => {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
-            if (err) {
+            if (err && !stdout) {
               res.statusCode = 500;
               res.end(JSON.stringify({ error: err.message || 'Python execution failed', stderr }));
               return;
             }
             try {
-              const parsed = JSON.parse(stdout);
+              // Extract the JSON portion from stdout defensively
+              const str = stdout || '';
+              const startIdx = str.indexOf('{');
+              const endIdx = str.lastIndexOf('}');
+              const jsonStr = (startIdx !== -1 && endIdx !== -1) ? str.substring(startIdx, endIdx + 1) : str.trim();
+              const parsed = JSON.parse(jsonStr);
               if (parsed.error && !parsed.symbol) {
                 res.statusCode = 404;
               } else {
                 res.statusCode = 200;
-                cache.set(cacheKey, { data: stdout, time: Date.now() });
+                cache.set(cacheKey, { data: jsonStr, time: Date.now() });
               }
-              res.end(stdout);
+              res.end(jsonStr);
             } catch (parseErr) {
               res.statusCode = 500;
-              res.end(JSON.stringify({ error: 'Failed to parse python output', stdout }));
+              res.end(JSON.stringify({ error: 'Failed to parse python output', stdout, stderr }));
             }
           });
           return;

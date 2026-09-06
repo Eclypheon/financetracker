@@ -91,6 +91,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   const [scrapedResult, setScrapedResult] = useState<ScrapedDividendResult | null>(null);
   const [showPayoutHistory, setShowPayoutHistory] = useState(false);
   const [twelveDataKey, setTwelveDataKey] = useState<string>(() => (typeof window !== 'undefined' ? (localStorage.getItem('twelve_data_api_key') || '') : ''));
+  const [eodhdKey, setEodhdKey] = useState<string>(() => (typeof window !== 'undefined' ? (localStorage.getItem('eodhd_api_key') || localStorage.getItem('eodhd_api_token') || '') : ''));
   const [showKeyInput, setShowKeyInput] = useState(false);
 
   // Re-scrape All State
@@ -1417,8 +1418,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   </div>
                 </div>
 
-                {/* Twelve Data API Key Configuration (Optional) */}
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-1.5">
+                {/* API Keys Configuration (Twelve Data & EODHD) */}
+                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-2">
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
@@ -1426,43 +1427,90 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       className="text-slate-300 hover:text-cyan-300 font-medium flex items-center gap-1.5 text-[10px] cursor-pointer"
                     >
                       <Key className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Twelve Data API Key {twelveDataKey ? '(Active)' : '(Optional)'}</span>
+                      <span>API Keys & Fallbacks {(twelveDataKey || eodhdKey) ? '(Active)' : '(Optional)'}</span>
                       <span className="text-[9px] text-cyan-400 font-bold ml-1">{showKeyInput ? '▲' : '▼'}</span>
                     </button>
                     <span className="text-[9px] text-slate-500 font-mono">
-                      Rate-limited to ≤8 calls/min
+                      TwelveData → EODHD → yfinance
                     </span>
                   </div>
                   {showKeyInput && (
-                    <div className="pt-1.5 space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="password"
-                          placeholder="Enter your Twelve Data API key..."
-                          value={twelveDataKey}
-                          onChange={(e) => {
-                            const val = e.target.value.trim();
-                            setTwelveDataKey(val);
-                            localStorage.setItem('twelve_data_api_key', val);
-                          }}
-                          className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
-                        />
-                        {twelveDataKey && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTwelveDataKey('');
-                              localStorage.removeItem('twelve_data_api_key');
+                    <div className="pt-1.5 space-y-2.5 border-t border-slate-800/80">
+                      {/* Twelve Data Key */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-semibold text-slate-300">
+                            1. Twelve Data API Key {twelveDataKey && <span className="text-cyan-400 text-[9px]">(Active)</span>}
+                          </label>
+                          <span className="text-[9px] text-slate-500 font-mono">Max 8 calls/min</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="password"
+                            placeholder="Enter Twelve Data API key..."
+                            value={twelveDataKey}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              setTwelveDataKey(val);
+                              localStorage.setItem('twelve_data_api_key', val);
                             }}
-                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-1.5 py-1"
-                          >
-                            Clear
-                          </button>
-                        )}
+                            className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                          {twelveDataKey && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTwelveDataKey('');
+                                localStorage.removeItem('twelve_data_api_key');
+                              }}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-1.5 py-1"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[9px] text-slate-400 leading-tight">
+                          Uses Twelve Data <code className="text-cyan-400">/dividends_calendar</code> with 24h disk caching.
+                        </p>
                       </div>
-                      <p className="text-[9px] text-slate-400 leading-tight">
-                        Uses Twelve Data <code className="text-cyan-400">/dividends_calendar</code> with persistent 24h caching. If no key or plan limit, automatically falls back to yfinance.
-                      </p>
+
+                      {/* EODHD Key */}
+                      <div className="space-y-1 pt-1 border-t border-slate-800/60">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-semibold text-slate-300">
+                            2. EODHD API Token {eodhdKey && <span className="text-emerald-400 text-[9px]">(Active)</span>}
+                          </label>
+                          <span className="text-[9px] text-slate-500 font-mono">Explicit paymentDate</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="password"
+                            placeholder="Enter EODHD API token..."
+                            value={eodhdKey}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              setEodhdKey(val);
+                              localStorage.setItem('eodhd_api_key', val);
+                            }}
+                            className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                          {eodhdKey && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEodhdKey('');
+                                localStorage.removeItem('eodhd_api_key');
+                              }}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-1.5 py-1"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[9px] text-slate-400 leading-tight">
+                          Extracts exact dividend payment dates (maps SGX to <code className="text-cyan-400">.XSES</code> / <code className="text-cyan-400">.SG</code>). Falls back to yfinance if not configured.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1552,15 +1600,25 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-slate-200 flex items-center gap-1.5">
                             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                            {scrapedResult.apiProvider === 'twelvedata' ? 'Twelve Data Calendar Verified' : 'Yahoo Finance / yfinance Verified'}
+                            {scrapedResult.apiProvider === 'twelvedata'
+                              ? 'Twelve Data Calendar Verified'
+                              : scrapedResult.apiProvider === 'eodhd'
+                              ? 'EODHD Payment Date Verified'
+                              : 'Yahoo Finance / yfinance Verified'}
                           </span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                            {scrapedResult.apiProvider === 'twelvedata' ? 'Twelve Data Live' : 'Live Feed'}
+                            {scrapedResult.apiProvider === 'twelvedata'
+                              ? 'Twelve Data Live'
+                              : scrapedResult.apiProvider === 'eodhd'
+                              ? 'EODHD Live'
+                              : 'Live Feed'}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300 leading-snug">
                           {scrapedResult.apiProvider === 'twelvedata'
                             ? `Live distributions retrieved from Twelve Data /dividends_calendar (${scrapedResult.pastPayouts.length} distributions recorded, throttled ≤8 calls/min).`
+                            : scrapedResult.apiProvider === 'eodhd'
+                            ? `Live distributions retrieved from EODHD with explicit payment dates (${scrapedResult.pastPayouts.length} payments recorded). SGX tickers auto-mapped to .XSES / .SG.`
                             : `Live distributions verified directly from Yahoo Finance (${scrapedResult.pastPayouts.length} past payments recorded). Real dividends are prioritized as authoritative.`}
                         </p>
                       </div>

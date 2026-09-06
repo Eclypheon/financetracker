@@ -42,6 +42,7 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
             query_params = urllib.parse.parse_qs(parsed.query)
             ticker = query_params.get('ticker', query_params.get('symbol', ['']))[0].strip()
             api_key = query_params.get('apikey', query_params.get('twelvedata_key', ['']))[0].strip()
+            eodhd_key = query_params.get('eodhd_key', query_params.get('eodhd_token', ['']))[0].strip()
             
             if not ticker:
                 self.send_response(400)
@@ -53,11 +54,11 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
 
             now = time.time()
             ticker_upper = ticker.upper()
-            cache_key = f"{ticker_upper}_{api_key}" if api_key else ticker_upper
+            cache_key = f"{ticker_upper}_{api_key}_{eodhd_key}"
             if cache_key in CACHE and (now - CACHE[cache_key]['timestamp'] < CACHE_TTL):
                 data = CACHE[cache_key]['data']
             else:
-                data = fetch_dividend_info(ticker_upper, api_key)
+                data = fetch_dividend_info(ticker_upper, api_key, eodhd_key)
                 if 'error' not in data:
                     CACHE[cache_key] = {'data': data, 'timestamp': now}
 

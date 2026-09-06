@@ -236,7 +236,7 @@ export interface DividendBackendResult {
     timestamp: number;
     amount: number;
   }>;
-  source?: 'twelvedata' | 'yfinance';
+  source?: 'twelvedata' | 'eodhd' | 'yfinance';
   providerNote?: string;
   warning?: string;
   error?: string;
@@ -260,16 +260,19 @@ interface RawYahooChartResult {
 }
 
 /**
- * Priority 1: Query local backend dividend service (Twelve Data calendar / yfinance)
+ * Priority 1: Query local backend dividend service (Twelve Data calendar / EODHD / yfinance)
  */
 async function fetchFromDividendBackend(symbol: string): Promise<DividendBackendResult | null> {
   const userApiKey = typeof window !== 'undefined' ? (localStorage.getItem('twelve_data_api_key') || '') : '';
+  const userEodhdKey = typeof window !== 'undefined' ? (localStorage.getItem('eodhd_api_key') || localStorage.getItem('eodhd_api_token') || '') : '';
   const keyParam = userApiKey ? `&apikey=${encodeURIComponent(userApiKey)}` : '';
+  const eodhdParam = userEodhdKey ? `&eodhd_key=${encodeURIComponent(userEodhdKey)}` : '';
+  const queryParams = `${keyParam}${eodhdParam}`;
 
   const endpoints = [
-    `/api/dividend?ticker=${encodeURIComponent(symbol)}${keyParam}`,
-    `/api/yfinance?ticker=${encodeURIComponent(symbol)}${keyParam}`,
-    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(symbol)}${keyParam}`
+    `/api/dividend?ticker=${encodeURIComponent(symbol)}${queryParams}`,
+    `/api/yfinance?ticker=${encodeURIComponent(symbol)}${queryParams}`,
+    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(symbol)}${queryParams}`
   ];
 
   for (const endpoint of endpoints) {
@@ -390,7 +393,7 @@ export const scrapeDividendsForTicker = async (
   let latestDPS = preset?.fallbackDPS || 0;
   let rawEventsList: RawDividendItem[] = [];
   let isLive = false;
-  let apiProvider: 'twelvedata' | 'yfinance' | undefined = undefined;
+  let apiProvider: 'twelvedata' | 'eodhd' | 'yfinance' | undefined = undefined;
   let warningNote: string | undefined = backendResult?.providerNote;
 
   if (backendResult) {
