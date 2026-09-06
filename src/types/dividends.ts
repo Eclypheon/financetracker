@@ -4,11 +4,12 @@ export interface DividendHolding {
   id: string;
   tickerOrName: string;
   category: string;
-  amount: number; // Dividend amount per payout
+  amount: number; // Dividend amount per payout (or primary payout amount)
   frequency: DividendFrequency;
   payoutMonths: number[]; // Array of 1-indexed months (1 = Jan, ..., 12 = Dec)
   shares?: number;
   dividendPerShare?: number;
+  monthlyDpu?: Record<number, number>; // Month (1..12) -> specific DPU for that payout month (e.g. { 5: 0.40, 11: 0.50 })
   totalAnnualPayout: number; // Calculated total annual dividend
   paymentMethodOrAccount?: string; // e.g. "CDP", "IBKR", "SRS"
   notes?: string;
@@ -30,6 +31,7 @@ export interface ScrapedDividendResult {
   shares: number;
   currentPrice?: number;
   latestDPS: number;
+  monthlyDpu?: Record<number, number>; // Month (1..12) -> specific DPU for that payout month
   frequency: DividendFrequency;
   payoutMonths: number[];
   pastYearDividends: number; // TTM total for user's shares

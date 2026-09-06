@@ -3,17 +3,34 @@ import { DividendHolding, MonthlyDividendDistribution, MONTH_NAMES } from '../ty
 const DIVIDENDS_STORAGE_KEY = 'financetracker_dividends_v1';
 
 export const calculateDividendAnnual = (
-  holding: Pick<DividendHolding, 'amount' | 'frequency' | 'payoutMonths' | 'shares' | 'dividendPerShare'>
+  holding: Pick<DividendHolding, 'amount' | 'frequency' | 'payoutMonths' | 'shares' | 'dividendPerShare' | 'monthlyDpu'>
 ): number => {
+  const months = (holding.payoutMonths && holding.payoutMonths.length > 0)
+    ? holding.payoutMonths
+    : (holding.frequency === 'monthly' ? [1,2,3,4,5,6,7,8,9,10,11,12] : holding.frequency === 'quarterly' ? [3,6,9,12] : holding.frequency === 'semi-annually' ? [6,12] : [12]);
+
+  // If specific per-month DPUs are defined, sum each month's actual payout
+  if (holding.monthlyDpu && Object.keys(holding.monthlyDpu).length > 0) {
+    let total = 0;
+    for (const m of months) {
+      const monthDpu = holding.monthlyDpu[m];
+      if (monthDpu !== undefined) {
+        total += holding.shares ? holding.shares * monthDpu : monthDpu;
+      } else {
+        const fallback = (holding.shares && holding.dividendPerShare)
+          ? holding.shares * holding.dividendPerShare
+          : (Number(holding.amount) || 0);
+        total += fallback;
+      }
+    }
+    return total;
+  }
+
   const perPayout = (holding.shares && holding.dividendPerShare)
     ? holding.shares * holding.dividendPerShare
     : (Number(holding.amount) || 0);
 
-  const monthsCount = (holding.payoutMonths && holding.payoutMonths.length > 0)
-    ? holding.payoutMonths.length
-    : (holding.frequency === 'monthly' ? 12 : holding.frequency === 'quarterly' ? 4 : holding.frequency === 'semi-annually' ? 2 : 1);
-
-  return perPayout * monthsCount;
+  return perPayout * months.length;
 };
 
 export const sampleInitialDividends: DividendHolding[] = [
@@ -26,34 +43,56 @@ export const sampleInitialDividends: DividendHolding[] = [
     payoutMonths: [2, 5, 8, 11],
     shares: 1000,
     dividendPerShare: 0.81,
-    totalAnnualPayout: 3240,
+    monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 },
+    totalAnnualPayout: 3180,
     pastYearDividends: 3180,
     ytdDividends: 2430,
-    expectedYearlyDividends: 3240,
-    monthlyAverageDividends: 270,
+    expectedYearlyDividends: 3180,
+    monthlyAverageDividends: 265,
     currency: 'SGD',
     paymentMethodOrAccount: 'CDP',
-    notes: 'Q1-Q4 regular distributions',
+    notes: 'Q1-Q4 variable distributions',
     createdAt: Date.now() - 100000,
   },
   {
     id: 'div_ocbc',
     tickerOrName: 'OCBC Bank (O39.SI)',
     category: 'Banking & Financials',
-    amount: 440,
+    amount: 580,
+    frequency: 'semi-annually',
+    payoutMonths: [4, 8],
+    shares: 1000,
+    dividendPerShare: 0.58,
+    monthlyDpu: { 4: 0.58, 8: 0.47 },
+    totalAnnualPayout: 1050,
+    pastYearDividends: 1050,
+    ytdDividends: 580,
+    expectedYearlyDividends: 1050,
+    monthlyAverageDividends: 87.5,
+    currency: 'SGD',
+    paymentMethodOrAccount: 'CDP',
+    notes: 'Interim $0.47 (Aug) & Final $0.58 (Apr)',
+    createdAt: Date.now() - 90000,
+  },
+  {
+    id: 'div_s63',
+    tickerOrName: 'Singapore Tech Engineering (S63.SI)',
+    category: 'Technology & Growth',
+    amount: 50,
     frequency: 'semi-annually',
     payoutMonths: [6, 12],
     shares: 1000,
-    dividendPerShare: 0.44,
-    totalAnnualPayout: 880,
-    pastYearDividends: 860,
-    ytdDividends: 440,
-    expectedYearlyDividends: 880,
-    monthlyAverageDividends: 73.33,
+    dividendPerShare: 0.05,
+    monthlyDpu: { 6: 0.04, 12: 0.05 },
+    totalAnnualPayout: 90,
+    pastYearDividends: 90,
+    ytdDividends: 50,
+    expectedYearlyDividends: 90,
+    monthlyAverageDividends: 7.50,
     currency: 'SGD',
     paymentMethodOrAccount: 'CDP',
-    notes: 'Interim & Final dividends',
-    createdAt: Date.now() - 90000,
+    notes: 'Interim DPU $0.04 (Jun) & Final DPU $0.05 (Dec)',
+    createdAt: Date.now() - 85000,
   },
   {
     id: 'div_clar',
@@ -168,9 +207,15 @@ export const calculateMonthlyDistribution = (
     const payingHoldings = holdings
       .filter((h) => Array.isArray(h.payoutMonths) && h.payoutMonths.includes(monthNum))
       .map((h) => {
-        const payout = (h.shares && h.dividendPerShare)
-          ? h.shares * h.dividendPerShare
-          : Number(h.amount) || 0;
+        let payout = 0;
+        if (h.monthlyDpu && h.monthlyDpu[monthNum] !== undefined) {
+          payout = h.shares ? h.shares * h.monthlyDpu[monthNum] : h.monthlyDpu[monthNum];
+        } else if (h.shares && h.dividendPerShare) {
+          payout = h.shares * h.dividendPerShare;
+        } else {
+          payout = Number(h.amount) || 0;
+        }
+
         return {
           id: h.id,
           tickerOrName: h.tickerOrName,
@@ -200,11 +245,16 @@ const escapeCsvCell = (str: string | number): string => {
 
 export const exportDividendsToCsv = (holdings: DividendHolding[]): void => {
   const rows: string[][] = [
-    ['Holding / Ticker', 'Category', 'Frequency', 'Payout Amount ($)', 'Annual Payout ($)', 'Payout Months', 'Account', 'Notes']
+    ['Holding / Ticker', 'Category', 'Frequency', 'Payout Amount ($)', 'Annual Payout ($)', 'Payout Months & DPUs', 'Account', 'Notes']
   ];
 
   holdings.forEach((h) => {
-    const monthsStr = (h.payoutMonths || []).map((m) => MONTH_NAMES[m - 1]).join('; ');
+    const monthsStr = (h.payoutMonths || []).map((m) => {
+      const name = MONTH_NAMES[m - 1];
+      const dpu = h.monthlyDpu?.[m];
+      return dpu !== undefined ? `${name} ($${dpu})` : name;
+    }).join('; ');
+
     rows.push([
       h.tickerOrName,
       h.category,

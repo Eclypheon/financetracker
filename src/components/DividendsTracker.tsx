@@ -52,6 +52,13 @@ interface DividendsTrackerProps {
   onReorderHoldings?: (reordered: DividendHolding[]) => void;
 }
 
+const formatDpuDisplay = (dpu: number): string => {
+  if (dpu >= 1) return `$${dpu.toFixed(2)}`;
+  if ((dpu * 100) % 1 === 0) return `$${dpu.toFixed(2)}`;
+  if ((dpu * 1000) % 1 === 0) return `$${dpu.toFixed(3)}`;
+  return `$${dpu.toFixed(4)}`;
+};
+
 export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   holdings,
   currentUser,
@@ -90,6 +97,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   const [formDps, setFormDps] = useState<string>('');
   const [formFrequency, setFormFrequency] = useState<DividendFrequency>('quarterly');
   const [formPayoutMonths, setFormPayoutMonths] = useState<number[]>([3, 6, 9, 12]);
+  const [formMonthlyDpu, setFormMonthlyDpu] = useState<Record<number, string>>({});
+  const [isCustomDpuEnabled, setIsCustomDpuEnabled] = useState(false);
   const [formAccount, setFormAccount] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
@@ -268,6 +277,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     setFormDps('');
     setFormFrequency('quarterly');
     setFormPayoutMonths([3, 6, 9, 12]);
+    setFormMonthlyDpu({});
+    setIsCustomDpuEnabled(false);
     setFormAccount('');
     setFormNotes('');
     setIsModalOpen(true);
@@ -279,11 +290,26 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     setModalTab('manual');
     setFormTicker(holding.tickerOrName);
     setFormCategory(holding.category || DIVIDEND_CATEGORIES[0]);
-    if (holding.shares && holding.dividendPerShare) {
+
+    // Check if holding has variable monthly DPUs
+    const initialMonthlyDpu: Record<number, string> = {};
+    let hasVaryingDpu = false;
+    if (holding.monthlyDpu && Object.keys(holding.monthlyDpu).length > 0) {
+      Object.entries(holding.monthlyDpu).forEach(([m, val]) => {
+        initialMonthlyDpu[Number(m)] = String(val);
+      });
+      const dpuVals = Object.values(holding.monthlyDpu);
+      hasVaryingDpu = dpuVals.length > 1 && dpuVals.some((v) => v !== dpuVals[0]);
+    }
+    setFormMonthlyDpu(initialMonthlyDpu);
+    setIsCustomDpuEnabled(hasVaryingDpu);
+
+    if (holding.shares && (holding.dividendPerShare || holding.monthlyDpu)) {
       setFormInputMode('shares');
       setFormShares(String(holding.shares));
-      setFormDps(String(holding.dividendPerShare));
-      setFormAmount(String(holding.amount || holding.shares * holding.dividendPerShare));
+      const fallbackDps = holding.dividendPerShare || (holding.monthlyDpu ? Object.values(holding.monthlyDpu)[0] : undefined) || '';
+      setFormDps(String(fallbackDps));
+      setFormAmount(String(holding.amount || (holding.shares * Number(fallbackDps || 0))));
     } else {
       setFormInputMode('direct');
       setFormAmount(String(holding.amount));
@@ -350,6 +376,20 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       setFormAmount(String(result.latestDPS * result.shares));
       setFormFrequency(result.frequency);
       setFormPayoutMonths(result.payoutMonths);
+
+      // Check if scraped result has varying monthly DPUs
+      const stringMonthlyDpu: Record<number, string> = {};
+      let hasVarying = false;
+      if (result.monthlyDpu) {
+        Object.entries(result.monthlyDpu).forEach(([m, val]) => {
+          stringMonthlyDpu[Number(m)] = String(val);
+        });
+        const vals = Object.values(result.monthlyDpu);
+        hasVarying = vals.length > 1 && vals.some((v) => v !== vals[0]);
+      }
+      setFormMonthlyDpu(stringMonthlyDpu);
+      setIsCustomDpuEnabled(hasVarying);
+
       setFormNotes(`Past 1Y: $${result.pastYearDividends.toFixed(0)} | YTD: $${result.ytdDividends.toFixed(0)}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch dividend data.';
@@ -374,6 +414,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       payoutMonths: scrapedResult.payoutMonths,
       shares: scrapedResult.shares,
       dividendPerShare: scrapedResult.latestDPS,
+      monthlyDpu: scrapedResult.monthlyDpu,
       totalAnnualPayout: scrapedResult.expectedYearlyDividends,
       pastYearDividends: scrapedResult.pastYearDividends,
       ytdDividends: scrapedResult.ytdDividends,
@@ -408,6 +449,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         ...holding,
         shares: sharesNum,
         dividendPerShare: result.latestDPS,
+        monthlyDpu: result.monthlyDpu,
         amount: result.latestDPS * sharesNum,
         frequency: result.frequency,
         payoutMonths: result.payoutMonths,
@@ -428,6 +470,37 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     }
   };
 
+  // Live calculation preview for manual modal form
+  const previewAnnual = useMemo(() => {
+    const s = parseFloat(formShares) || 0;
+    const d = parseFloat(formDps) || 0;
+    const directAmt = parseFloat(formAmount) || 0;
+
+    if (formInputMode === 'shares') {
+      if (isCustomDpuEnabled) {
+        return formPayoutMonths.reduce((sum, m) => {
+          const raw = formMonthlyDpu[m] !== undefined && formMonthlyDpu[m] !== ''
+            ? formMonthlyDpu[m]
+            : formDps;
+          const val = parseFloat(raw) || 0;
+          return sum + val * s;
+        }, 0);
+      }
+      return s * d * (formPayoutMonths.length || 1);
+    } else {
+      if (isCustomDpuEnabled) {
+        return formPayoutMonths.reduce((sum, m) => {
+          const raw = formMonthlyDpu[m] !== undefined && formMonthlyDpu[m] !== ''
+            ? formMonthlyDpu[m]
+            : formAmount;
+          const val = parseFloat(raw) || 0;
+          return sum + val;
+        }, 0);
+      }
+      return directAmt * (formPayoutMonths.length || 1);
+    }
+  }, [formInputMode, formShares, formDps, formAmount, isCustomDpuEnabled, formMonthlyDpu, formPayoutMonths]);
+
   // Save Modal Form
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,13 +509,33 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     let payoutAmount = 0;
     let sharesNum: number | undefined;
     let dpsNum: number | undefined;
+    let parsedMonthlyDpu: Record<number, number> | undefined = undefined;
 
     if (formInputMode === 'shares') {
       sharesNum = parseFloat(formShares) || 0;
       dpsNum = parseFloat(formDps) || 0;
       payoutAmount = sharesNum * dpsNum;
+
+      if (isCustomDpuEnabled || Object.keys(formMonthlyDpu).length > 0) {
+        parsedMonthlyDpu = {};
+        for (const m of formPayoutMonths) {
+          const raw = formMonthlyDpu[m] !== undefined && formMonthlyDpu[m] !== ''
+            ? formMonthlyDpu[m]
+            : formDps;
+          parsedMonthlyDpu[m] = parseFloat(raw) || 0;
+        }
+      }
     } else {
       payoutAmount = parseFloat(formAmount) || 0;
+      if (isCustomDpuEnabled || Object.keys(formMonthlyDpu).length > 0) {
+        parsedMonthlyDpu = {};
+        for (const m of formPayoutMonths) {
+          const raw = formMonthlyDpu[m] !== undefined && formMonthlyDpu[m] !== ''
+            ? formMonthlyDpu[m]
+            : formAmount;
+          parsedMonthlyDpu[m] = parseFloat(raw) || 0;
+        }
+      }
     }
 
     const calculatedAnnual = calculateDividendAnnual({
@@ -451,6 +544,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       payoutMonths: formPayoutMonths,
       shares: sharesNum,
       dividendPerShare: dpsNum,
+      monthlyDpu: parsedMonthlyDpu,
     });
 
     const existingHolding = editingId ? holdings.find((h) => h.id === editingId) : undefined;
@@ -464,6 +558,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       payoutMonths: formPayoutMonths,
       shares: sharesNum,
       dividendPerShare: dpsNum,
+      monthlyDpu: parsedMonthlyDpu,
       totalAnnualPayout: calculatedAnnual,
       pastYearDividends: existingHolding?.pastYearDividends,
       ytdDividends: existingHolding?.ytdDividends,
@@ -780,6 +875,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
             const isBeingDragged = draggedId === h.id;
             const isTargetBefore = dragOverId === h.id && dropPosition === 'before';
             const isTargetAfter = dragOverId === h.id && dropPosition === 'after';
+            const monthlyDpuVals = h.monthlyDpu ? Object.values(h.monthlyDpu) : [];
+            const hasVaryingDpu = monthlyDpuVals.length > 1 && monthlyDpuVals.some((v) => v !== monthlyDpuVals[0]);
 
             return (
               <div 
@@ -871,9 +968,13 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         </div>
 
                         {h.shares ? (
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono-num flex items-center gap-2">
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono-num flex items-center gap-2 flex-wrap">
                             <span>{h.shares.toLocaleString()} shares</span>
-                            {h.dividendPerShare ? (
+                            {hasVaryingDpu ? (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                                Variable DPU
+                              </span>
+                            ) : h.dividendPerShare ? (
                               <span>@ {formatCurrency(h.dividendPerShare, { showCents: true })} DPS</span>
                             ) : null}
                           </p>
@@ -971,16 +1072,27 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         const isPaying = Array.isArray(h.payoutMonths) && h.payoutMonths.includes(mNum);
                         if (!isPaying) return null;
                         const isCurrent = mNum === currentMonthNum;
+                        const specificDpu = h.monthlyDpu?.[mNum];
+                        const monthPayout = specificDpu !== undefined
+                          ? (h.shares ? h.shares * specificDpu : specificDpu)
+                          : (h.shares && h.dividendPerShare ? h.shares * h.dividendPerShare : h.amount);
+
                         return (
                           <span 
                             key={mName}
-                            className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                            title={`${mName} Payout: ${specificDpu !== undefined ? `$${specificDpu.toFixed(4)}/sh` : ''} (${formatCurrency(monthPayout)})`}
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-mono flex items-center gap-1 ${
                               isCurrent
                                 ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 ring-1 ring-cyan-400/40'
-                                : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                                : 'bg-slate-800/90 text-slate-300 border border-slate-700/60'
                             }`}
                           >
-                            {mName}
+                            <span>{mName}</span>
+                            {specificDpu !== undefined && (
+                              <span className="text-[8.5px] text-cyan-400 font-semibold font-mono-num">
+                                {formatDpuDisplay(specificDpu)}
+                              </span>
+                            )}
                           </span>
                         );
                       })}
@@ -1266,16 +1378,42 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       </div>
                     </div>
 
-                    {/* DPS & Payout Months */}
-                    <div className="flex items-center justify-between text-[10px] text-slate-300 px-1">
-                      <span>Latest DPS: <strong className="text-white font-mono-num">${scrapedResult.latestDPS.toFixed(4)}</strong></span>
-                      <div className="flex items-center gap-1">
-                        <span>Months:</span>
-                        {scrapedResult.payoutMonths.map((m) => (
-                          <span key={m} className="px-1 rounded bg-slate-800 text-cyan-300 font-mono text-[9px]">
-                            {MONTH_NAMES[m - 1]}
-                          </span>
-                        ))}
+                    {/* Scheduled Payouts & Variable DPUs Breakdown */}
+                    <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-300 font-semibold">Scheduled Payouts & DPUs</span>
+                          {scrapedResult.monthlyDpu && Object.values(scrapedResult.monthlyDpu).some((v, _, arr) => v !== arr[0]) && (
+                            <span className="px-1.5 py-0.2 rounded text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                              Variable Payouts
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-400 font-mono-num text-[9px]">
+                          {scrapedResult.frequency}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {scrapedResult.payoutMonths.map((m) => {
+                          const mDpu = scrapedResult.monthlyDpu?.[m] ?? scrapedResult.latestDPS;
+                          const mTotal = mDpu * scrapedResult.shares;
+                          return (
+                            <div key={m} className="p-1.5 rounded-lg bg-slate-900 border border-slate-800/80">
+                              <div className="flex items-center justify-between">
+                                <span className="text-cyan-300 font-bold font-mono text-[10px]">
+                                  {MONTH_NAMES[m - 1]}
+                                </span>
+                                <span className="text-slate-400 font-mono-num text-[9px]">
+                                  ${mDpu.toFixed(4)}
+                                </span>
+                              </div>
+                              <div className="text-emerald-400 font-semibold font-mono-num text-[11px] mt-0.5">
+                                {formatCurrency(mTotal)}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1509,6 +1647,80 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   </div>
                 </div>
 
+                {/* Variable Monthly DPU Editor */}
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-slate-300">
+                        Payout-Specific DPUs (Interim / Final)
+                      </span>
+                      {isCustomDpuEnabled && (
+                        <span className="px-1.5 py-0.2 rounded text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                          Custom
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextState = !isCustomDpuEnabled;
+                        setIsCustomDpuEnabled(nextState);
+                        if (!nextState && (formDps || formAmount)) {
+                          const base = formInputMode === 'shares' ? formDps : formAmount;
+                          const synced: Record<number, string> = {};
+                          formPayoutMonths.forEach((m) => { synced[m] = base; });
+                          setFormMonthlyDpu(synced);
+                        }
+                      }}
+                      className="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer font-medium"
+                    >
+                      {isCustomDpuEnabled ? 'Reset to Uniform' : 'Customize per month'}
+                    </button>
+                  </div>
+
+                  {isCustomDpuEnabled ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-slate-400">
+                        Enter specific DPU for each scheduled payout month (e.g. S63 interim $0.04 vs final $0.05):
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {formPayoutMonths.map((mNum) => {
+                          const defaultVal = formInputMode === 'shares' ? formDps : formAmount;
+                          const currentVal = formMonthlyDpu[mNum] ?? defaultVal;
+                          const numVal = parseFloat(currentVal) || 0;
+                          const s = parseFloat(formShares) || 0;
+                          return (
+                            <div key={mNum} className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+                              <label className="text-[10px] text-cyan-300 font-semibold block mb-0.5 font-mono">
+                                {MONTH_NAMES[mNum - 1]} {formInputMode === 'shares' ? 'DPU ($)' : 'Payout ($)'}
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder={defaultVal || "0.00"}
+                                value={currentVal}
+                                onChange={(e) => {
+                                  setFormMonthlyDpu((prev) => ({ ...prev, [mNum]: e.target.value }));
+                                }}
+                                className="w-full bg-slate-950 border border-slate-700/60 rounded-md px-2 py-1 text-xs text-white font-mono-num focus:outline-none focus:border-cyan-500"
+                              />
+                              {formInputMode === 'shares' && s > 0 && (
+                                <span className="text-[9px] text-emerald-400 font-mono block mt-0.5">
+                                  = {formatCurrency(numVal * s)}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-500">
+                      Uniform {formInputMode === 'shares' ? 'DPS' : 'amount'} across all {formPayoutMonths.length} payout months. Click &ldquo;Customize per month&rdquo; to set different interim/final amounts.
+                    </p>
+                  )}
+                </div>
+
                 {/* Custody / Account & Notes */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1534,6 +1746,19 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       onChange={(e) => setFormNotes(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                     />
+                  </div>
+                </div>
+
+                {/* Live Projected Annual Summary */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs">
+                  <span className="text-slate-400 text-[11px] font-semibold">Total Projected Annual Dividends:</span>
+                  <div className="text-right font-mono-num">
+                    <span className="font-bold text-emerald-400 text-sm">
+                      {formatCurrency(previewAnnual)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 ml-1.5">
+                      ({formatCurrency(previewAnnual / 12)} / mo)
+                    </span>
                   </div>
                 </div>
 

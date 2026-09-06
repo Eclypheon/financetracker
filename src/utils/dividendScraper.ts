@@ -9,6 +9,7 @@ interface TickerMeta {
   fallbackDPS: number;
   frequency: DividendFrequency;
   months: number[];
+  monthlyDpu?: Record<number, number>;
   price?: number;
 }
 
@@ -16,8 +17,8 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) ETFS & FUNDS
   // =========================================================================
-  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], price: 1.15 },
-  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], price: 1.15 },
+  'A35.SI': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], monthlyDpu: { 1: 0.0135, 7: 0.0135 }, price: 1.15 },
+  'A35': { symbol: 'A35.SI', name: 'ABF Singapore Bond Index Fund ETF', category: 'Bonds & Fixed Income', currency: 'SGD', fallbackDPS: 0.027, frequency: 'semi-annually', months: [1, 7], monthlyDpu: { 1: 0.0135, 7: 0.0135 }, price: 1.15 },
   'G3B.SI': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.075, frequency: 'semi-annually', months: [1, 7], price: 3.85 },
   'G3B': { symbol: 'G3B.SI', name: 'Amova (Nikko AM) Singapore STI ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.075, frequency: 'semi-annually', months: [1, 7], price: 3.85 },
   'ES3.SI': { symbol: 'ES3.SI', name: 'SPDR Straits Times Index ETF', category: 'ETFs & Index Funds', currency: 'SGD', fallbackDPS: 0.068, frequency: 'semi-annually', months: [2, 8], price: 3.82 },
@@ -34,17 +35,17 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   // SINGAPORE (SGX) BLUE CHIPS & INDUSTRIAL / TECH
   // =========================================================================
-  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], price: 2.65 },
-  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], price: 2.65 },
-  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], price: 42.50 },
-  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], price: 42.50 },
-  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], price: 42.50 },
-  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.44, frequency: 'semi-annually', months: [6, 12], price: 16.20 },
-  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.44, frequency: 'semi-annually', months: [6, 12], price: 16.20 },
-  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.44, frequency: 'semi-annually', months: [6, 12], price: 16.20 },
-  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'semi-annually', months: [5, 10], price: 34.80 },
-  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'semi-annually', months: [5, 10], price: 34.80 },
-  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.88, frequency: 'semi-annually', months: [5, 10], price: 34.80 },
+  '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.05 }, price: 2.65 },
+  '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.05 }, price: 2.65 },
+  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
+  'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
+  'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
+  'U11.SI': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
+  'U11': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
+  'UOB': { symbol: 'U11.SI', name: 'United Overseas Bank Ltd (UOB)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.90, frequency: 'semi-annually', months: [5, 8], monthlyDpu: { 5: 0.90, 8: 0.88 }, price: 34.80 },
   'S68.SI': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.09, frequency: 'quarterly', months: [2, 5, 8, 10], price: 11.50 },
   'S68': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.09, frequency: 'quarterly', months: [2, 5, 8, 10], price: 11.50 },
   'SGX': { symbol: 'S68.SI', name: 'Singapore Exchange Limited (SGX)', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.09, frequency: 'quarterly', months: [2, 5, 8, 10], price: 11.50 },
@@ -53,10 +54,10 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   'SINGTEL': { symbol: 'Z74.SI', name: 'Singapore Telecommunications (Singtel)', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.089, frequency: 'semi-annually', months: [1, 8], price: 3.25 },
   'BN4.SI': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.19, frequency: 'semi-annually', months: [5, 8], price: 6.80 },
   'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.19, frequency: 'semi-annually', months: [5, 8], price: 6.80 },
-  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], price: 6.50 },
-  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], price: 6.50 },
-  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'quarterly', months: [3, 6, 9, 12], price: 4.60 },
-  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'quarterly', months: [3, 6, 9, 12], price: 4.60 },
+  'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
+  'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
+  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.11, 5: 0.04, 8: 0.05, 11: 0.04 }, price: 4.60 },
+  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.11, 5: 0.04, 8: 0.05, 11: 0.04 }, price: 4.60 },
   'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
   'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
   'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
@@ -365,9 +366,10 @@ export const scrapeDividendsForTicker = async (
       for (const m of months) {
         const payoutTime = new Date(yr, m - 1, 15).getTime();
         if (payoutTime <= now) {
+          const dpu = popularPreset.monthlyDpu?.[m] ?? popularPreset.fallbackDPS;
           parsedEvents.push({
             date: payoutTime,
-            amount: popularPreset.fallbackDPS,
+            amount: dpu,
           });
         }
       }
@@ -423,38 +425,58 @@ export const scrapeDividendsForTicker = async (
   const ytdDPS = ytdEvents.reduce((s, e) => s + e.amount, 0);
   const ytdDividends = ytdDPS * shares;
 
-  // 3. Payout Frequency & Payout Months
+  // 3. Payout Frequency, Payout Months & Variable Monthly DPU
   const detectedMonthsSet = new Set<number>();
-  parsedEvents.slice(0, 8).forEach((e) => {
-    detectedMonthsSet.add(new Date(e.date).getMonth() + 1);
+  const monthlyDpu: Record<number, number> = {};
+
+  // Group past events (sorted newest first) by calendar month to find distinct payout months & latest DPU for each month
+  parsedEvents.slice(0, 12).forEach((e) => {
+    const m = new Date(e.date).getMonth() + 1;
+    detectedMonthsSet.add(m);
+    if (monthlyDpu[m] === undefined) {
+      monthlyDpu[m] = e.amount;
+    }
   });
+
   let payoutMonths = Array.from(detectedMonthsSet).sort((a, b) => a - b);
   if (payoutMonths.length === 0) {
     payoutMonths = popularPreset?.months || [3, 6, 9, 12];
   }
 
+  // Populate preset monthlyDpu if any scheduled month was not captured in live events
+  if (popularPreset?.monthlyDpu) {
+    for (const m of payoutMonths) {
+      if (monthlyDpu[m] === undefined && popularPreset.monthlyDpu[m] !== undefined) {
+        monthlyDpu[m] = popularPreset.monthlyDpu[m];
+      }
+    }
+  }
+
+  // Latest DPS (most recent payout event or preset fallback)
+  const latestDPS = parsedEvents[0]?.amount || popularPreset?.fallbackDPS || (pastYearDPS / 4) || 0.05;
+
+  // Fill in latestDPS for any remaining month without specific DPU
+  for (const m of payoutMonths) {
+    if (monthlyDpu[m] === undefined) {
+      monthlyDpu[m] = latestDPS;
+    }
+  }
+
   let frequency: DividendFrequency = popularPreset?.frequency || 'quarterly';
-  let annualMultiplier = 4;
 
   if (payoutMonths.length >= 10 || parsedEvents.length >= 10) {
     frequency = 'monthly';
-    annualMultiplier = 12;
   } else if (payoutMonths.length === 2) {
     frequency = 'semi-annually';
-    annualMultiplier = 2;
   } else if (payoutMonths.length === 1) {
     frequency = 'annually';
-    annualMultiplier = 1;
   } else {
     frequency = 'quarterly';
-    annualMultiplier = 4;
   }
 
-  // Latest DPS
-  const latestDPS = parsedEvents[0]?.amount || popularPreset?.fallbackDPS || (pastYearDPS / annualMultiplier) || 0.05;
-
   // 4. Expected Yearly Dividends (Forward 12 months)
-  const expectedYearlyDPS = latestDPS * (payoutMonths.length || annualMultiplier);
+  // Calculate precise forward total by summing each scheduled payout month's specific DPU!
+  const expectedYearlyDPS = payoutMonths.reduce((sum, m) => sum + (monthlyDpu[m] ?? latestDPS), 0);
   const expectedYearlyDividends = expectedYearlyDPS * shares;
 
   // 5. Monthly Average Dividends
@@ -484,6 +506,7 @@ export const scrapeDividendsForTicker = async (
     shares,
     currentPrice,
     latestDPS,
+    monthlyDpu,
     frequency,
     payoutMonths,
     pastYearDividends,
