@@ -41,7 +41,8 @@ import {
   ExternalLink,
   GripVertical,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  ShieldCheck
 } from 'lucide-react';
 
 interface DividendsTrackerProps {
@@ -1489,6 +1490,50 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                       <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-[10px] text-amber-300 flex items-start gap-1.5">
                         <Info className="w-3.5 h-3.5 flex-shrink-0 text-amber-400 mt-0.5" />
                         <span>{scrapedResult.warningNote}</span>
+                      </div>
+                    )}
+
+                    {/* Multi-Source Verification (2/3 Consensus Rule) Card */}
+                    {scrapedResult.consensusInfo && (
+                      <div className="p-2.5 rounded-lg bg-slate-900 border border-cyan-500/30 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                            Multi-Source Verification (2/3 Consensus)
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            scrapedResult.consensusInfo.sourcesAgreed >= 2
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          }`}>
+                            {scrapedResult.consensusInfo.sourcesAgreed}/{scrapedResult.consensusInfo.sourcesChecked} Agreed
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-snug">
+                          {scrapedResult.consensusInfo.summary}
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                          {scrapedResult.consensusInfo.details.map((d, i) => (
+                            <div
+                              key={i}
+                              className={`p-1.5 rounded-md border text-[10px] ${
+                                d.agreed
+                                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                                  : 'bg-slate-950/80 border-slate-800 text-slate-400'
+                              }`}
+                            >
+                              <span className="font-medium truncate block">{d.sourceName}</span>
+                              <span className={`font-mono font-bold block mt-0.5 text-xs ${
+                                d.agreed ? 'text-emerald-300' : 'text-slate-500 line-through'
+                              }`}>
+                                ${d.dps > 0 ? d.dps.toFixed(4) : '—'}
+                              </span>
+                              <span className="text-[9px] block">
+                                {d.agreed ? '✓ Confirmed' : '✗ Outlier / Inactive'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 

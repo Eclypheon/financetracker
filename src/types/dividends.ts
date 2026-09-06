@@ -48,6 +48,13 @@ export interface ScrapedDividendResult {
   apiQueryUrl?: string;
   isEstimated?: boolean;
   warningNote?: string;
+  consensusInfo?: {
+    sourcesChecked: number;
+    sourcesAgreed: number;
+    consensusDps: number;
+    summary: string;
+    details: Array<{ sourceName: string; dps: number; agreed: boolean }>;
+  };
 }
 
 
