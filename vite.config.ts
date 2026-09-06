@@ -22,6 +22,7 @@ function yfinanceDevPlugin() {
         const parsedUrl = new URL(req.url, 'http://localhost');
         if (parsedUrl.pathname === '/api/dividend' || parsedUrl.pathname === '/api/yfinance') {
           const ticker = parsedUrl.searchParams.get('ticker') || parsedUrl.searchParams.get('symbol');
+          const apiKey = (parsedUrl.searchParams.get('apikey') || parsedUrl.searchParams.get('twelvedata_key') || process.env.TWELVEDATA_API_KEY || '').trim();
           if (!ticker) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
@@ -30,7 +31,8 @@ function yfinanceDevPlugin() {
           }
 
           const upper = ticker.trim().toUpperCase();
-          const cached = cache.get(upper);
+          const cacheKey = apiKey ? `${upper}_${apiKey}` : upper;
+          const cached = cache.get(cacheKey);
           if (cached && Date.now() - cached.time < CACHE_TTL) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
@@ -43,13 +45,15 @@ function yfinanceDevPlugin() {
           try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 600);
-            const serverRes = await fetch(`http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(upper)}`, {
+            const queryParams = new URLSearchParams({ ticker: upper });
+            if (apiKey) queryParams.set('apikey', apiKey);
+            const serverRes = await fetch(`http://127.0.0.1:5001/api/dividend?${queryParams.toString()}`, {
               signal: controller.signal
             });
             clearTimeout(timeout);
             if (serverRes.ok) {
               const body = await serverRes.text();
-              cache.set(upper, { data: body, time: Date.now() });
+              cache.set(cacheKey, { data: body, time: Date.now() });
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
@@ -61,7 +65,8 @@ function yfinanceDevPlugin() {
           }
 
           // 2. Direct python3 execution via Node child_process
-          execFile('python3', [scriptPath, upper], (err, stdout, stderr) => {
+          const pyArgs = apiKey ? [scriptPath, upper, apiKey] : [scriptPath, upper];
+          execFile('python3', pyArgs, (err, stdout, stderr) => {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
             if (err) {
@@ -75,7 +80,7 @@ function yfinanceDevPlugin() {
                 res.statusCode = 404;
               } else {
                 res.statusCode = 200;
-                cache.set(upper, { data: stdout, time: Date.now() });
+                cache.set(cacheKey, { data: stdout, time: Date.now() });
               }
               res.end(stdout);
             } catch (parseErr) {

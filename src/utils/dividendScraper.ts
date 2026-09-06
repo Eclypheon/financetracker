@@ -221,7 +221,7 @@ export interface RawDividendItem {
   amount: number;
 }
 
-export interface YFinanceBackendResult {
+export interface DividendBackendResult {
   symbol: string;
   name?: string;
   currency?: string;
@@ -236,6 +236,8 @@ export interface YFinanceBackendResult {
     timestamp: number;
     amount: number;
   }>;
+  source?: 'twelvedata' | 'yfinance';
+  providerNote?: string;
   warning?: string;
   error?: string;
 }
@@ -258,22 +260,25 @@ interface RawYahooChartResult {
 }
 
 /**
- * Priority 1: Query local yfinance backend service (via Vite dev server middleware or local server)
+ * Priority 1: Query local backend dividend service (Twelve Data calendar / yfinance)
  */
-async function fetchFromYFinanceService(symbol: string): Promise<YFinanceBackendResult | null> {
+async function fetchFromDividendBackend(symbol: string): Promise<DividendBackendResult | null> {
+  const userApiKey = typeof window !== 'undefined' ? (localStorage.getItem('twelve_data_api_key') || '') : '';
+  const keyParam = userApiKey ? `&apikey=${encodeURIComponent(userApiKey)}` : '';
+
   const endpoints = [
-    `/api/dividend?ticker=${encodeURIComponent(symbol)}`,
-    `/api/yfinance?ticker=${encodeURIComponent(symbol)}`,
-    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(symbol)}`
+    `/api/dividend?ticker=${encodeURIComponent(symbol)}${keyParam}`,
+    `/api/yfinance?ticker=${encodeURIComponent(symbol)}${keyParam}`,
+    `http://127.0.0.1:5001/api/dividend?ticker=${encodeURIComponent(symbol)}${keyParam}`
   ];
 
   for (const endpoint of endpoints) {
     try {
       const res = await fetch(endpoint, {
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
-        const data: YFinanceBackendResult = await res.json();
+        const data: DividendBackendResult = await res.json();
         if (data && data.symbol && !data.error) {
           return data;
         }
@@ -373,8 +378,8 @@ export const scrapeDividendsForTicker = async (
 
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
-  // 1. Try yfinance service first (authoritative Python yfinance library)
-  const yfResult = await fetchFromYFinanceService(cleanTicker);
+  // 1. Try local dividend backend service (Twelve Data calendar or yfinance)
+  const backendResult = await fetchFromDividendBackend(cleanTicker);
 
   let companyName = preset?.name || cleanTicker;
   let currency = preset?.currency || (cleanTicker.endsWith('.SI') ? 'SGD' : 'USD');
@@ -385,25 +390,27 @@ export const scrapeDividendsForTicker = async (
   let latestDPS = preset?.fallbackDPS || 0;
   let rawEventsList: RawDividendItem[] = [];
   let isLive = false;
-  let warningNote: string | undefined = undefined;
+  let apiProvider: 'twelvedata' | 'yfinance' | undefined = undefined;
+  let warningNote: string | undefined = backendResult?.providerNote;
 
-  if (yfResult) {
+  if (backendResult) {
     isLive = true;
-    companyName = yfResult.name || companyName;
-    currency = yfResult.currency || currency;
-    if (yfResult.price) currentPrice = yfResult.price;
-    frequency = yfResult.frequency;
-    payoutMonths = yfResult.months.length > 0 ? yfResult.months : payoutMonths;
-    latestDPS = yfResult.latestDPS;
+    apiProvider = backendResult.source || 'yfinance';
+    companyName = backendResult.name || companyName;
+    currency = backendResult.currency || currency;
+    if (backendResult.price) currentPrice = backendResult.price;
+    frequency = backendResult.frequency;
+    payoutMonths = backendResult.months.length > 0 ? backendResult.months : payoutMonths;
+    latestDPS = backendResult.latestDPS;
 
-    if (yfResult.monthlyDpu) {
-      Object.entries(yfResult.monthlyDpu).forEach(([k, v]) => {
+    if (backendResult.monthlyDpu) {
+      Object.entries(backendResult.monthlyDpu).forEach(([k, v]) => {
         monthlyDpu[Number(k)] = Number(v);
       });
     }
 
-    if (yfResult.events && yfResult.events.length > 0) {
-      rawEventsList = yfResult.events.map((e) => ({
+    if (backendResult.events && backendResult.events.length > 0) {
+      rawEventsList = backendResult.events.map((e) => ({
         date: e.timestamp,
         amount: e.amount,
       }));
@@ -413,6 +420,7 @@ export const scrapeDividendsForTicker = async (
     const yahooResult = await fetchFromYahooChartApi(candidateSymbols);
     if (yahooResult) {
       isLive = true;
+      apiProvider = 'yfinance';
       if (yahooResult.companyName) companyName = yahooResult.companyName;
       if (yahooResult.currency) currency = yahooResult.currency;
       if (yahooResult.price) currentPrice = yahooResult.price;
@@ -548,6 +556,7 @@ export const scrapeDividendsForTicker = async (
     monthlyAverageDividends,
     pastPayouts,
     dataSource,
+    apiProvider,
     apiQueryUrl,
     isEstimated: !isLive,
     warningNote,

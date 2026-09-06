@@ -41,6 +41,7 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
         if parsed.path in ('/api/dividend', '/api/yfinance'):
             query_params = urllib.parse.parse_qs(parsed.query)
             ticker = query_params.get('ticker', query_params.get('symbol', ['']))[0].strip()
+            api_key = query_params.get('apikey', query_params.get('twelvedata_key', ['']))[0].strip()
             
             if not ticker:
                 self.send_response(400)
@@ -52,12 +53,13 @@ class DividendHandler(http.server.BaseHTTPRequestHandler):
 
             now = time.time()
             ticker_upper = ticker.upper()
-            if ticker_upper in CACHE and (now - CACHE[ticker_upper]['timestamp'] < CACHE_TTL):
-                data = CACHE[ticker_upper]['data']
+            cache_key = f"{ticker_upper}_{api_key}" if api_key else ticker_upper
+            if cache_key in CACHE and (now - CACHE[cache_key]['timestamp'] < CACHE_TTL):
+                data = CACHE[cache_key]['data']
             else:
-                data = fetch_dividend_info(ticker_upper)
+                data = fetch_dividend_info(ticker_upper, api_key)
                 if 'error' not in data:
-                    CACHE[ticker_upper] = {'data': data, 'timestamp': now}
+                    CACHE[cache_key] = {'data': data, 'timestamp': now}
 
             status_code = 200 if 'error' not in data else 404
             self.send_response(status_code)
