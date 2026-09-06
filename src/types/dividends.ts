@@ -42,6 +42,10 @@ export interface ScrapedDividendResult {
     amount: number;
     totalForShares: number;
   }>;
+  dataSource?: 'live_web' | 'verified_dataset' | 'custom_estimate';
+  apiQueryUrl?: string;
+  isEstimated?: boolean;
+  warningNote?: string;
 }
 
 

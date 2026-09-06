@@ -33,7 +33,9 @@ import {
   AlertCircle,
   CheckCircle2,
   History,
-  ChevronRight
+  ChevronRight,
+  Info,
+  ExternalLink
 } from 'lucide-react';
 
 interface DividendsTrackerProps {
@@ -863,7 +865,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. D05.SI, AAPL, VOO, SCHD"
+                      placeholder="e.g. A35, 5DD, D05, VOO, SCHD"
                       value={scrapeTickerInput}
                       onChange={(e) => setScrapeTickerInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono font-bold placeholder-slate-600 focus:outline-none focus:border-cyan-500"
@@ -883,19 +885,44 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   </div>
                 </div>
 
+                {/* API & Format Information Bar */}
+                <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800/80 text-[10px] space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="flex items-center gap-1 font-medium text-slate-300">
+                      <Info className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                      <span>API: <strong>Yahoo Finance Public Chart API</strong></span>
+                    </span>
+                    <a
+                      href={`https://query2.finance.yahoo.com/v8/finance/chart/${(normalizeTickerInput(scrapeTickerInput) || 'A35.SI')}?interval=1mo&range=2y&events=div`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:underline flex items-center gap-0.5 font-semibold text-[9px]"
+                      title="Open raw Yahoo Finance JSON endpoint in new tab"
+                    >
+                      <span>Check JSON Feed</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+                  <p className="text-[9px] text-slate-500 leading-relaxed">
+                    Supports <strong>all global tickers</strong>. SGX symbols (e.g. <code>A35</code>, <code>5DD</code>, <code>D05</code>, <code>A17U</code>) are automatically mapped to <code>.SI</code> exchange format.
+                  </p>
+                </div>
+
                 {/* Quick Suggestion Pills */}
                 <div>
                   <span className="text-[10px] text-slate-500 block mb-1">Popular Quick Fill:</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[
-                      { label: 'DBS', symbol: 'D05.SI', shares: '1000' },
-                      { label: 'OCBC', symbol: 'O39.SI', shares: '1000' },
-                      { label: 'UOB', symbol: 'U11.SI', shares: '1000' },
-                      { label: 'Singtel', symbol: 'Z74.SI', shares: '5000' },
-                      { label: 'CLAR', symbol: 'A17U.SI', shares: '2000' },
+                      { label: 'A35 (ABF Bond)', symbol: 'A35', shares: '1000' },
+                      { label: '5DD (Micro-Mech)', symbol: '5DD', shares: '1000' },
+                      { label: 'DBS', symbol: 'D05', shares: '1000' },
+                      { label: 'OCBC', symbol: 'O39', shares: '1000' },
+                      { label: 'UOB', symbol: 'U11', shares: '1000' },
+                      { label: 'Singtel', symbol: 'Z74', shares: '5000' },
+                      { label: 'CLAR', symbol: 'A17U', shares: '2000' },
+                      { label: 'CICT', symbol: 'C38U', shares: '2000' },
                       { label: 'VOO', symbol: 'VOO', shares: '100' },
                       { label: 'SCHD', symbol: 'SCHD', shares: '200' },
-                      { label: 'Apple', symbol: 'AAPL', shares: '100' },
                       { label: 'Realty Income', symbol: 'O', shares: '150' },
                     ].map((item) => (
                       <button
@@ -924,7 +951,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   {isScraping ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Scraping Public Dividend Records...</span>
+                      <span>Fetching Dividend Records for {normalizeTickerInput(scrapeTickerInput) || 'Ticker'}...</span>
                     </>
                   ) : (
                     <>
@@ -956,11 +983,26 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                   <div className="p-3 rounded-xl bg-slate-950 border border-cyan-500/40 shadow-xl space-y-2.5 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                           <span className="text-xs font-bold text-white">
                             {scrapedResult.name}
                           </span>
+                          {scrapedResult.dataSource === 'live_web' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Live Feed
+                            </span>
+                          )}
+                          {scrapedResult.dataSource === 'verified_dataset' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                              Verified Market Data
+                            </span>
+                          )}
+                          {scrapedResult.dataSource === 'custom_estimate' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              Editable Baseline
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
                           {scrapedResult.shares.toLocaleString()} shares • {scrapedResult.currency} • {scrapedResult.category}
@@ -970,6 +1012,13 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                         {scrapedResult.frequency}
                       </span>
                     </div>
+
+                    {scrapedResult.warningNote && (
+                      <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-[10px] text-amber-300 flex items-start gap-1.5">
+                        <Info className="w-3.5 h-3.5 flex-shrink-0 text-amber-400 mt-0.5" />
+                        <span>{scrapedResult.warningNote}</span>
+                      </div>
+                    )}
 
                     {/* 4 Big Auto-Calculated Metrics (Past 1 Year, YTD, Expected Yearly, Monthly Avg) */}
                     <div className="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
