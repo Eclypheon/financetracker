@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { 
   DividendHolding, 
@@ -10,7 +10,9 @@ import {
 import { 
   calculateMonthlyDistribution, 
   calculateDividendAnnual, 
-  exportDividendsToCsv
+  exportDividendsToCsv,
+  deduplicateHoldings,
+  getHoldingCanonicalTicker
 } from '../utils/dividendsStorage';
 import { 
   scrapeDividendsForTicker, 
@@ -50,6 +52,7 @@ interface DividendsTrackerProps {
   onDeleteHolding: (id: string) => void;
   onResetToSample: () => void;
   onReorderHoldings?: (reordered: DividendHolding[]) => void;
+  onBatchUpdateHoldings?: (updated: DividendHolding[]) => void;
 }
 
 const formatDpuDisplay = (dpu: number): string => {
@@ -67,6 +70,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   onDeleteHolding,
   onResetToSample,
   onReorderHoldings,
+  onBatchUpdateHoldings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -84,6 +88,12 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [scrapedResult, setScrapedResult] = useState<ScrapedDividendResult | null>(null);
   const [showPayoutHistory, setShowPayoutHistory] = useState(false);
+
+  // Re-scrape All State
+  const [isReScrapingAll, setIsReScrapingAll] = useState(false);
+  const [reScrapeProgress, setReScrapeProgress] = useState<{ current: number; total: number } | null>(null);
+  const [reScrapeStatusMessage, setReScrapeStatusMessage] = useState<string | null>(null);
+  const hasAutoScrapedRef = useRef(false);
 
   // Single Holding Refresh State
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -227,19 +237,19 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   }, [monthlyDistributions]);
 
   const totalAnnualDividends = useMemo(() => {
-    return holdings.reduce((sum, h) => sum + (Number(h.expectedYearlyDividends || h.totalAnnualPayout) || 0), 0);
+    return holdings.reduce((sum, h) => sum + calculateDividendAnnual(h), 0);
   }, [holdings]);
 
   const averageMonthlyDividends = totalAnnualDividends / 12;
 
   const totalPastYearDividends = useMemo(() => {
-    return holdings.reduce((sum, h) => sum + (Number(h.pastYearDividends || h.totalAnnualPayout) || 0), 0);
+    return holdings.reduce((sum, h) => sum + (Number(h.pastYearDividends ?? calculateDividendAnnual(h)) || 0), 0);
   }, [holdings]);
 
   const totalYtdDividends = useMemo(() => {
     return holdings.reduce((sum, h) => {
-      if (h.ytdDividends !== undefined) return sum + h.ytdDividends;
-      return sum + ((h.totalAnnualPayout || 0) * (currentMonthNum / 12));
+      if (h.ytdDividends !== undefined && h.ytdDividends !== null) return sum + Number(h.ytdDividends);
+      return sum + (calculateDividendAnnual(h) * (currentMonthNum / 12));
     }, 0);
   }, [holdings, currentMonthNum]);
 
@@ -399,14 +409,126 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     }
   };
 
+  // Auto re-scrape on component load
+  useEffect(() => {
+    if (hasAutoScrapedRef.current) return;
+    if (!holdings || holdings.length === 0) return;
+    hasAutoScrapedRef.current = true;
+
+    // Run auto re-scrape smoothly in background shortly after load
+    const timer = setTimeout(() => {
+      handleReScrapeAll(true);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Re-scrape all auto-calculated tickers
+  const handleReScrapeAll = async (isAutoOnLoad = false) => {
+    if (isReScrapingAll) return;
+    if (!holdings || holdings.length === 0) return;
+
+    setIsReScrapingAll(true);
+    setReScrapeStatusMessage(isAutoOnLoad ? 'Auto-refreshing dividend rates...' : 'Re-scraping all tickers...');
+
+    const cleanHoldings = deduplicateHoldings(holdings);
+    const eligibleHoldings = cleanHoldings.filter((h) => {
+      const canonical = getHoldingCanonicalTicker(h);
+      return Boolean(canonical && canonical.length >= 1);
+    });
+
+    if (eligibleHoldings.length === 0) {
+      setIsReScrapingAll(false);
+      setReScrapeStatusMessage(null);
+      return;
+    }
+
+    setReScrapeProgress({ current: 0, total: eligibleHoldings.length });
+    const updatedMap = new Map<string, DividendHolding>();
+    cleanHoldings.forEach((h) => updatedMap.set(h.id, { ...h }));
+
+    let successCount = 0;
+
+    for (let i = 0; i < eligibleHoldings.length; i++) {
+      const holding = eligibleHoldings[i];
+      setReScrapeProgress({ current: i + 1, total: eligibleHoldings.length });
+      const canonical = getHoldingCanonicalTicker(holding);
+      const sharesNum = holding.shares || (holding.dividendPerShare && holding.amount ? Math.round(holding.amount / holding.dividendPerShare) : 100);
+
+      try {
+        const result = await scrapeDividendsForTicker(canonical, sharesNum);
+        const calculatedAnnual = calculateDividendAnnual({
+          amount: result.latestDPS * sharesNum,
+          frequency: result.frequency,
+          payoutMonths: result.payoutMonths,
+          shares: sharesNum,
+          dividendPerShare: result.latestDPS,
+          monthlyDpu: result.monthlyDpu,
+        });
+
+        const updated: DividendHolding = {
+          ...holding,
+          category: result.category || holding.category,
+          shares: sharesNum,
+          dividendPerShare: result.latestDPS,
+          monthlyDpu: result.monthlyDpu,
+          payoutMonths: result.payoutMonths,
+          frequency: result.frequency,
+          amount: result.latestDPS * sharesNum,
+          totalAnnualPayout: calculatedAnnual,
+          expectedYearlyDividends: calculatedAnnual,
+          pastYearDividends: result.pastYearDividends,
+          ytdDividends: result.ytdDividends,
+          monthlyAverageDividends: calculatedAnnual / 12,
+          currency: result.currency || holding.currency,
+          lastFetchedAt: Date.now(),
+        };
+
+        updatedMap.set(holding.id, updated);
+        successCount++;
+      } catch (err) {
+        console.warn(`Could not re-scrape ${holding.tickerOrName}:`, err);
+      }
+    }
+
+    const finalList = deduplicateHoldings(Array.from(updatedMap.values()));
+
+    if (onBatchUpdateHoldings) {
+      onBatchUpdateHoldings(finalList);
+    } else if (onReorderHoldings) {
+      onReorderHoldings(finalList);
+    }
+
+    setIsReScrapingAll(false);
+    setReScrapeProgress(null);
+    setReScrapeStatusMessage(`${successCount}/${eligibleHoldings.length} updated`);
+
+    setTimeout(() => {
+      setReScrapeStatusMessage(null);
+    }, 3500);
+  };
+
   // Apply scraped result into portfolio
   const handleApplyScrapedHolding = () => {
     if (!scrapedResult) return;
 
     const displayName = scrapedResult.name ? `${scrapedResult.name} (${scrapedResult.ticker})` : scrapedResult.ticker;
+    const canonical = getHoldingCanonicalTicker({ tickerOrName: displayName });
+    const existingHolding = editingId
+      ? holdings.find((h) => h.id === editingId)
+      : holdings.find((h) => getHoldingCanonicalTicker(h) === canonical);
+
+    const calculatedAnnual = calculateDividendAnnual({
+      amount: scrapedResult.latestDPS * scrapedResult.shares,
+      frequency: scrapedResult.frequency,
+      payoutMonths: scrapedResult.payoutMonths,
+      shares: scrapedResult.shares,
+      dividendPerShare: scrapedResult.latestDPS,
+      monthlyDpu: scrapedResult.monthlyDpu,
+    });
 
     const holdingData: DividendHolding = {
-      id: editingId || `div_${Date.now()}`,
+      id: editingId || existingHolding?.id || `div_${Date.now()}`,
       tickerOrName: displayName,
       category: scrapedResult.category,
       amount: scrapedResult.latestDPS * scrapedResult.shares,
@@ -415,19 +537,19 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       shares: scrapedResult.shares,
       dividendPerShare: scrapedResult.latestDPS,
       monthlyDpu: scrapedResult.monthlyDpu,
-      totalAnnualPayout: scrapedResult.expectedYearlyDividends,
+      totalAnnualPayout: calculatedAnnual,
       pastYearDividends: scrapedResult.pastYearDividends,
       ytdDividends: scrapedResult.ytdDividends,
-      expectedYearlyDividends: scrapedResult.expectedYearlyDividends,
-      monthlyAverageDividends: scrapedResult.monthlyAverageDividends,
+      expectedYearlyDividends: calculatedAnnual,
+      monthlyAverageDividends: calculatedAnnual / 12,
       currency: scrapedResult.currency,
       paymentMethodOrAccount: formAccount.trim() || undefined,
       notes: formNotes.trim() || undefined,
       lastFetchedAt: Date.now(),
-      createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : Date.now(),
+      createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : (existingHolding?.createdAt || Date.now()),
     };
 
-    if (editingId) {
+    if (editingId || existingHolding) {
       onUpdateHolding(holdingData);
     } else {
       onAddHolding(holdingData);
@@ -445,6 +567,15 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     setRefreshingId(holding.id);
     try {
       const result = await scrapeDividendsForTicker(clean, sharesNum);
+      const calculatedAnnual = calculateDividendAnnual({
+        amount: result.latestDPS * sharesNum,
+        frequency: result.frequency,
+        payoutMonths: result.payoutMonths,
+        shares: sharesNum,
+        dividendPerShare: result.latestDPS,
+        monthlyDpu: result.monthlyDpu,
+      });
+
       const updated: DividendHolding = {
         ...holding,
         shares: sharesNum,
@@ -453,11 +584,11 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         amount: result.latestDPS * sharesNum,
         frequency: result.frequency,
         payoutMonths: result.payoutMonths,
-        totalAnnualPayout: result.expectedYearlyDividends,
+        totalAnnualPayout: calculatedAnnual,
         pastYearDividends: result.pastYearDividends,
         ytdDividends: result.ytdDividends,
-        expectedYearlyDividends: result.expectedYearlyDividends,
-        monthlyAverageDividends: result.monthlyAverageDividends,
+        expectedYearlyDividends: calculatedAnnual,
+        monthlyAverageDividends: calculatedAnnual / 12,
         currency: result.currency,
         lastFetchedAt: Date.now(),
       };
@@ -547,10 +678,13 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       monthlyDpu: parsedMonthlyDpu,
     });
 
-    const existingHolding = editingId ? holdings.find((h) => h.id === editingId) : undefined;
+    const canonical = getHoldingCanonicalTicker({ tickerOrName: formTicker.trim() });
+    const existingHolding = editingId 
+      ? holdings.find((h) => h.id === editingId) 
+      : holdings.find((h) => getHoldingCanonicalTicker(h) === canonical);
 
     const holdingData: DividendHolding = {
-      id: editingId || `div_${Date.now()}`,
+      id: editingId || existingHolding?.id || `div_${Date.now()}`,
       tickerOrName: formTicker.trim(),
       category: formCategory,
       amount: payoutAmount,
@@ -570,7 +704,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       createdAt: existingHolding?.createdAt || Date.now(),
     };
 
-    if (editingId) {
+    if (editingId || existingHolding) {
       onUpdateHolding(holdingData);
     } else {
       onAddHolding(holdingData);
@@ -586,8 +720,27 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
           <span className="font-semibold text-slate-300">Monthly Dividends Portfolio</span>
+          {reScrapeStatusMessage && (
+            <span className="ml-2 text-[9px] font-medium text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2 py-0.5 rounded-full animate-in fade-in flex items-center gap-1 shadow-sm">
+              {isReScrapingAll && <RefreshCw className="w-2.5 h-2.5 animate-spin text-cyan-400" />}
+              {reScrapeStatusMessage}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleReScrapeAll(false)}
+            disabled={isReScrapingAll}
+            title="Re-scrape and update dividend data for all tickers"
+            className="flex items-center gap-1 text-[10px] font-semibold text-cyan-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/90 px-2 py-0.5 rounded-lg border border-slate-700/70 transition-all shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${isReScrapingAll ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
+            <span>
+              {isReScrapingAll
+                ? (reScrapeProgress ? `${reScrapeProgress.current}/${reScrapeProgress.total}` : 'Scraping...')
+                : 'Re-scrape All'}
+            </span>
+          </button>
           <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-950/50 hover:bg-cyan-900/60 px-2 py-0.5 rounded-lg border border-cyan-500/30 transition-colors shadow-sm"

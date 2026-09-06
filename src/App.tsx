@@ -32,7 +32,9 @@ import { RecurringExpense } from './types/expenses';
 import { 
   loadStoredDividends, 
   saveStoredDividends, 
-  sampleInitialDividends 
+  sampleInitialDividends,
+  deduplicateHoldings,
+  getHoldingCanonicalTicker
 } from './utils/dividendsStorage';
 import { 
   loadStoredExpenses, 
@@ -135,8 +137,9 @@ export const App: React.FC = () => {
       // Sync dividends with cloud
       const cloudDividends = await fetchCloudDividends();
       if (cloudDividends && cloudDividends.length > 0) {
-        setDividends(cloudDividends);
-        saveStoredDividends(cloudDividends);
+        const deduped = deduplicateHoldings(cloudDividends);
+        setDividends(deduped);
+        saveStoredDividends(deduped);
       } else if (cloudDividends) {
         const localDividends = loadStoredDividends();
         if (localDividends.length > 0) {
@@ -386,10 +389,22 @@ export const App: React.FC = () => {
   };
 
   const handleAddDividend = (newHolding: DividendHolding) => {
+    const newCanonical = getHoldingCanonicalTicker(newHolding);
     setDividends((prev) => {
-      const next = [newHolding, ...prev];
-      saveStoredDividends(next);
-      return next;
+      const existingIdx = prev.findIndex((h) => {
+        const hCanonical = getHoldingCanonicalTicker(h);
+        return Boolean(newCanonical && hCanonical && newCanonical === hCanonical);
+      });
+      let next: DividendHolding[];
+      if (existingIdx >= 0) {
+        next = [...prev];
+        next[existingIdx] = { ...newHolding, id: prev[existingIdx].id };
+      } else {
+        next = [newHolding, ...prev];
+      }
+      const deduped = deduplicateHoldings(next);
+      saveStoredDividends(deduped);
+      return deduped;
     });
     if (currentUser) {
       saveCloudDividend(newHolding, currentUser);
@@ -416,10 +431,20 @@ export const App: React.FC = () => {
   };
 
   const handleReorderDividends = (reordered: DividendHolding[]) => {
-    setDividends(reordered);
-    saveStoredDividends(reordered);
+    const deduped = deduplicateHoldings(reordered);
+    setDividends(deduped);
+    saveStoredDividends(deduped);
     if (currentUser) {
-      syncAllDividendsToCloud(reordered, currentUser);
+      syncAllDividendsToCloud(deduped, currentUser);
+    }
+  };
+
+  const handleBatchUpdateDividends = (updatedList: DividendHolding[]) => {
+    const deduped = deduplicateHoldings(updatedList);
+    setDividends(deduped);
+    saveStoredDividends(deduped);
+    if (currentUser) {
+      syncAllDividendsToCloud(deduped, currentUser);
     }
   };
 
@@ -959,6 +984,7 @@ export const App: React.FC = () => {
             onDeleteHolding={handleDeleteDividend}
             onResetToSample={handleResetDividendsToSample}
             onReorderHoldings={handleReorderDividends}
+            onBatchUpdateHoldings={handleBatchUpdateDividends}
           />
         </section>
       )}

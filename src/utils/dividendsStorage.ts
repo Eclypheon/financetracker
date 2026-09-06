@@ -1,13 +1,61 @@
 import { DividendHolding, MonthlyDividendDistribution, MONTH_NAMES } from '../types/dividends';
+import { normalizeTickerInput } from './dividendScraper';
 
 const DIVIDENDS_STORAGE_KEY = 'financetracker_dividends_v1';
+
+/**
+ * Extract canonical ticker symbol from holding's tickerOrName
+ * e.g. "DBS Group Holdings (D05.SI)" -> "D05.SI"
+ *      "Singapore Tech Engineering (S63.SI)" -> "S63.SI"
+ *      "S63" -> "S63.SI"
+ *      "AAPL" -> "AAPL"
+ */
+export const getHoldingCanonicalTicker = (holding: Pick<DividendHolding, 'tickerOrName'>): string => {
+  if (!holding.tickerOrName) return '';
+  const trimmed = holding.tickerOrName.trim();
+  const parenthesized = trimmed.match(/\(([^)]+)\)/);
+  const rawSymbol = parenthesized ? parenthesized[1] : trimmed.split(' ')[0] || trimmed;
+  return normalizeTickerInput(rawSymbol).toUpperCase();
+};
+
+/**
+ * Deduplicate holdings so that each canonical ticker only appears once.
+ * If duplicates exist, preserves the latest / most complete holding.
+ */
+export const deduplicateHoldings = (holdings: DividendHolding[]): DividendHolding[] => {
+  const seen = new Map<string, DividendHolding>();
+
+  for (const h of holdings) {
+    const key = getHoldingCanonicalTicker(h);
+    const uniqueKey = key || h.tickerOrName.trim().toLowerCase();
+    if (!uniqueKey) continue;
+
+    if (!seen.has(uniqueKey)) {
+      seen.set(uniqueKey, h);
+    } else {
+      const existing = seen.get(uniqueKey)!;
+      // Compare which holding has newer updates or more detailed info
+      const existingScore = (existing.shares ? 100 : 0) + (existing.monthlyDpu ? 50 : 0) + (existing.lastFetchedAt || existing.createdAt || 0);
+      const newScore = (h.shares ? 100 : 0) + (h.monthlyDpu ? 50 : 0) + (h.lastFetchedAt || h.createdAt || 0);
+
+      if (newScore >= existingScore) {
+        seen.set(uniqueKey, { ...existing, ...h, id: existing.id });
+      }
+    }
+  }
+
+  return Array.from(seen.values());
+};
 
 export const calculateDividendAnnual = (
   holding: Pick<DividendHolding, 'amount' | 'frequency' | 'payoutMonths' | 'shares' | 'dividendPerShare' | 'monthlyDpu'>
 ): number => {
-  const months = (holding.payoutMonths && holding.payoutMonths.length > 0)
+  const rawMonths = (holding.payoutMonths && holding.payoutMonths.length > 0)
     ? holding.payoutMonths
     : (holding.frequency === 'monthly' ? [1,2,3,4,5,6,7,8,9,10,11,12] : holding.frequency === 'quarterly' ? [3,6,9,12] : holding.frequency === 'semi-annually' ? [6,12] : [12]);
+
+  // Ensure unique months to avoid double counting any single calendar month
+  const months = Array.from(new Set(rawMonths)).sort((a, b) => a - b);
 
   // If specific per-month DPUs are defined, sum each month's actual payout
   if (holding.monthlyDpu && Object.keys(holding.monthlyDpu).length > 0) {
@@ -182,7 +230,11 @@ export const loadStoredDividends = (): DividendHolding[] => {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      const deduped = deduplicateHoldings(parsed);
+      if (deduped.length !== parsed.length) {
+        saveStoredDividends(deduped);
+      }
+      return deduped;
     }
     return sampleInitialDividends;
   } catch (err) {
@@ -193,7 +245,8 @@ export const loadStoredDividends = (): DividendHolding[] => {
 
 export const saveStoredDividends = (dividends: DividendHolding[]): void => {
   try {
-    localStorage.setItem(DIVIDENDS_STORAGE_KEY, JSON.stringify(dividends));
+    const deduped = deduplicateHoldings(dividends);
+    localStorage.setItem(DIVIDENDS_STORAGE_KEY, JSON.stringify(deduped));
   } catch (err) {
     console.error('Failed to save dividends to localStorage', err);
   }
@@ -202,9 +255,10 @@ export const saveStoredDividends = (dividends: DividendHolding[]): void => {
 export const calculateMonthlyDistribution = (
   holdings: DividendHolding[]
 ): MonthlyDividendDistribution[] => {
+  const deduped = deduplicateHoldings(holdings);
   return MONTH_NAMES.map((label, idx) => {
     const monthNum = idx + 1;
-    const payingHoldings = holdings
+    const payingHoldings = deduped
       .filter((h) => Array.isArray(h.payoutMonths) && h.payoutMonths.includes(monthNum))
       .map((h) => {
         let payout = 0;

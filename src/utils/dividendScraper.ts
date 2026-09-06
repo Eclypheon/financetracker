@@ -37,9 +37,9 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   // =========================================================================
   '5DD.SI': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.05 }, price: 2.65 },
   '5DD': { symbol: '5DD.SI', name: 'Micro-Mechanics (Holdings) Ltd', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.04, frequency: 'semi-annually', months: [2, 11], monthlyDpu: { 2: 0.03, 11: 0.05 }, price: 2.65 },
-  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
-  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
-  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.81, 5: 0.81, 8: 0.81, 11: 0.75 }, price: 42.50 },
+  'D05.SI': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
+  'D05': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
+  'DBS': { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.81, frequency: 'quarterly', months: [2, 5, 8, 11], monthlyDpu: { 2: 0.75, 5: 0.81, 8: 0.81, 11: 0.81 }, price: 42.50 },
   'O39.SI': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
   'O39': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
   'OCBC': { symbol: 'O39.SI', name: 'OCBC Bank Ltd', category: 'Banking & Financials', currency: 'SGD', fallbackDPS: 0.58, frequency: 'semi-annually', months: [4, 8], monthlyDpu: { 4: 0.58, 8: 0.47 }, price: 16.20 },
@@ -56,8 +56,8 @@ export const POPULAR_TICKERS: Record<string, TickerMeta> = {
   'BN4': { symbol: 'BN4.SI', name: 'Keppel Ltd', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.19, frequency: 'semi-annually', months: [5, 8], price: 6.80 },
   'C6L.SI': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
   'C6L': { symbol: 'C6L.SI', name: 'Singapore Airlines (SIA)', category: 'Other', currency: 'SGD', fallbackDPS: 0.38, frequency: 'semi-annually', months: [8, 12], monthlyDpu: { 8: 0.38, 12: 0.10 }, price: 6.50 },
-  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.11, 5: 0.04, 8: 0.05, 11: 0.04 }, price: 4.60 },
-  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'quarterly', months: [4, 5, 8, 11], monthlyDpu: { 4: 0.11, 5: 0.04, 8: 0.05, 11: 0.04 }, price: 4.60 },
+  'S63.SI': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'semi-annually', months: [6, 12], monthlyDpu: { 6: 0.04, 12: 0.05 }, price: 4.60 },
+  'S63': { symbol: 'S63.SI', name: 'Singapore Technologies Engineering', category: 'Technology & Growth', currency: 'SGD', fallbackDPS: 0.05, frequency: 'semi-annually', months: [6, 12], monthlyDpu: { 6: 0.04, 12: 0.05 }, price: 4.60 },
   'CJLU.SI': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
   'CJLU': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
   'NETLINK': { symbol: 'CJLU.SI', name: 'NetLink NBN Trust', category: 'Energy & Utilities', currency: 'SGD', fallbackDPS: 0.0265, frequency: 'semi-annually', months: [6, 12], price: 0.88 },
@@ -425,61 +425,89 @@ export const scrapeDividendsForTicker = async (
   const ytdDPS = ytdEvents.reduce((s, e) => s + e.amount, 0);
   const ytdDividends = ytdDPS * shares;
 
-  // 3. Payout Frequency, Payout Months & Variable Monthly DPU
-  const detectedMonthsSet = new Set<number>();
-  const monthlyDpu: Record<number, number> = {};
-
-  // Group past events (sorted newest first) by calendar month to find distinct payout months & latest DPU for each month
-  parsedEvents.slice(0, 12).forEach((e) => {
-    const m = new Date(e.date).getMonth() + 1;
-    detectedMonthsSet.add(m);
-    if (monthlyDpu[m] === undefined) {
-      monthlyDpu[m] = e.amount;
+  // 3. Payout Frequency determination
+  let frequency: DividendFrequency = popularPreset?.frequency || 'quarterly';
+  if (!popularPreset) {
+    if (pastYearEvents.length >= 10) {
+      frequency = 'monthly';
+    } else if (pastYearEvents.length === 3 || pastYearEvents.length === 4) {
+      frequency = 'quarterly';
+    } else if (pastYearEvents.length === 2) {
+      frequency = 'semi-annually';
+    } else if (pastYearEvents.length === 1) {
+      frequency = 'annually';
+    } else if (parsedEvents.length >= 2) {
+      // Look at average interval between consecutive historical events
+      const avgIntervalDays = (parsedEvents[0].date - parsedEvents[parsedEvents.length - 1].date) / ((parsedEvents.length - 1) * 24 * 3600 * 1000);
+      if (avgIntervalDays <= 45) frequency = 'monthly';
+      else if (avgIntervalDays <= 130) frequency = 'quarterly';
+      else if (avgIntervalDays <= 240) frequency = 'semi-annually';
+      else frequency = 'annually';
     }
-  });
-
-  let payoutMonths = Array.from(detectedMonthsSet).sort((a, b) => a - b);
-  if (payoutMonths.length === 0) {
-    payoutMonths = popularPreset?.months || [3, 6, 9, 12];
   }
 
-  // Populate preset monthlyDpu if any scheduled month was not captured in live events
-  if (popularPreset?.monthlyDpu) {
-    for (const m of payoutMonths) {
-      if (monthlyDpu[m] === undefined && popularPreset.monthlyDpu[m] !== undefined) {
-        monthlyDpu[m] = popularPreset.monthlyDpu[m];
+  // 4. Payout Months determination (strictly bounded by frequency)
+  const maxAllowedMonths = frequency === 'monthly' ? 12 : frequency === 'quarterly' ? 4 : frequency === 'semi-annually' ? 2 : 1;
+  let payoutMonths: number[];
+
+  if (popularPreset?.months && popularPreset.months.length > 0) {
+    payoutMonths = [...popularPreset.months].sort((a, b) => a - b);
+  } else if (frequency === 'monthly') {
+    payoutMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  } else {
+    // Only inspect past 1 year events first so multi-year date drift doesn't add extra months!
+    const monthsSet = new Set<number>();
+    const eventsToInspect = pastYearEvents.length > 0 ? pastYearEvents : parsedEvents;
+    for (const e of eventsToInspect) {
+      if (monthsSet.size >= maxAllowedMonths) break;
+      const m = new Date(e.date).getMonth() + 1;
+      monthsSet.add(m);
+    }
+
+    if (monthsSet.size === 0) {
+      payoutMonths = frequency === 'semi-annually' ? [6, 12] : frequency === 'annually' ? [12] : [3, 6, 9, 12];
+    } else {
+      // If we have fewer months than expected for quarterly or semi-annually, fill in sensible spacing
+      if (frequency === 'quarterly' && monthsSet.size < 4) {
+        const baseMonth = Array.from(monthsSet)[0];
+        for (let i = 1; i <= 3; i++) {
+          monthsSet.add(((baseMonth - 1 + i * 3) % 12) + 1);
+        }
+      } else if (frequency === 'semi-annually' && monthsSet.size < 2) {
+        const baseMonth = Array.from(monthsSet)[0];
+        monthsSet.add(((baseMonth - 1 + 6) % 12) + 1);
       }
+      payoutMonths = Array.from(monthsSet).slice(0, maxAllowedMonths).sort((a, b) => a - b);
     }
   }
 
-  // Latest DPS (most recent payout event or preset fallback)
-  const latestDPS = parsedEvents[0]?.amount || popularPreset?.fallbackDPS || (pastYearDPS / 4) || 0.05;
+  // 5. Variable Monthly DPU mapping
+  const monthlyDpu: Record<number, number> = {};
+  const latestDPS = parsedEvents[0]?.amount || popularPreset?.fallbackDPS || (pastYearDPS / (payoutMonths.length || 1)) || 0.05;
 
-  // Fill in latestDPS for any remaining month without specific DPU
   for (const m of payoutMonths) {
-    if (monthlyDpu[m] === undefined) {
+    // Check if preset specifies DPU for this month
+    if (popularPreset?.monthlyDpu?.[m] !== undefined) {
+      monthlyDpu[m] = popularPreset.monthlyDpu[m];
+      continue;
+    }
+
+    // Otherwise find closest recent event in parsedEvents matching month m
+    const matched = parsedEvents.find((e) => {
+      const eventMonth = new Date(e.date).getMonth() + 1;
+      return eventMonth === m;
+    });
+
+    if (matched) {
+      monthlyDpu[m] = matched.amount;
+    } else {
       monthlyDpu[m] = latestDPS;
     }
   }
 
-  let frequency: DividendFrequency = popularPreset?.frequency || 'quarterly';
-
-  if (payoutMonths.length >= 10 || parsedEvents.length >= 10) {
-    frequency = 'monthly';
-  } else if (payoutMonths.length === 2) {
-    frequency = 'semi-annually';
-  } else if (payoutMonths.length === 1) {
-    frequency = 'annually';
-  } else {
-    frequency = 'quarterly';
-  }
-
-  // 4. Expected Yearly Dividends (Forward 12 months)
-  // Calculate precise forward total by summing each scheduled payout month's specific DPU!
+  // 6. Expected Yearly Dividends
   const expectedYearlyDPS = payoutMonths.reduce((sum, m) => sum + (monthlyDpu[m] ?? latestDPS), 0);
   const expectedYearlyDividends = expectedYearlyDPS * shares;
-
-  // 5. Monthly Average Dividends
   const monthlyAverageDividends = expectedYearlyDividends / 12;
 
   // Format past payouts history list (up to 8 events)
