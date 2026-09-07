@@ -92,6 +92,8 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
     .from('cards')
     .select('id, month_year, data, created_at')
     .neq('id', 'entry_card_template')
+    .neq('id', 'dividends_store')
+    .neq('id', 'expenses_store')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -100,7 +102,9 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
   }
 
   if (data && Array.isArray(data)) {
-    return data.map((row) => {
+    return data
+      .filter((row) => row.id !== 'entry_card_template' && row.id !== 'dividends_store' && row.id !== 'expenses_store')
+      .map((row) => {
       const cardData = row.data as FinanceCardData;
       return {
         ...cardData,
@@ -255,7 +259,7 @@ export const syncAllCardsToCloud = async (cards: FinanceCardData[], user: User):
 // =========================================================================
 
 /**
- * Fetch all dividends for the authenticated user
+ * Fetch all dividends for the authenticated user (supports dedicated table + cards table fallback)
  */
 export const fetchCloudDividends = async (): Promise<DividendHolding[] | null> => {
   const supabase = getSupabaseClient();
@@ -264,85 +268,132 @@ export const fetchCloudDividends = async (): Promise<DividendHolding[] | null> =
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('dividends')
-    .select('id, data, created_at')
-    .order('created_at', { ascending: false });
+  // 1. Try dedicated dividends table
+  try {
+    const { data, error } = await supabase
+      .from('dividends')
+      .select('id, data, created_at')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.warn('Notice: dividends table not available in Supabase:', error.message);
-    return null;
-  }
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      return data.map((row) => ({
+        ...(row.data as DividendHolding),
+        id: row.id,
+        createdAt: Number(row.created_at) || Date.now(),
+      }));
+    }
+  } catch {}
 
-  if (data && Array.isArray(data)) {
-    return data.map((row) => ({
-      ...(row.data as DividendHolding),
-      id: row.id,
-      createdAt: Number(row.created_at) || Date.now(),
-    }));
+  // 2. Fallback to cards table store ('dividends_store')
+  try {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('id, data, created_at')
+      .eq('id', 'dividends_store')
+      .maybeSingle();
+
+    if (!error && data && data.data) {
+      const payload = data.data as { holdings?: DividendHolding[] } | DividendHolding[];
+      if (Array.isArray(payload) && payload.length > 0) {
+        return payload;
+      }
+      if ('holdings' in payload && Array.isArray(payload.holdings) && payload.holdings.length > 0) {
+        return payload.holdings;
+      }
+    }
+  } catch (err) {
+    console.warn('Notice: fallback dividends query failed:', err);
   }
 
   return [];
 };
 
 /**
- * Upsert single dividend holding to Supabase
- */
-export const saveCloudDividend = async (holding: DividendHolding, user: User): Promise<boolean> => {
-  const supabase = getSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from('dividends').upsert({
-    id: holding.id,
-    user_id: user.id,
-    data: holding,
-    created_at: holding.createdAt || Date.now(),
-    updated_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    console.warn('Error saving dividend to Supabase:', error.message);
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Delete dividend holding from Supabase
- */
-export const deleteCloudDividend = async (dividendId: string): Promise<boolean> => {
-  const supabase = getSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from('dividends').delete().eq('id', dividendId);
-  if (error) {
-    console.warn('Error deleting dividend from Supabase:', error.message);
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Bulk sync dividends to Supabase
+ * Bulk sync dividends to Supabase (saves to dedicated table and resilient fallback)
  */
 export const syncAllDividendsToCloud = async (dividends: DividendHolding[], user: User): Promise<boolean> => {
   const supabase = getSupabaseClient();
   if (!supabase || dividends.length === 0) return false;
 
-  const rows = dividends.map((d) => ({
-    id: d.id,
-    user_id: user.id,
-    data: d,
-    created_at: d.createdAt || Date.now(),
-    updated_at: new Date().toISOString(),
-  }));
+  let success = false;
 
-  const { error } = await supabase.from('dividends').upsert(rows);
-  if (error) {
-    console.warn('Error syncing dividends to Supabase:', error.message);
-    return false;
+  // 1. Try dedicated dividends table
+  try {
+    const rows = dividends.map((d) => ({
+      id: d.id,
+      user_id: user.id,
+      data: d,
+      created_at: d.createdAt || Date.now(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from('dividends').upsert(rows);
+    if (!error) {
+      success = true;
+    }
+  } catch {}
+
+  // 2. Always also back up / sync to cards table ('dividends_store') so all devices sync even if dividends table is absent
+  try {
+    const { error } = await supabase.from('cards').upsert({
+      id: 'dividends_store',
+      user_id: user.id,
+      month_year: 'DIVIDENDS',
+      data: { holdings: dividends },
+      created_at: Date.now(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!error) {
+      success = true;
+    }
+  } catch (err) {
+    console.warn('Fallback sync to cards failed:', err);
+  }
+
+  return success;
+};
+
+/**
+ * Upsert single dividend holding to Supabase
+ */
+export const saveCloudDividend = async (holding: DividendHolding, user: User, allHoldings?: DividendHolding[]): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  let success = false;
+  try {
+    const { error } = await supabase.from('dividends').upsert({
+      id: holding.id,
+      user_id: user.id,
+      data: holding,
+      created_at: holding.createdAt || Date.now(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!error) success = true;
+  } catch {}
+
+  // Always update the fallback store if allHoldings provided
+  if (allHoldings && allHoldings.length > 0) {
+    const fallbackOk = await syncAllDividendsToCloud(allHoldings, user);
+    if (fallbackOk) success = true;
+  }
+
+  return success;
+};
+
+/**
+ * Delete dividend holding from Supabase
+ */
+export const deleteCloudDividend = async (dividendId: string, remainingHoldings?: DividendHolding[], user?: User): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  try {
+    await supabase.from('dividends').delete().eq('id', dividendId);
+  } catch {}
+
+  if (remainingHoldings && user) {
+    await syncAllDividendsToCloud(remainingHoldings, user);
   }
 
   return true;
@@ -362,64 +413,44 @@ export const fetchCloudExpenses = async (): Promise<RecurringExpense[] | null> =
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('id, data, created_at')
-    .order('created_at', { ascending: false });
+  // 1. Try dedicated expenses table
+  try {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('id, data, created_at')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.warn('Notice: expenses table not available in Supabase:', error.message);
-    return null;
-  }
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      return data.map((row) => ({
+        ...(row.data as RecurringExpense),
+        id: row.id,
+        createdAt: Number(row.created_at) || Date.now(),
+      }));
+    }
+  } catch {}
 
-  if (data && Array.isArray(data)) {
-    return data.map((row) => ({
-      ...(row.data as RecurringExpense),
-      id: row.id,
-      createdAt: Number(row.created_at) || Date.now(),
-    }));
+  // 2. Fallback to cards table store ('expenses_store')
+  try {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('id, data, created_at')
+      .eq('id', 'expenses_store')
+      .maybeSingle();
+
+    if (!error && data && data.data) {
+      const payload = data.data as { expenses?: RecurringExpense[] } | RecurringExpense[];
+      if (Array.isArray(payload) && payload.length > 0) {
+        return payload;
+      }
+      if ('expenses' in payload && Array.isArray(payload.expenses) && payload.expenses.length > 0) {
+        return payload.expenses;
+      }
+    }
+  } catch (err) {
+    console.warn('Notice: fallback expenses query failed:', err);
   }
 
   return [];
-};
-
-/**
- * Upsert recurring expense to Supabase
- */
-export const saveCloudExpense = async (expense: RecurringExpense, user: User): Promise<boolean> => {
-  const supabase = getSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from('expenses').upsert({
-    id: expense.id,
-    user_id: user.id,
-    data: expense,
-    created_at: expense.createdAt || Date.now(),
-    updated_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    console.warn('Error saving expense to Supabase:', error.message);
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Delete recurring expense from Supabase
- */
-export const deleteCloudExpense = async (expenseId: string): Promise<boolean> => {
-  const supabase = getSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
-  if (error) {
-    console.warn('Error deleting expense from Supabase:', error.message);
-    return false;
-  }
-
-  return true;
 };
 
 /**
@@ -429,18 +460,80 @@ export const syncAllExpensesToCloud = async (expenses: RecurringExpense[], user:
   const supabase = getSupabaseClient();
   if (!supabase || expenses.length === 0) return false;
 
-  const rows = expenses.map((e) => ({
-    id: e.id,
-    user_id: user.id,
-    data: e,
-    created_at: e.createdAt || Date.now(),
-    updated_at: new Date().toISOString(),
-  }));
+  let success = false;
 
-  const { error } = await supabase.from('expenses').upsert(rows);
-  if (error) {
-    console.warn('Error syncing expenses to Supabase:', error.message);
-    return false;
+  // 1. Try dedicated table
+  try {
+    const rows = expenses.map((e) => ({
+      id: e.id,
+      user_id: user.id,
+      data: e,
+      created_at: e.createdAt || Date.now(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from('expenses').upsert(rows);
+    if (!error) success = true;
+  } catch {}
+
+  // 2. Fallback to cards table store ('expenses_store')
+  try {
+    const { error } = await supabase.from('cards').upsert({
+      id: 'expenses_store',
+      user_id: user.id,
+      month_year: 'EXPENSES',
+      data: { expenses },
+      created_at: Date.now(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!error) success = true;
+  } catch (err) {
+    console.warn('Fallback sync to cards failed:', err);
+  }
+
+  return success;
+};
+
+/**
+ * Upsert recurring expense to Supabase
+ */
+export const saveCloudExpense = async (expense: RecurringExpense, user: User, allExpenses?: RecurringExpense[]): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  let success = false;
+  try {
+    const { error } = await supabase.from('expenses').upsert({
+      id: expense.id,
+      user_id: user.id,
+      data: expense,
+      created_at: expense.createdAt || Date.now(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!error) success = true;
+  } catch {}
+
+  if (allExpenses && allExpenses.length > 0) {
+    const fallbackOk = await syncAllExpensesToCloud(allExpenses, user);
+    if (fallbackOk) success = true;
+  }
+
+  return success;
+};
+
+/**
+ * Delete recurring expense from Supabase
+ */
+export const deleteCloudExpense = async (expenseId: string, remainingExpenses?: RecurringExpense[], user?: User): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  try {
+    await supabase.from('expenses').delete().eq('id', expenseId);
+  } catch {}
+
+  if (remainingExpenses && user) {
+    await syncAllExpensesToCloud(remainingExpenses, user);
   }
 
   return true;

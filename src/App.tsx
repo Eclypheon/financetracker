@@ -378,18 +378,21 @@ export const App: React.FC = () => {
 
   // Dividends handlers
   const handleUpdateDividend = (updated: DividendHolding) => {
+    let updatedList: DividendHolding[] = [];
     setDividends((prev) => {
       const next = prev.map((h) => (h.id === updated.id ? updated : h));
       saveStoredDividends(next);
+      updatedList = next;
       return next;
     });
     if (currentUser) {
-      saveCloudDividend(updated, currentUser);
+      saveCloudDividend(updated, currentUser, updatedList);
     }
   };
 
   const handleAddDividend = (newHolding: DividendHolding) => {
     const newCanonical = getHoldingCanonicalTicker(newHolding);
+    let dedupedList: DividendHolding[] = [];
     setDividends((prev) => {
       const existingIdx = prev.findIndex((h) => {
         const hCanonical = getHoldingCanonicalTicker(h);
@@ -404,21 +407,24 @@ export const App: React.FC = () => {
       }
       const deduped = deduplicateHoldings(next);
       saveStoredDividends(deduped);
+      dedupedList = deduped;
       return deduped;
     });
     if (currentUser) {
-      saveCloudDividend(newHolding, currentUser);
+      saveCloudDividend(newHolding, currentUser, dedupedList);
     }
   };
 
   const handleDeleteDividend = (id: string) => {
+    let remaining: DividendHolding[] = [];
     setDividends((prev) => {
       const next = prev.filter((h) => h.id !== id);
       saveStoredDividends(next);
+      remaining = next;
       return next;
     });
     if (currentUser) {
-      deleteCloudDividend(id);
+      deleteCloudDividend(id, remaining, currentUser);
     }
   };
 
@@ -450,35 +456,41 @@ export const App: React.FC = () => {
 
   // Recurring Expenses handlers
   const handleUpdateExpense = (updated: RecurringExpense) => {
+    let updatedList: RecurringExpense[] = [];
     setExpenses((prev) => {
       const next = prev.map((e) => (e.id === updated.id ? updated : e));
       saveStoredExpenses(next);
+      updatedList = next;
       return next;
     });
     if (currentUser) {
-      saveCloudExpense(updated, currentUser);
+      saveCloudExpense(updated, currentUser, updatedList);
     }
   };
 
   const handleAddExpense = (newExpense: RecurringExpense) => {
+    let addedList: RecurringExpense[] = [];
     setExpenses((prev) => {
       const next = [newExpense, ...prev];
       saveStoredExpenses(next);
+      addedList = next;
       return next;
     });
     if (currentUser) {
-      saveCloudExpense(newExpense, currentUser);
+      saveCloudExpense(newExpense, currentUser, addedList);
     }
   };
 
   const handleDeleteExpense = (id: string) => {
+    let remaining: RecurringExpense[] = [];
     setExpenses((prev) => {
       const next = prev.filter((e) => e.id !== id);
       saveStoredExpenses(next);
+      remaining = next;
       return next;
     });
     if (currentUser) {
-      deleteCloudExpense(id);
+      deleteCloudExpense(id, remaining, currentUser);
     }
   };
 

@@ -223,6 +223,11 @@ export const sampleInitialDividends: DividendHolding[] = [
   },
 ];
 
+export const isSampleDividends = (holdings: DividendHolding[]): boolean => {
+  if (!holdings || holdings.length !== sampleInitialDividends.length) return false;
+  const sampleIds = new Set(sampleInitialDividends.map((s) => s.id));
+  return holdings.every((h) => sampleIds.has(h.id));
+};
 
 export const loadStoredDividends = (): DividendHolding[] => {
   try {
