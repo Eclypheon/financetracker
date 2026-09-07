@@ -986,8 +986,7 @@ export const App: React.FC = () => {
       {/* ============================================================ */}
       {/* MONTHLY DIVIDENDS TRACKER TAB                                */}
       {/* ============================================================ */}
-      {activeTab === 'dividends' && (
-        <section className="w-full pt-1 animate-in fade-in duration-150">
+      <section className="w-full pt-1 animate-in fade-in duration-150" style={{ display: activeTab === 'dividends' ? undefined : 'none' }}>
           <DividendsTracker
             holdings={dividends}
             currentUser={currentUser}
@@ -999,7 +998,6 @@ export const App: React.FC = () => {
             onBatchUpdateHoldings={handleBatchUpdateDividends}
           />
         </section>
-      )}
 
       {/* ============================================================ */}
       {/* MONTHLY & ANNUAL RECURRENT EXPENSES TRACKER TAB              */}

@@ -45,6 +45,18 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+const formatTimeAgo = (timestamp: number): string => {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString('en-SG', { day: 'numeric', month: 'short' });
+};
+
 interface DividendsTrackerProps {
   holdings: DividendHolding[];
   currentUser: User | null;
@@ -71,7 +83,6 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   onDeleteHolding,
   onResetToSample,
   onReorderHoldings,
-  onBatchUpdateHoldings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -424,7 +435,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Re-scrape all auto-calculated tickers
+  // Re-scrape all auto-calculated tickers (updates each ticker progressively)
   const handleReScrapeAll = async (isAutoOnLoad = false) => {
     if (isReScrapingAll) return;
     if (!holdings || holdings.length === 0) return;
@@ -445,9 +456,6 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     }
 
     setReScrapeProgress({ current: 0, total: eligibleHoldings.length });
-    const updatedMap = new Map<string, DividendHolding>();
-    cleanHoldings.forEach((h) => updatedMap.set(h.id, { ...h }));
-
     let successCount = 0;
 
     for (let i = 0; i < eligibleHoldings.length; i++) {
@@ -488,7 +496,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           source: (result.apiProvider === 'sgx' ? 'sgx' : (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
         };
 
-        updatedMap.set(holding.id, updated);
+        // Update this ticker immediately so the UI reflects it right away
+        onUpdateHolding(updated);
         successCount++;
       } catch (err: any) {
         console.warn(`Could not re-scrape ${holding.tickerOrName}:`, err);
@@ -496,22 +505,15 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           ...holding,
           scrapeStatus: 'unable_to_calculate',
           scrapeError: err?.message || 'Unable to auto-calculate from Digrin.com',
+          lastFetchedAt: Date.now(),
         };
-        updatedMap.set(holding.id, updated);
+        onUpdateHolding(updated);
       }
-    }
-
-    const finalList = deduplicateHoldings(Array.from(updatedMap.values()));
-
-    if (onBatchUpdateHoldings) {
-      onBatchUpdateHoldings(finalList);
-    } else if (onReorderHoldings) {
-      onReorderHoldings(finalList);
     }
 
     setIsReScrapingAll(false);
     setReScrapeProgress(null);
-    setReScrapeStatusMessage(`${successCount}/${eligibleHoldings.length} updated from Digrin.com`);
+    setReScrapeStatusMessage(`${successCount}/${eligibleHoldings.length} updated`);
 
     setTimeout(() => {
       setReScrapeStatusMessage(null);
@@ -1178,6 +1180,11 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                             ) : null}
                           </p>
                         ) : null}
+                        {h.lastFetchedAt && (
+                          <p className="text-[9px] text-slate-500 mt-0.5">
+                            Updated {formatTimeAgo(h.lastFetchedAt)}
+                          </p>
+                        )}
                       </div>
                     </div>
 
