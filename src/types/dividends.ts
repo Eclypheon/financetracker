@@ -22,6 +22,7 @@ export interface DividendHolding {
   lastFetchedAt?: number;         // Timestamp of last web sync
   scrapeStatus?: 'success' | 'unable_to_calculate';
   scrapeError?: string;
+  scrapeNote?: string;            // Detail about source comparison (e.g. 'SGX & Digrin tallied', 'SGX failed, Digrin only')
   source?: 'digrin' | 'stockevents' | 'sgx';
   createdAt: number;
 }
@@ -49,6 +50,7 @@ export interface ScrapedDividendResult {
   }>;
   dataSource?: 'live_web' | 'verified_dataset' | 'custom_estimate';
   apiProvider?: 'digrin' | 'stockevents' | 'sgx' | 'manual';
+  scrapeNote?: string;
   digrinUrl?: string;
   apiQueryUrl?: string;
   isEstimated?: boolean;

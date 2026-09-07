@@ -493,7 +493,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           lastFetchedAt: Date.now(),
           scrapeStatus: 'success',
           scrapeError: undefined,
-          source: (result.apiProvider === 'sgx' ? 'sgx' : (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
+          scrapeNote: result.scrapeNote,
+          source: result.apiProvider === 'sgx' ? 'sgx' : 'digrin',
         };
 
         // Update this ticker immediately so the UI reflects it right away
@@ -560,7 +561,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       lastFetchedAt: Date.now(),
       scrapeStatus: 'success',
       scrapeError: undefined,
-      source: (scrapedResult.apiProvider === 'sgx' ? 'sgx' : (scrapedResult.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
+      scrapeNote: scrapedResult.scrapeNote,
+      source: scrapedResult.apiProvider === 'sgx' ? 'sgx' : 'digrin',
       createdAt: editingId ? (holdings.find((h) => h.id === editingId)?.createdAt || Date.now()) : (existingHolding?.createdAt || Date.now()),
     };
 
@@ -608,7 +610,8 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         lastFetchedAt: Date.now(),
         scrapeStatus: 'success',
         scrapeError: undefined,
-        source: (result.apiProvider === 'sgx' ? 'sgx' : (result.apiProvider === 'stockevents' ? 'stockevents' : 'digrin')),
+        scrapeNote: result.scrapeNote,
+        source: result.apiProvider === 'sgx' ? 'sgx' : 'digrin',
       };
       onUpdateHolding(updated);
     } catch (err: any) {
@@ -1151,21 +1154,44 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
                               <span>Unable to auto-calculate from Digrin.com</span>
                             </span>
                           )}
-                          {h.scrapeStatus === 'success' && (
-                            <span
-                              className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold border flex items-center gap-0.5 ${
-                                h.source === 'sgx'
-                                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                  : h.source === 'stockevents'
-                                  ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
-                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              }`}
-                              title={`Verified via ${h.source === 'sgx' ? 'SGX Corporate Actions Official Rates &' : (h.source === 'stockevents' ? 'StockEvents.app' : 'Digrin.com')} Payment Dates`}
-                            >
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              <span>{h.source === 'sgx' ? 'SGX Verified' : (h.source === 'stockevents' ? 'StockEvents Verified' : 'Digrin Verified')}</span>
-                            </span>
-                          )}
+                          {h.scrapeStatus === 'success' && (() => {
+                            const isSgxVerified = h.source === 'sgx' && h.scrapeNote?.includes('tallied');
+                            const isMismatch = h.scrapeNote?.includes('mismatch');
+                            const isSgxOnly = h.source === 'sgx' && h.scrapeNote?.includes('Digrin failed');
+                            const isDigrinOnly = h.source === 'digrin' && h.scrapeNote?.includes('SGX failed');
+                            const badgeClass = isSgxVerified
+                              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                              : isMismatch
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : isSgxOnly
+                              ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                              : isDigrinOnly
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : h.source === 'sgx'
+                              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                            const badgeLabel = isSgxVerified
+                              ? 'SGX Verified'
+                              : isMismatch
+                              ? 'SGX (Mismatch)'
+                              : isSgxOnly
+                              ? 'SGX Only'
+                              : isDigrinOnly
+                              ? 'Digrin (SGX N/A)'
+                              : h.source === 'sgx'
+                              ? 'SGX Verified'
+                              : 'Digrin Verified';
+                            const BadgeIcon = isMismatch ? AlertCircle : CheckCircle2;
+                            return (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold border flex items-center gap-0.5 ${badgeClass}`}
+                                title={h.scrapeNote || `Verified via ${h.source === 'sgx' ? 'SGX Corporate Actions' : 'Digrin.com'}`}
+                              >
+                                <BadgeIcon className="w-2.5 h-2.5" />
+                                <span>{badgeLabel}</span>
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {h.shares ? (

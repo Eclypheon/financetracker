@@ -766,23 +766,56 @@ export const scrapeDividendsForTicker = async (
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
   let backendResult: DividendBackendResult | null = null;
+  let scrapeNote = '';
+  let finalSource: 'sgx' | 'digrin' = 'digrin';
 
-  // 1. Primary Source: SGX Corporate Actions (for SG-listed tickers)
   const isSgxEligible = cleanTicker.endsWith('.SI') || cleanTicker.endsWith('.SG') || preset?.currency === 'SGD';
-  if (isSgxEligible) {
-    try {
-      const sgxResult = await fetchSgxCorporateActions(cleanTicker, preset?.name);
-      if (sgxResult && sgxResult.events && sgxResult.events.length > 0) {
-        backendResult = sgxResult;
-      }
-    } catch (err) {
-      console.warn(`SGX corporate actions failed for ${cleanTicker}:`, err);
-    }
-  }
 
-  // 2. Fallback: Digrin.com
-  if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
+  if (isSgxEligible) {
+    // Fetch both SGX and Digrin in parallel
+    const [sgxResult, digrinResult] = await Promise.all([
+      fetchSgxCorporateActions(cleanTicker, preset?.name).catch(() => null),
+      fetchFromWebSources(cleanTicker).catch(() => null),
+    ]);
+
+    const sgxOk = sgxResult && sgxResult.events && sgxResult.events.length > 0;
+    const digrinOk = digrinResult && digrinResult.events && digrinResult.events.length > 0;
+
+    if (sgxOk && digrinOk) {
+      // Compare latest DPS from both sources
+      const sgxDps = Math.round(sgxResult.latestDPS * 10000) / 10000;
+      const digrinDps = Math.round(digrinResult.latestDPS * 10000) / 10000;
+      const dpsMatch = sgxDps === digrinDps || Math.abs(sgxDps - digrinDps) < 0.001;
+      const monthsMatch = JSON.stringify([...sgxResult.months].sort()) === JSON.stringify([...digrinResult.months].sort());
+
+      // Always prefer SGX data (higher precision)
+      backendResult = sgxResult;
+      finalSource = 'sgx';
+
+      if (dpsMatch && monthsMatch) {
+        scrapeNote = 'SGX & Digrin tallied';
+      } else {
+        const diffs: string[] = [];
+        if (!dpsMatch) diffs.push(`DPS: SGX $${sgxDps} vs Digrin $${digrinDps}`);
+        if (!monthsMatch) diffs.push(`Months differ`);
+        scrapeNote = `SGX & Digrin mismatch (${diffs.join(', ')}) — using SGX`;
+      }
+    } else if (sgxOk) {
+      backendResult = sgxResult;
+      finalSource = 'sgx';
+      scrapeNote = 'Digrin failed, SGX only';
+    } else if (digrinOk) {
+      backendResult = digrinResult;
+      finalSource = 'digrin';
+      scrapeNote = 'SGX failed, Digrin only';
+    }
+  } else {
+    // Non-SG ticker: Digrin only
     backendResult = await fetchFromWebSources(cleanTicker);
+    if (backendResult && backendResult.events && backendResult.events.length > 0) {
+      finalSource = 'digrin';
+      scrapeNote = 'Digrin only (non-SG ticker)';
+    }
   }
 
   if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
@@ -868,7 +901,8 @@ export const scrapeDividendsForTicker = async (
     monthlyAverageDividends,
     pastPayouts,
     dataSource: "live_web",
-    apiProvider: (backendResult.source === "sgx" ? "sgx" : (backendResult.source === "stockevents" ? "stockevents" : "digrin")) as any,
+    apiProvider: finalSource,
+    scrapeNote,
     digrinUrl,
     isEstimated: false,
   };
