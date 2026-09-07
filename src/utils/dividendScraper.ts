@@ -749,24 +749,6 @@ async function fetchFromWebSources(symbol: string): Promise<DividendBackendResul
     } catch {}
   }
 
-  // 3. Secondary Source: StockEvents (XX.SG, XX, XX.SI, XX.XSES)
-  const seCandidates = [`${base}.SG`, base, `${base}.SI`, `${base}.XSES`, `${base.toLowerCase()}.sg`];
-  for (const cand of seCandidates) {
-    try {
-      const seUrl = `https://r.jina.ai/https://stockevents.app/en/stock/${cand}/dividends`;
-      const res = await fetch(seUrl, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const text = await res.text();
-        if (text && !text.includes('404: Not Found') && !text.includes('Page Not Found')) {
-          const parsed = parseStockEventsContent(text, cleanSym);
-          if (parsed && parsed.events.length > 0) {
-            return parsed;
-          }
-        }
-      }
-    } catch {}
-  }
-
   return null;
 }
 
@@ -783,33 +765,28 @@ export const scrapeDividendsForTicker = async (
   const bareSymbol = cleanTicker.replace(/\.SI$/i, "");
   const preset = POPULAR_TICKERS[cleanTicker] || POPULAR_TICKERS[bareSymbol] || POPULAR_TICKERS[`${bareSymbol}.SI`];
 
-  // 1. Fetch from Digrin.com (Sole Source of Truth)
-  let backendResult = await fetchFromWebSources(cleanTicker);
+  let backendResult: DividendBackendResult | null = null;
 
-  // 2. High precision check / SGX Corporate Actions verification:
-  // For small dividend payouts (< 0.20 SGD) or SG stocks verified via StockEvents (where StockEvents rounds to 2 decimals, e.g. A35 0.01 vs 0.0133),
-  // or if preset specifically provides an sgxName, verify with SGX Corporate Actions to get unrounded rates.
-  const isSgxEligible = cleanTicker.endsWith('.SI') || cleanTicker.endsWith('.SG') || preset?.currency === 'SGD' || backendResult?.currency === 'SGD';
+  // 1. Primary Source: SGX Corporate Actions (for SG-listed tickers)
+  const isSgxEligible = cleanTicker.endsWith('.SI') || cleanTicker.endsWith('.SG') || preset?.currency === 'SGD';
   if (isSgxEligible) {
-    const shouldCheckSgx = Boolean(preset?.sgxName) ||
-      !backendResult ||
-      (backendResult.latestDPS !== undefined && backendResult.latestDPS < 0.20) ||
-      backendResult?.source === 'stockevents';
-
-    if (shouldCheckSgx) {
-      try {
-        const sgxResult = await fetchSgxCorporateActions(cleanTicker, backendResult?.name || preset?.name);
-        if (sgxResult && sgxResult.events && sgxResult.events.length > 0) {
-          backendResult = sgxResult;
-        }
-      } catch (err) {
-        console.warn(`SGX corporate actions check failed for ${cleanTicker}:`, err);
+    try {
+      const sgxResult = await fetchSgxCorporateActions(cleanTicker, preset?.name);
+      if (sgxResult && sgxResult.events && sgxResult.events.length > 0) {
+        backendResult = sgxResult;
       }
+    } catch (err) {
+      console.warn(`SGX corporate actions failed for ${cleanTicker}:`, err);
     }
   }
 
+  // 2. Fallback: Digrin.com
   if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
-    throw new Error(`Unable to auto-calculate from Digrin.com, StockEvents, or SGX for ${cleanTicker}. No dividend payout history found on https://www.digrin.com/stocks/detail/${cleanTicker}/`);
+    backendResult = await fetchFromWebSources(cleanTicker);
+  }
+
+  if (!backendResult || !backendResult.events || backendResult.events.length === 0) {
+    throw new Error(`Unable to auto-calculate from SGX or Digrin.com for ${cleanTicker}. No dividend payout history found.`);
   }
 
   const companyName = backendResult.name || preset?.name || cleanTicker;
