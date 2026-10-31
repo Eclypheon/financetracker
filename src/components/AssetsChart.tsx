@@ -30,7 +30,14 @@ export const AssetsChart: React.FC<AssetsChartProps> = ({ cards }) => {
 
   // Chronologically sort all data first
   const sortedCards = useMemo(() => {
-    return [...cards].sort((a, b) => {
+    const byMonth = new Map<string, FinanceCardData>();
+    [...cards].forEach((c) => {
+      // Two cards can share a month/year; keep only the most recent one so the
+      // chart does not draw one point on top of another.
+      const existing = byMonth.get(c.monthYear);
+      if (!existing || c.createdAt > existing.createdAt) byMonth.set(c.monthYear, c);
+    });
+    return Array.from(byMonth.values()).sort((a, b) => {
       const timeA = parseMonthYear(a.monthYear).timestamp || a.createdAt;
       const timeB = parseMonthYear(b.monthYear).timestamp || b.createdAt;
       return timeA - timeB;

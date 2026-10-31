@@ -3,52 +3,23 @@ import { FinanceCardData } from '../types/finance';
 import { DividendHolding } from '../types/dividends';
 import { RecurringExpense } from '../types/expenses';
 
-const CONFIG_KEY = 'financetracker_supabase_config_v1';
-
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
 }
 
 // =========================================================================
-// HARDCODED SUPABASE PROJECT CREDENTIALS
+// SUPABASE PROJECT CREDENTIALS
+// .env wins so the app can point at another project without editing source.
+// The literals below are only a fallback for a build with no .env file.
 // =========================================================================
 export const HARDCODED_SUPABASE_URL = 'https://wwzqpatllqneldjqrcku.supabase.co';
 export const HARDCODED_SUPABASE_ANON_KEY = 'sb_publishable_j-GTdoAgYQYQXHbnGHXolw_sIBYymq_';
 
 export const getStoredSupabaseConfig = (): SupabaseConfig => {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-  const url = HARDCODED_SUPABASE_URL || envUrl;
-  const anonKey = HARDCODED_SUPABASE_ANON_KEY || envKey;
-
-  if (url && anonKey) {
-    return { url, anonKey };
-  }
-
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.url && parsed.anonKey) {
-        return parsed;
-      }
-    }
-  } catch {
-    // Ignore
-  }
-
-  return { url: '', anonKey: '' };
-};
-
-export const saveSupabaseConfig = (config: SupabaseConfig): void => {
-  try {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-    supabaseInstance = null; // Reset instance to recreate with new config
-  } catch {
-    // Ignore
-  }
+  const url = import.meta.env.VITE_SUPABASE_URL || HARDCODED_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || HARDCODED_SUPABASE_ANON_KEY;
+  return { url, anonKey };
 };
 
 let supabaseInstance: SupabaseClient | null = null;
@@ -282,7 +253,10 @@ export const fetchCloudDividends = async (): Promise<DividendHolding[] | null> =
         createdAt: Number(row.created_at) || Date.now(),
       }));
     }
-  } catch {}
+    if (!error) return []; // table exists and is authoritative, even when empty
+  } catch (err) {
+    console.warn('Dedicated dividends table unavailable, using cards fallback:', err);
+  }
 
   // 2. Fallback to cards table store ('dividends_store')
   try {
@@ -331,7 +305,9 @@ export const syncAllDividendsToCloud = async (dividends: DividendHolding[], user
     if (!error) {
       success = true;
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Dedicated dividends upsert failed, using cards fallback:', err);
+  }
 
   // 2. Always also back up / sync to cards table ('dividends_store') so all devices sync even if dividends table is absent
   try {
@@ -370,7 +346,9 @@ export const saveCloudDividend = async (holding: DividendHolding, user: User, al
       updated_at: new Date().toISOString(),
     });
     if (!error) success = true;
-  } catch {}
+  } catch (err) {
+    console.warn('Dedicated dividends upsert failed:', err);
+  }
 
   // Always update the fallback store if allHoldings provided
   if (allHoldings && allHoldings.length > 0) {
@@ -389,8 +367,15 @@ export const deleteCloudDividend = async (dividendId: string, remainingHoldings?
   if (!supabase) return false;
 
   try {
-    await supabase.from('dividends').delete().eq('id', dividendId);
-  } catch {}
+    const { error } = await supabase.from('dividends').delete().eq('id', dividendId);
+    if (error) {
+      console.warn('Error deleting dividend from Supabase:', error);
+      return false;
+    }
+  } catch (err) {
+    console.warn('Error deleting dividend from Supabase:', err);
+    return false;
+  }
 
   if (remainingHoldings && user) {
     await syncAllDividendsToCloud(remainingHoldings, user);
@@ -427,7 +412,10 @@ export const fetchCloudExpenses = async (): Promise<RecurringExpense[] | null> =
         createdAt: Number(row.created_at) || Date.now(),
       }));
     }
-  } catch {}
+    if (!error) return []; // table exists and is authoritative, even when empty
+  } catch (err) {
+    console.warn('Dedicated expenses table unavailable, using cards fallback:', err);
+  }
 
   // 2. Fallback to cards table store ('expenses_store')
   try {
@@ -474,7 +462,9 @@ export const syncAllExpensesToCloud = async (expenses: RecurringExpense[], user:
 
     const { error } = await supabase.from('expenses').upsert(rows);
     if (!error) success = true;
-  } catch {}
+  } catch (err) {
+    console.warn('Dedicated expenses upsert failed, using cards fallback:', err);
+  }
 
   // 2. Fallback to cards table store ('expenses_store')
   try {
@@ -511,7 +501,9 @@ export const saveCloudExpense = async (expense: RecurringExpense, user: User, al
       updated_at: new Date().toISOString(),
     });
     if (!error) success = true;
-  } catch {}
+  } catch (err) {
+    console.warn('Dedicated expenses upsert failed:', err);
+  }
 
   if (allExpenses && allExpenses.length > 0) {
     const fallbackOk = await syncAllExpensesToCloud(allExpenses, user);
@@ -529,8 +521,15 @@ export const deleteCloudExpense = async (expenseId: string, remainingExpenses?: 
   if (!supabase) return false;
 
   try {
-    await supabase.from('expenses').delete().eq('id', expenseId);
-  } catch {}
+    const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+    if (error) {
+      console.warn('Error deleting expense from Supabase:', error);
+      return false;
+    }
+  } catch (err) {
+    console.warn('Error deleting expense from Supabase:', err);
+    return false;
+  }
 
   if (remainingExpenses && user) {
     await syncAllExpensesToCloud(remainingExpenses, user);

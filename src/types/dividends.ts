@@ -24,6 +24,7 @@ export interface DividendHolding {
   scrapeError?: string;
   scrapeNote?: string;            // Detail about source comparison (e.g. 'SGX & Digrin tallied', 'SGX failed, Digrin only')
   source?: 'digrin' | 'stockevents' | 'sgx';
+  isManual?: boolean;             // If true, auto-scraping is disabled for this holding
   createdAt: number;
 }
 

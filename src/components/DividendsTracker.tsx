@@ -83,10 +83,33 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   onDeleteHolding,
   onResetToSample,
   onReorderHoldings,
+  onBatchUpdateHoldings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<number | null>(null);
+
+  // Dividends are quoted in different currencies. Adding SGD and USD amounts into
+  // one number is wrong, so the tab shows one currency at a time.
+  const currencies = useMemo(
+    () => Array.from(new Set(holdings.map((h) => h.currency || 'SGD'))).sort(),
+    [holdings]
+  );
+  const dominantCurrency = useMemo(() => {
+    const counts: Record<string, number> = {};
+    holdings.forEach((h) => {
+      const c = h.currency || 'SGD';
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || 'SGD';
+  }, [holdings]);
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null);
+  const activeCurrency = currencyOverride ?? dominantCurrency;
+
+  const currencyHoldings = useMemo(
+    () => holdings.filter((h) => (h.currency || 'SGD') === activeCurrency),
+    [holdings, activeCurrency]
+  );
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -239,35 +262,35 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
   const currentMonthNum = new Date().getMonth() + 1; // 1-indexed (1 = Jan, ..., 12 = Dec)
   const currentYear = new Date().getFullYear();
 
-  // Calculations
+  // Calculations (one currency at a time - see activeCurrency above)
   const monthlyDistributions = useMemo(() => {
-    return calculateMonthlyDistribution(holdings);
-  }, [holdings]);
+    return calculateMonthlyDistribution(currencyHoldings);
+  }, [currencyHoldings]);
 
   const maxMonthAmount = useMemo(() => {
     return Math.max(...monthlyDistributions.map((d) => d.totalAmount), 1);
   }, [monthlyDistributions]);
 
   const totalAnnualDividends = useMemo(() => {
-    return holdings.reduce((sum, h) => sum + calculateDividendAnnual(h), 0);
-  }, [holdings]);
+    return currencyHoldings.reduce((sum, h) => sum + calculateDividendAnnual(h), 0);
+  }, [currencyHoldings]);
 
   const averageMonthlyDividends = totalAnnualDividends / 12;
 
   const totalPastYearDividends = useMemo(() => {
-    return holdings.reduce((sum, h) => sum + (Number(h.pastYearDividends ?? calculateDividendAnnual(h)) || 0), 0);
-  }, [holdings]);
+    return currencyHoldings.reduce((sum, h) => sum + (Number(h.pastYearDividends ?? calculateDividendAnnual(h)) || 0), 0);
+  }, [currencyHoldings]);
 
   const totalYtdDividends = useMemo(() => {
-    return holdings.reduce((sum, h) => {
+    return currencyHoldings.reduce((sum, h) => {
       if (h.ytdDividends !== undefined && h.ytdDividends !== null) return sum + Number(h.ytdDividends);
       return sum + (calculateDividendAnnual(h) * (currentMonthNum / 12));
     }, 0);
-  }, [holdings, currentMonthNum]);
+  }, [currencyHoldings, currentMonthNum]);
 
   // Filtered Holdings
   const filteredHoldings = useMemo(() => {
-    return holdings.filter((h) => {
+    return currencyHoldings.filter((h) => {
       const matchesSearch = searchQuery === '' || 
         h.tickerOrName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (h.paymentMethodOrAccount && h.paymentMethodOrAccount.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -279,7 +302,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
       return matchesSearch && matchesCategory && matchesMonth;
     });
-  }, [holdings, searchQuery, selectedCategory, selectedMonthFilter]);
+  }, [currencyHoldings, searchQuery, selectedCategory, selectedMonthFilter]);
 
   // Open modal for new holding
   const handleOpenAdd = () => {
@@ -435,6 +458,9 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  // How long a scraped number is trusted before the on-load refresh replaces it.
+  const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
+
   // Re-scrape all auto-calculated tickers (updates each ticker progressively)
   const handleReScrapeAll = async (isAutoOnLoad = false) => {
     if (isReScrapingAll) return;
@@ -445,6 +471,9 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
     const cleanHoldings = deduplicateHoldings(holdings);
     const eligibleHoldings = cleanHoldings.filter((h) => {
+      if (h.isManual) return false;
+      // On page load only refresh data that is actually stale; the button always runs.
+      if (isAutoOnLoad && h.lastFetchedAt && Date.now() - h.lastFetchedAt < REFRESH_AFTER_MS) return false;
       const canonical = getHoldingCanonicalTicker(h);
       return Boolean(canonical && canonical.length >= 1);
     });
@@ -457,6 +486,14 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
     setReScrapeProgress({ current: 0, total: eligibleHoldings.length });
     let successCount = 0;
+    // The whole list has to be written per update, so accumulate here instead of
+    // letting each single-holding update overwrite the previous one.
+    let working = [...holdings];
+    const commit = (updated: DividendHolding) => {
+      working = working.map((h) => (h.id === updated.id ? updated : h));
+      if (onBatchUpdateHoldings) onBatchUpdateHoldings(working);
+      else onUpdateHolding(updated);
+    };
 
     for (let i = 0; i < eligibleHoldings.length; i++) {
       const holding = eligibleHoldings[i];
@@ -498,7 +535,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         };
 
         // Update this ticker immediately so the UI reflects it right away
-        onUpdateHolding(updated);
+        commit(updated);
         successCount++;
       } catch (err: any) {
         console.warn(`Could not re-scrape ${holding.tickerOrName}:`, err);
@@ -508,7 +545,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           scrapeError: err?.message || 'Unable to auto-calculate from Digrin.com',
           lastFetchedAt: Date.now(),
         };
-        onUpdateHolding(updated);
+        commit(updated);
       }
     }
 
@@ -577,6 +614,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
 
   // Quick refresh single holding from web
   const handleQuickRefreshHolding = async (holding: DividendHolding) => {
+    if (holding.isManual) return; // Manual holdings are not auto-scraped
     const rawTicker = holding.tickerOrName.match(/\(([^)]+)\)/)?.[1] || holding.tickerOrName.split(' ')[0] || holding.tickerOrName;
     const clean = normalizeTickerInput(rawTicker);
     const sharesNum = holding.shares || (holding.dividendPerShare && holding.amount ? Math.round(holding.amount / holding.dividendPerShare) : 100);
@@ -622,7 +660,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
         scrapeError: err?.message || 'Unable to auto-calculate from Digrin.com',
       };
       onUpdateHolding(updated);
-      alert(`Unable to auto-calculate from Digrin.com for ${holding.tickerOrName}. No dividend payout data found on https://www.digrin.com/stocks/detail/${clean}/`);
+      // No alert — scrapeStatus badge in the card is sufficient notification
     } finally {
       setRefreshingId(null);
     }
@@ -728,6 +766,7 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
       currency: existingHolding?.currency,
       paymentMethodOrAccount: formAccount.trim() || undefined,
       notes: formNotes.trim() || undefined,
+      isManual: true,
       createdAt: existingHolding?.createdAt || Date.now(),
     };
 
@@ -755,6 +794,20 @@ export const DividendsTracker: React.FC<DividendsTrackerProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {currencies.length > 1 && (
+            <select
+              value={activeCurrency}
+              onChange={(e) => setCurrencyOverride(e.target.value)}
+              title="Dividends are only summed within one currency"
+              className="bg-slate-800/80 text-cyan-300 text-[10px] font-semibold rounded-lg border border-slate-700/70 px-1 py-0.5 focus:outline-none focus:border-cyan-500"
+            >
+              {currencies.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => handleReScrapeAll(false)}
             disabled={isReScrapingAll}

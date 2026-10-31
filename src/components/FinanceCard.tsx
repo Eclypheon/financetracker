@@ -1248,6 +1248,8 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   onFieldAssetTypeChange,
 }) => {
   const [newFieldAssetType, setNewFieldAssetType] = useState<'liquid' | 'nonLiquid'>('liquid');
+  // Deleting a field throws its value away and syncs immediately, so ask first.
+  const [confirmingFieldId, setConfirmingFieldId] = useState<string | null>(null);
 
   return (
     <div className="space-y-1">
@@ -1333,18 +1335,48 @@ const CategorySection: React.FC<CategorySectionProps> = ({
           >
             <div className="flex items-center gap-1 min-w-0 flex-1">
               {isEditable && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onDeleteField(category, field.id);
-                  }}
-                  className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors flex-shrink-0"
-                  title="Remove field"
-                >
-                  <Trash2 className="w-2.5 h-2.5" />
-                </button>
+                confirmingFieldId === field.id ? (
+                  <span className="flex items-center gap-0.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setConfirmingFieldId(null);
+                        onDeleteField(category, field.id);
+                      }}
+                      className="text-rose-400 hover:text-rose-200 p-0.5 rounded transition-colors"
+                      title="Confirm delete"
+                    >
+                      <Check className="w-2.5 h-2.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setConfirmingFieldId(null);
+                      }}
+                      className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                      title="Cancel"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setConfirmingFieldId(field.id);
+                    }}
+                    className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors flex-shrink-0"
+                    title="Remove field"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                )
               )}
               <span className="font-medium text-slate-300 truncate" title={field.name}>
                 {field.name}:

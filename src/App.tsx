@@ -7,6 +7,7 @@ import {
   loadStoredEntryCard,
   saveStoredEntryCard,
   createNewBlankCard, 
+  isSampleCards,
   exportCardsToCsv, 
   importCardsFromFile 
 } from './utils/storage';
@@ -34,12 +35,14 @@ import {
   saveStoredDividends, 
   sampleInitialDividends,
   deduplicateHoldings,
+  isSampleDividends,
   getHoldingCanonicalTicker
 } from './utils/dividendsStorage';
 import { 
   loadStoredExpenses, 
   saveStoredExpenses, 
-  sampleInitialExpenses 
+  sampleInitialExpenses,
+  isSampleExpenses
 } from './utils/expensesStorage';
 import { 
   fetchCloudDividends, 
@@ -57,7 +60,11 @@ import { ExpensesTracker } from './components/ExpensesTracker';
 
 export const App: React.FC = () => {
   // Navigation Tabs State: 'assets' | 'dividends' | 'expenses'
-  const [activeTab, setActiveTab] = useState<ActiveTabType>('assets');
+  const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
+    const p = new URLSearchParams(window.location.search).get('tab');
+    if (p === 'dividends' || p === 'expenses') return p;
+    return 'assets';
+  });
 
   // Dividends Tracker State
   const [dividends, setDividends] = useState<DividendHolding[]>(() => loadStoredDividends());
@@ -117,9 +124,10 @@ export const App: React.FC = () => {
           setSelectedCompareCardId(cloudCards[0].id);
         }
       } else {
-        // If cloud is empty, migrate current local cards to user's cloud account
+        // If cloud is empty, migrate current local cards to user's cloud account.
+        // Skip the seeded demo data: a brand-new account should not inherit it.
         const localCards = loadStoredCards();
-        if (localCards.length > 0) {
+        if (localCards.length > 0 && !isSampleCards(localCards)) {
           await syncAllCardsToCloud(localCards, user);
         }
       }
@@ -142,7 +150,7 @@ export const App: React.FC = () => {
         saveStoredDividends(deduped);
       } else if (cloudDividends) {
         const localDividends = loadStoredDividends();
-        if (localDividends.length > 0) {
+        if (localDividends.length > 0 && !isSampleDividends(localDividends)) {
           await syncAllDividendsToCloud(localDividends, user);
         }
       }
@@ -154,7 +162,7 @@ export const App: React.FC = () => {
         saveStoredExpenses(cloudExpenses);
       } else if (cloudExpenses) {
         const localExpenses = loadStoredExpenses();
-        if (localExpenses.length > 0) {
+        if (localExpenses.length > 0 && !isSampleExpenses(localExpenses)) {
           await syncAllExpensesToCloud(localExpenses, user);
         }
       }
@@ -349,10 +357,19 @@ export const App: React.FC = () => {
     exportCardsToCsv(savedCards);
   };
 
-  // Import handler
-  const handleImport = async (file: File) => {
+  // Import handler: import replaces the whole card list, so ask first and then
+  // remove the cloud rows that are no longer present, otherwise they come back
+  // as duplicates on the next sign-in.
+  const handleImport = async (file: File): Promise<boolean> => {
     try {
       const imported = await importCardsFromFile(file);
+      const importedIds = new Set(imported.map((c) => c.id));
+      const removedIds = savedCards.filter((c) => !importedIds.has(c.id)).map((c) => c.id);
+
+      if (!window.confirm(`Replace all ${savedCards.length} saved cards with ${imported.length} imported cards?`)) {
+        return false;
+      }
+
       setSavedCards(imported);
       setSelectedBaseCardId(imported[0]?.id || null);
       if (imported.length > 1) {
@@ -362,9 +379,12 @@ export const App: React.FC = () => {
       }
       if (currentUser) {
         await syncAllCardsToCloud(imported, currentUser);
+        await Promise.all(removedIds.map((id) => deleteCloudCard(id)));
       }
+      return true;
     } catch {
       alert('Could not import file. Please check that it is a valid CSV or JSON file.');
+      return false;
     }
   };
 
@@ -377,52 +397,40 @@ export const App: React.FC = () => {
   };
 
   // Dividends handlers
+  // Note: every handler builds the new list BEFORE calling setState. Reading the
+  // list out of the setState updater does not work: React runs the updater during
+  // render, so the cloud call would always receive the old (often empty) array.
   const handleUpdateDividend = (updated: DividendHolding) => {
-    let updatedList: DividendHolding[] = [];
-    setDividends((prev) => {
-      const next = prev.map((h) => (h.id === updated.id ? updated : h));
-      saveStoredDividends(next);
-      updatedList = next;
-      return next;
-    });
+    const next = dividends.map((h) => (h.id === updated.id ? updated : h));
+    setDividends(next);
     if (currentUser) {
-      saveCloudDividend(updated, currentUser, updatedList);
+      saveCloudDividend(updated, currentUser, next);
     }
   };
 
   const handleAddDividend = (newHolding: DividendHolding) => {
     const newCanonical = getHoldingCanonicalTicker(newHolding);
-    let dedupedList: DividendHolding[] = [];
-    setDividends((prev) => {
-      const existingIdx = prev.findIndex((h) => {
-        const hCanonical = getHoldingCanonicalTicker(h);
-        return Boolean(newCanonical && hCanonical && newCanonical === hCanonical);
-      });
-      let next: DividendHolding[];
-      if (existingIdx >= 0) {
-        next = [...prev];
-        next[existingIdx] = { ...newHolding, id: prev[existingIdx].id };
-      } else {
-        next = [newHolding, ...prev];
-      }
-      const deduped = deduplicateHoldings(next);
-      saveStoredDividends(deduped);
-      dedupedList = deduped;
-      return deduped;
+    const existingIdx = dividends.findIndex((h) => {
+      const hCanonical = getHoldingCanonicalTicker(h);
+      return Boolean(newCanonical && hCanonical && newCanonical === hCanonical);
     });
+    let next: DividendHolding[];
+    if (existingIdx >= 0) {
+      next = [...dividends];
+      next[existingIdx] = { ...newHolding, id: dividends[existingIdx].id };
+    } else {
+      next = [newHolding, ...dividends];
+    }
+    const deduped = deduplicateHoldings(next);
+    setDividends(deduped);
     if (currentUser) {
-      saveCloudDividend(newHolding, currentUser, dedupedList);
+      saveCloudDividend(newHolding, currentUser, deduped);
     }
   };
 
   const handleDeleteDividend = (id: string) => {
-    let remaining: DividendHolding[] = [];
-    setDividends((prev) => {
-      const next = prev.filter((h) => h.id !== id);
-      saveStoredDividends(next);
-      remaining = next;
-      return next;
-    });
+    const remaining = dividends.filter((h) => h.id !== id);
+    setDividends(remaining);
     if (currentUser) {
       deleteCloudDividend(id, remaining, currentUser);
     }
@@ -456,39 +464,24 @@ export const App: React.FC = () => {
 
   // Recurring Expenses handlers
   const handleUpdateExpense = (updated: RecurringExpense) => {
-    let updatedList: RecurringExpense[] = [];
-    setExpenses((prev) => {
-      const next = prev.map((e) => (e.id === updated.id ? updated : e));
-      saveStoredExpenses(next);
-      updatedList = next;
-      return next;
-    });
+    const next = expenses.map((e) => (e.id === updated.id ? updated : e));
+    setExpenses(next);
     if (currentUser) {
-      saveCloudExpense(updated, currentUser, updatedList);
+      saveCloudExpense(updated, currentUser, next);
     }
   };
 
   const handleAddExpense = (newExpense: RecurringExpense) => {
-    let addedList: RecurringExpense[] = [];
-    setExpenses((prev) => {
-      const next = [newExpense, ...prev];
-      saveStoredExpenses(next);
-      addedList = next;
-      return next;
-    });
+    const next = [newExpense, ...expenses];
+    setExpenses(next);
     if (currentUser) {
-      saveCloudExpense(newExpense, currentUser, addedList);
+      saveCloudExpense(newExpense, currentUser, next);
     }
   };
 
   const handleDeleteExpense = (id: string) => {
-    let remaining: RecurringExpense[] = [];
-    setExpenses((prev) => {
-      const next = prev.filter((e) => e.id !== id);
-      saveStoredExpenses(next);
-      remaining = next;
-      return next;
-    });
+    const remaining = expenses.filter((e) => e.id !== id);
+    setExpenses(remaining);
     if (currentUser) {
       deleteCloudExpense(id, remaining, currentUser);
     }

@@ -1,25 +1,44 @@
+---
 name: Keep Supabase Alive
 
 on:
   schedule:
-    # Runs every 2 days at 04:00 UTC (12:00 PM SGT)
+    # Odd days of the month at 04:00 UTC (12:00 SGT). Supabase pauses a
+    # free project after 7 days with no request.
     - cron: '0 4 */2 * *'
-  # Allows manually triggering the workflow from the Actions tab in GitHub
+  # Allows manually triggering the workflow from the Actions tab
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ping-supabase:
     name: Ping Database to Prevent Inactivity Pause
     runs-on: ubuntu-latest
     steps:
+      - name: Check that the project secrets exist
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::Missing SUPABASE_URL / SUPABASE_ANON_KEY."
+            echo "::error::Set both under Settings > Secrets > Actions."
+            exit 1
+          fi
+
       - name: Ping Supabase REST API & Database
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://wwzqpatllqneldjqrcku.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_j-GTdoAgYQYQXHbnGHXolw_sIBYymq_' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          echo "Pinging Supabase database to reset 7-day inactivity pause..."
+          echo "Pinging Supabase to reset the inactivity timer..."
+          # select=id&limit=1 is a real column; "select=count" is not, so
+          # PostgREST answers 400. RLS returns an empty list for an anon
+          # key, which still counts as database activity.
           HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
-            "${SUPABASE_URL}/rest/v1/cards?select=count" \
+            "${SUPABASE_URL%/}/rest/v1/cards?select=id&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
 
@@ -28,8 +47,10 @@ jobs:
           echo ""
 
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
-            echo "✅ Successfully pinged database. Inactivity timer reset!"
+            echo "Pinged the database. Inactivity timer reset!"
           else
-            echo "⚠️ Request failed with status $HTTP_STATUS"
+            echo "::error::Supabase ping failed with status $HTTP_STATUS"
+            echo "::error::Check the URL and key secrets, and that the project"
+            echo "::error::still exists (a deleted project stops resolving)."
             exit 1
           fi

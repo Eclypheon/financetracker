@@ -23,7 +23,7 @@ interface HeaderProps {
   onSignOut: () => void;
   onAddNewBlankCard?: () => void;
   onExport: () => void;
-  onImport: (file: File) => void;
+  onImport: (file: File) => Promise<boolean>;
   activeTab?: ActiveTabType;
   onChangeTab?: (tab: ActiveTabType) => void;
   dividendsCount?: number;
@@ -110,14 +110,13 @@ export const Header: React.FC<HeaderProps> = ({
     setTimeout(() => setShowNotification(null), 3500);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      onImport(file);
-      triggerToast('CSV data imported successfully!');
-      // Reset input value so re-importing same file triggers change
-      e.target.value = '';
-    }
+    if (!file) return;
+    // Reset input value so re-importing same file triggers change
+    e.target.value = '';
+    const imported = await onImport(file);
+    if (imported) triggerToast('CSV data imported successfully!');
   };
 
   const getUserDisplayName = () => {

@@ -48,6 +48,36 @@ Your site is instantly published at:
    npm run build
    ```
 
+4. **Run the tests** (money maths, CSV import, dividend parsing):
+   ```bash
+   npm run test
+   ```
+
+---
+
+## 🔐 Cloud Sync (Supabase, optional)
+
+The app works offline with `localStorage` only. Sign-in and cross-device sync
+need a Supabase project:
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Run `supabase-setup.sql` in the SQL Editor (safe to run more than once).
+3. Copy the project URL and publishable key into `.env`:
+   ```bash
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=sb_publishable_...
+   ```
+4. Rebuild before deploying — these values are baked in at build time.
+
+Row Level Security is what keeps each user's data private, so keep the policies
+from step 2 in place. The anonymous key is meant to be public.
+
+The scheduled `Keep Supabase Alive` workflow (which stops free projects from
+being paused for inactivity) reads two repository secrets, `SUPABASE_URL` and
+`SUPABASE_ANON_KEY` (**Settings > Secrets and variables > Actions**). It fails
+with an explicit message when they are missing or when the project no longer
+resolves.
+
 ---
 
 ## ✨ Features

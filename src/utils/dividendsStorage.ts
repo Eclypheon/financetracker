@@ -1,5 +1,6 @@
 import { DividendHolding, MonthlyDividendDistribution, MONTH_NAMES } from '../types/dividends';
 import { normalizeTickerInput } from './dividendScraper';
+import { downloadCsv } from './formatters';
 
 const DIVIDENDS_STORAGE_KEY = 'financetracker_dividends_v1';
 
@@ -297,14 +298,6 @@ export const calculateMonthlyDistribution = (
   });
 };
 
-const escapeCsvCell = (str: string | number): string => {
-  const val = String(str ?? '');
-  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
-    return `"${val.replace(/"/g, '""')}"`;
-  }
-  return val;
-};
-
 export const exportDividendsToCsv = (holdings: DividendHolding[]): void => {
   const rows: string[][] = [
     ['Holding / Ticker', 'Category', 'Frequency', 'Payout Amount ($)', 'Annual Payout ($)', 'Payout Months & DPUs', 'Account', 'Notes']
@@ -329,14 +322,5 @@ export const exportDividendsToCsv = (holdings: DividendHolding[]): void => {
     ]);
   });
 
-  const csvContent = '\uFEFF' + rows.map((r) => r.map(escapeCsvCell).join(',')).join('\r\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `dividends_tracker_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`dividends_tracker_${new Date().toISOString().slice(0, 10)}.csv`, rows);
 };

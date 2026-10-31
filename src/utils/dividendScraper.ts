@@ -371,10 +371,11 @@ export function parseDigrinContent(content: string, rawTicker: string): Dividend
   const monthlyDpu: Record<number, number> = {};
   for (const e of effectiveEvents) {
     const m = parseInt(e.date.split("-")[1], 10);
-    if (!isNaN(m) && monthlyDpu[m] === undefined) {
-      monthsSet.add(m);
-      monthlyDpu[m] = e.amount;
-    }
+    if (isNaN(m)) continue;
+    // Sum payouts that land in the same calendar month (e.g. a special on top of
+    // a regular distribution) instead of dropping the second one.
+    monthsSet.add(m);
+    monthlyDpu[m] = Math.round(((monthlyDpu[m] || 0) + e.amount) * 10000) / 10000;
   }
 
   const months = Array.from(monthsSet).sort((a, b) => a - b);
@@ -400,155 +401,6 @@ export function parseDigrinContent(content: string, rawTicker: string): Dividend
     events: events.slice(0, 24),
     source: "digrin",
     digrinUrl: `https://www.digrin.com/stocks/detail/${cleanTicker}/`
-  };
-}
-
-export const parseDigrinHtml = parseDigrinContent;
-
-/**
- * Generate all ticker candidate variants requested by user:
- * XX.SI, XX, XX.SG, XX.XSES and lowercase equivalents.
- * Loops through all until a positive match occurs.
- */
-export function getTickerCandidateVariants(rawTicker: string): string[] {
-  const trimmed = rawTicker.trim().toUpperCase().replace(/\([^)]+\)/g, "").trim();
-  if (!trimmed) return [];
-
-  const base = trimmed.replace(/\.(SI|SG|XSES|US|O|K)$/i, "").trim();
-  const canonical = POPULAR_TICKERS[trimmed]?.symbol || POPULAR_TICKERS[base]?.symbol || trimmed;
-  const canonicalBase = canonical.replace(/\.(SI|SG|XSES|US|O|K)$/i, "").trim();
-
-  const list: string[] = [];
-  const add = (v: string) => {
-    if (v && !list.includes(v)) list.push(v);
-  };
-
-  // User requirement: XX.SI, XX, XX.SG, XX.XSES
-  add(`${canonicalBase}.SI`);
-  add(canonicalBase);
-  add(`${canonicalBase}.SG`);
-  add(`${canonicalBase}.XSES`);
-
-  // Lowercase variants
-  add(`${canonicalBase.toLowerCase()}.si`);
-  add(canonicalBase.toLowerCase());
-  add(`${canonicalBase.toLowerCase()}.sg`);
-
-  if (base !== canonicalBase) {
-    add(`${base}.SI`);
-    add(base);
-    add(`${base}.SG`);
-    add(`${base}.XSES`);
-  }
-
-  // Non-SG / US
-  add(`${canonicalBase}.US`);
-
-  return list;
-}
-
-/**
- * Secondary Source: Parse StockEvents dividends
- * URL: https://stockevents.app/en/stock/{ticker}/dividends
- */
-export function parseStockEventsContent(content: string, rawTicker: string): DividendBackendResult | null {
-  if (!content || content.includes("404: Not Found") || content.includes("Page Not Found")) return null;
-  const cleanTicker = normalizeTickerInput(rawTicker);
-
-  let name = cleanTicker;
-  const h2Match = content.match(/##\s*([^(\n]+?)(?:\s*\([^)]+\))?\s*Dividend/i);
-  if (h2Match) name = h2Match[1].trim();
-
-  let price: number | undefined = undefined;
-  const priceMatch = content.match(/(?:S\$|\$|US\$|SGD\s*|USD\s*)([\d\.]+)\s*(?:\n|\+|-)/);
-  if (priceMatch) {
-    const p = parseFloat(priceMatch[1]);
-    if (!isNaN(p)) price = p;
-  }
-
-  let currency = cleanTicker.endsWith(".SI") || cleanTicker.endsWith(".SG") ? "SGD" : "USD";
-  if (content.includes("S$")) currency = "SGD";
-  else if (content.includes("US$")) currency = "USD";
-
-  const events: Array<{ date: string; timestamp: number; amount: number; exDate?: string }> = [];
-  const lines = content.split("\n");
-  const monthMap: Record<string, string> = {
-    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
-    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
-  };
-
-  for (const line of lines) {
-    if (!line.includes("|") || line.includes("---")) continue;
-    const dateMatch = line.match(/\[?(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\]?/);
-    if (dateMatch) {
-      const day = dateMatch[1].padStart(2, "0");
-      const mStr = dateMatch[2].toLowerCase();
-      const month = monthMap[mStr];
-      const year = dateMatch[3];
-      if (month) {
-        const isoDate = `${year}-${month}-${day}`;
-        const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
-        for (const cell of cells) {
-          const amtM = cell.match(/(?:S\$|\$|US\$)?\s*([\d\.]+)/);
-          if (amtM && !cell.includes(year) && !cell.includes("%") && !cell.includes("-")) {
-            const amt = parseFloat(amtM[1]);
-            if (!isNaN(amt) && amt > 0) {
-              const dt = new Date(isoDate);
-              events.push({
-                date: isoDate,
-                timestamp: !isNaN(dt.getTime()) ? dt.getTime() : 0,
-                amount: Math.round(amt * 10000) / 10000,
-              });
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (events.length === 0) return null;
-  events.sort((a, b) => b.date.localeCompare(a.date));
-
-  // Natural 365-day payout cycle relative to latest payout
-  const latestTimestamp = events[0].timestamp || Date.now();
-  const cycleCutoff = latestTimestamp - 365 * 24 * 60 * 60 * 1000;
-  const cycleEvents = events.filter((e) => e.timestamp >= cycleCutoff && e.timestamp <= latestTimestamp);
-  const effectiveEvents = cycleEvents.length > 0 ? cycleEvents : events.slice(0, 2);
-
-  const monthsSet = new Set<number>();
-  const monthlyDpu: Record<number, number> = {};
-  for (const e of effectiveEvents) {
-    const m = parseInt(e.date.split("-")[1], 10);
-    if (!isNaN(m) && monthlyDpu[m] === undefined) {
-      monthsSet.add(m);
-      monthlyDpu[m] = e.amount;
-    }
-  }
-
-  const months = Array.from(monthsSet).sort((a, b) => a - b);
-  const annualDps = Math.round(months.reduce((sum, m) => sum + (monthlyDpu[m] || 0), 0) * 10000) / 10000;
-  const latestDPS = events[0].amount;
-
-  let freq: DividendFrequency = "quarterly";
-  if (months.length >= 8) freq = "monthly";
-  else if (months.length >= 3) freq = "quarterly";
-  else if (months.length === 2) freq = "semi-annually";
-  else freq = "annually";
-
-  return {
-    symbol: cleanTicker,
-    name,
-    currency,
-    price,
-    annualDps,
-    latestDPS,
-    frequency: freq,
-    months,
-    monthlyDpu,
-    events: events.slice(0, 24),
-    source: "stockevents",
-    digrinUrl: `https://stockevents.app/en/stock/${rawTicker}/dividends`
   };
 }
 
@@ -624,10 +476,11 @@ export function parseSgxCorporateActionsContent(content: string, rawTicker: stri
   const monthlyDpu: Record<number, number> = {};
   for (const e of effectiveEvents) {
     const m = parseInt(e.date.split('-')[1], 10);
-    if (!isNaN(m) && monthlyDpu[m] === undefined) {
-      monthsSet.add(m);
-      monthlyDpu[m] = e.amount;
-    }
+    if (isNaN(m)) continue;
+    // Same-month components were already summed per payment date above; this
+    // additionally keeps two separate payment dates in one month.
+    monthsSet.add(m);
+    monthlyDpu[m] = Math.round(((monthlyDpu[m] || 0) + e.amount) * 10000) / 10000;
   }
 
   const months = Array.from(monthsSet).sort((a, b) => a - b);
@@ -681,26 +534,46 @@ export async function fetchSgxCorporateActions(symbol: string, companyName?: str
     const upperName = nameToUse.toUpperCase();
     if (!searchTerms.includes(upperName)) searchTerms.push(upperName);
     const sporeName = upperName.replace(/SINGAPORE/gi, 'SPORE');
-    if (!searchTerms.includes(sporeName)) searchTerms.push(sporeName);
+    if (sporeName !== upperName && !searchTerms.includes(sporeName)) searchTerms.push(sporeName);
   }
 
+  // Fallback: try the bare ticker symbol itself (e.g. "U11", "D05")
+  if (!searchTerms.includes(bareSymbol)) {
+    searchTerms.push(bareSymbol);
+  }
+
+  if (searchTerms.length === 0) return null;
+
   for (const term of searchTerms) {
-    try {
-      const url = `https://r.jina.ai/https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(term)}`;
-      const res = await fetch(url, {
-        headers: { 'X-Wait-For-Selector': 'tbody' },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.includes('Per Security') && text.includes('DIVIDEND')) {
-          const parsed = parseSgxCorporateActionsContent(text, cleanSym, term);
-          if (parsed && parsed.events.length > 0) {
-            return parsed;
-          }
-        }
+    // Try up to 2 times per term (initial + one retry after 3s)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        // Wait 3s before retry
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-    } catch {}
+      try {
+        const url = `https://r.jina.ai/https://www.sgx.com/stock-exchange/corporate-actions?value=${encodeURIComponent(term)}`;
+        const res = await fetch(url, {
+          headers: { 'X-Wait-For-Selector': 'sgx-table-cell-text' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text.includes('Per Security') && text.includes('DIVIDEND')) {
+            const parsed = parseSgxCorporateActionsContent(text, cleanSym, term);
+            if (parsed && parsed.events.length > 0) {
+              return parsed;
+            }
+          }
+          // Got a response but no data — no point retrying with same term
+          break;
+        }
+      } catch (err: any) {
+        // Only retry on timeout errors
+        if (attempt === 0 && err?.name === 'TimeoutError') continue;
+      }
+      break;
+    }
   }
 
   return null;
@@ -728,7 +601,10 @@ async function fetchFromWebSources(symbol: string): Promise<DividendBackendResul
           return data;
         }
       }
-    } catch {}
+    } catch (err) {
+      // Expected in production (no local dev server): try the next candidate.
+      console.debug(`Local dividend endpoint unavailable for ${cand}:`, err);
+    }
   }
 
   // 2. Primary Source: Digrin.com (XX.SI, XX, xx.si)
@@ -746,7 +622,10 @@ async function fetchFromWebSources(symbol: string): Promise<DividendBackendResul
           }
         }
       }
-    } catch {}
+    } catch (err) {
+      // Expected for the wrong ticker variant / rate limit: try the next candidate.
+      console.debug(`Digrin fetch failed for ${cand}:`, err);
+    }
   }
 
   return null;
@@ -788,7 +667,7 @@ export const scrapeDividendsForTicker = async (
       const dpsMatch = sgxDps === digrinDps || Math.abs(sgxDps - digrinDps) < 0.001;
       const monthsMatch = JSON.stringify([...sgxResult.months].sort()) === JSON.stringify([...digrinResult.months].sort());
 
-      // Always prefer SGX data (higher precision)
+      // Always prefer SGX data when both match (higher precision)
       backendResult = sgxResult;
       finalSource = 'sgx';
 
@@ -798,7 +677,10 @@ export const scrapeDividendsForTicker = async (
         const diffs: string[] = [];
         if (!dpsMatch) diffs.push(`DPS: SGX $${sgxDps} vs Digrin $${digrinDps}`);
         if (!monthsMatch) diffs.push(`Months differ`);
-        scrapeNote = `SGX & Digrin mismatch (${diffs.join(', ')}) — using SGX`;
+        // On mismatch, prefer Digrin (has forward/future dividend values for expected yearly)
+        backendResult = digrinResult;
+        finalSource = 'digrin';
+        scrapeNote = `SGX & Digrin mismatch (${diffs.join(', ')}) — using Digrin`;
       }
     } else if (sgxOk) {
       backendResult = sgxResult;

@@ -1,4 +1,5 @@
 import { RecurringExpense } from '../types/expenses';
+import { downloadCsv } from './formatters';
 
 const EXPENSES_STORAGE_KEY = 'financetracker_recurring_expenses_v1';
 
@@ -157,6 +158,13 @@ export const sampleInitialExpenses: RecurringExpense[] = [
   },
 ];
 
+/** True when the list is exactly the seeded demo data (i.e. the user never entered real data). */
+export const isSampleExpenses = (expenses: RecurringExpense[]): boolean => {
+  if (expenses.length !== sampleInitialExpenses.length) return false;
+  const ids = new Set(sampleInitialExpenses.map((e) => e.id));
+  return expenses.every((e) => ids.has(e.id));
+};
+
 export const loadStoredExpenses = (): RecurringExpense[] => {
   try {
     const raw = localStorage.getItem(EXPENSES_STORAGE_KEY);
@@ -181,14 +189,6 @@ export const saveStoredExpenses = (expenses: RecurringExpense[]): void => {
   } catch (err) {
     console.error('Failed to save expenses to localStorage', err);
   }
-};
-
-const escapeCsvCell = (str: string | number): string => {
-  const val = String(str ?? '');
-  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
-    return `"${val.replace(/"/g, '""')}"`;
-  }
-  return val;
 };
 
 export const exportExpensesToCsv = (expenses: RecurringExpense[]): void => {
@@ -224,14 +224,5 @@ export const exportExpensesToCsv = (expenses: RecurringExpense[]): void => {
     ]);
   });
 
-  const csvContent = '\uFEFF' + rows.map((r) => r.map(escapeCsvCell).join(',')).join('\r\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `recurring_expenses_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`recurring_expenses_${new Date().toISOString().slice(0, 10)}.csv`, rows);
 };

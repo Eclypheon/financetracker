@@ -64,3 +64,25 @@ export const formatPercent = (percent: number): string => {
   const sign = percent > 0 ? '+' : '';
   return `${sign}${percent.toFixed(1)}%`;
 };
+
+const escapeCsvCell = (str: string | number): string => {
+  const val = String(str ?? '');
+  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return val;
+};
+
+/** Builds a CSV file (UTF-8 BOM so Excel reads it correctly) and downloads it. */
+export const downloadCsv = (filename: string, rows: string[][]): void => {
+  const csvContent = '\uFEFF' + rows.map((r) => r.map(escapeCsvCell).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};

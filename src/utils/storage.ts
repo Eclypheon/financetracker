@@ -1,5 +1,6 @@
 import { FinanceCardData, AssetField } from '../types/finance';
 import { getCurrentMonthYear } from './calculations';
+import { downloadCsv } from './formatters';
 
 const STORAGE_KEY = 'financetracker_data_v2';
 
@@ -197,6 +198,13 @@ export const sampleInitialCards: FinanceCardData[] = [
   },
 ];
 
+/** True when the list is exactly the seeded demo portfolio (i.e. the user never entered real data). */
+export const isSampleCards = (cards: FinanceCardData[]): boolean => {
+  if (cards.length !== sampleInitialCards.length) return false;
+  const ids = new Set(sampleInitialCards.map((c) => c.id));
+  return cards.every((c) => ids.has(c.id));
+};
+
 export const loadStoredCards = (): FinanceCardData[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -206,9 +214,7 @@ export const loadStoredCards = (): FinanceCardData[] => {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      const filtered = (parsed as FinanceCardData[]).filter((c) => c.id !== 'sample_0926');
-      const targetList = filtered.length > 0 ? filtered : sampleInitialCards;
-      return targetList.map((card) => ({
+      return (parsed as FinanceCardData[]).map((card) => ({
         ...card,
         others: Array.isArray(card.others)
           ? card.others.map((o: AssetField) => ({
@@ -281,15 +287,6 @@ export const saveStoredEntryCard = (card: FinanceCardData): void => {
   }
 };
 
-// Helper to escape CSV cell value
-const escapeCsvCell = (str: string | number): string => {
-  const val = String(str ?? '');
-  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
-    return `"${val.replace(/"/g, '""')}"`;
-  }
-  return val;
-};
-
 export const exportCardsToCsv = (cards: FinanceCardData[]): void => {
   const rows: string[][] = [
     ['Month/Year', 'Category', 'Item', 'Amount']
@@ -351,16 +348,7 @@ export const exportCardsToCsv = (cards: FinanceCardData[]): void => {
   });
 
   // Prepend \uFEFF for UTF-8 BOM so Excel opens it with correct encoding
-  const csvContent = '\uFEFF' + rows.map((r) => r.map(escapeCsvCell).join(',')).join('\r\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `finance_tracker_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`finance_tracker_${new Date().toISOString().slice(0, 10)}.csv`, rows);
 };
 
 const parseCsvText = (text: string): string[][] => {
@@ -409,27 +397,28 @@ const parseCsvText = (text: string): string[][] => {
   return rows;
 };
 
-export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        
+/**
+ * Parses a card export (CSV, or the JSON array backup) into cards.
+ * Exported separately from the file reader so it can be tested without a browser.
+ */
+export const parseCardsFromText = (text: string, fileName = ''): FinanceCardData[] => {
         // Check if JSON file was uploaded
-        if (file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('[')) {
-          const parsed = JSON.parse(text);
+        if (fileName.toLowerCase().endsWith('.json') || text.trim().startsWith('[')) {
+          let parsed: unknown = null;
+          try {
+            parsed = JSON.parse(text);
+          } catch (err) {
+            console.warn('File is not valid JSON, falling back to the CSV parser:', err);
+          }
           if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].banks || parsed[0].monthYear)) {
-            resolve(parsed);
-            return;
+            return parsed as FinanceCardData[];
           }
         }
 
         // Parse CSV
         const rows = parseCsvText(text);
         if (rows.length < 2) {
-          reject(new Error('CSV file does not contain enough data rows'));
-          return;
+          throw new Error('CSV file does not contain enough data rows');
         }
 
         const headers = rows[0].map((h) => h.toLowerCase().trim());
@@ -465,8 +454,7 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
         }
 
         if (monthGroups.size === 0) {
-          reject(new Error('Could not parse any valid month rows from CSV'));
-          return;
+          throw new Error('Could not parse any valid month rows from CSV');
         }
 
         const cards: FinanceCardData[] = [];
@@ -502,7 +490,7 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
             const itemLower = entry.item.toLowerCase();
             const val = entry.amount;
 
-            if (catLower.includes('override') || itemLower.includes('manual liquid total')) {
+            if (itemLower.includes('manual liquid total')) {
               card.manualLiquidTotal = val;
             } else if (itemLower.includes('manual non-liquid total') || itemLower.includes('manual non liquid total')) {
               card.manualNonLiquidTotal = val;
@@ -527,7 +515,7 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
               });
             } else {
               // Custom category
-              const isLiquid = catLower.includes('(liquid)') || catLower.includes('liquid');
+              const isLiquid = catLower.includes('liquid') && !catLower.includes('non-liquid') && !catLower.includes('non liquid');
               const cleanCatName = entry.category.replace(/\(liquid\)/i, '').replace(/\(non-liquid\)/i, '').trim() || 'Other';
               const targetList = isLiquid ? card.customLiquidCategories! : card.customNonLiquidCategories!;
               
@@ -561,7 +549,15 @@ export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
           cardIdx++;
         }
 
-        resolve(cards);
+        return cards;
+};
+
+export const importCardsFromFile = (file: File): Promise<FinanceCardData[]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        resolve(parseCardsFromText(e.target?.result as string, file.name));
       } catch (err) {
         reject(err);
       }
