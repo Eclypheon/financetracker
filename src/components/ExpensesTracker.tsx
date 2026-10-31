@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User } from '@supabase/supabase-js';
+import { AuthUser as User } from '../utils/pocketbase';
 import { 
   RecurringExpense, 
   ExpenseFrequency, 
@@ -206,7 +206,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         </div>
         <div className="flex items-center gap-1 text-[9px] text-slate-500">
           <Cloud className="w-3 h-3 text-amber-400" />
-          <span>{currentUser ? 'Supabase Cloud Sync' : 'Local Storage'}</span>
+          <span>{currentUser ? 'Cloud Sync' : 'Local Storage'}</span>
         </div>
       </div>
 

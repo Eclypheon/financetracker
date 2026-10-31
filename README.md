@@ -55,28 +55,14 @@ Your site is instantly published at:
 
 ---
 
-## 🔐 Cloud Sync (Supabase, optional)
+## 🔐 Cloud Sync (PocketBase)
 
 The app works offline with `localStorage` only. Sign-in and cross-device sync
-need a Supabase project:
+use self-hosted PocketBase on `alienlab` via Tailscale Funnel:
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Run `supabase-setup.sql` in the SQL Editor (safe to run more than once).
-3. Copy the project URL and publishable key into `.env`:
-   ```bash
-   VITE_SUPABASE_URL=https://your-project-id.supabase.co
-   VITE_SUPABASE_ANON_KEY=sb_publishable_...
-   ```
-4. Rebuild before deploying — these values are baked in at build time.
-
-Row Level Security is what keeps each user's data private, so keep the policies
-from step 2 in place. The anonymous key is meant to be public.
-
-The scheduled `Keep Supabase Alive` workflow (which stops free projects from
-being paused for inactivity) reads two repository secrets, `SUPABASE_URL` and
-`SUPABASE_ANON_KEY` (**Settings > Secrets and variables > Actions**). It fails
-with an explicit message when they are missing or when the project no longer
-resolves.
+- Backend URL: `https://alienlab.tailbed832.ts.net:10000` (defaults out of the box, or configurable via `VITE_POCKETBASE_URL` in `.env`).
+- Google OAuth2 and email/password sign-in are supported seamlessly.
+- CORS & Private Network Access restrictions are pre-handled via the Tailscale Funnel and Caddy reverse proxy.
 
 ---
 

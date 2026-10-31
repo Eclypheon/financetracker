@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { User } from '@supabase/supabase-js';
 import { FinanceCardData } from './types/finance';
 import { 
   loadStoredCards, 
@@ -12,14 +11,25 @@ import {
   importCardsFromFile 
 } from './utils/storage';
 import { 
-  getSupabaseClient, 
+  AuthUser as User,
+  getCurrentUser,
+  onAuthStateChange,
+  signOut,
   fetchCloudCards, 
   fetchCloudEntryCard,
   saveCloudEntryCard,
   saveCloudCard, 
   deleteCloudCard, 
-  syncAllCardsToCloud 
-} from './utils/supabase';
+  syncAllCardsToCloud,
+  fetchCloudDividends, 
+  saveCloudDividend, 
+  deleteCloudDividend, 
+  syncAllDividendsToCloud,
+  fetchCloudExpenses, 
+  saveCloudExpense, 
+  deleteCloudExpense, 
+  syncAllExpensesToCloud 
+} from './utils/pocketbase';
 import { Header } from './components/Header';
 import { FinanceCard } from './components/FinanceCard';
 import { PastCardsCarousel } from './components/PastCardsCarousel';
@@ -44,16 +54,6 @@ import {
   sampleInitialExpenses,
   isSampleExpenses
 } from './utils/expensesStorage';
-import { 
-  fetchCloudDividends, 
-  saveCloudDividend, 
-  deleteCloudDividend, 
-  syncAllDividendsToCloud,
-  fetchCloudExpenses, 
-  saveCloudExpense, 
-  deleteCloudExpense, 
-  syncAllExpensesToCloud 
-} from './utils/supabase';
 import { DividendsTracker } from './components/DividendsTracker';
 import { ExpensesTracker } from './components/ExpensesTracker';
 
@@ -171,28 +171,23 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Listen to Supabase Auth State Changes
+  // Listen to PocketBase Auth State Changes
   useEffect(() => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const user = getCurrentUser();
+    if (user) {
       setCurrentUser(user);
-      if (user) {
-        loadCloudData(user);
-      }
-    });
+      loadCloudData(user);
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user || null;
-      setCurrentUser(user);
-      if (user) {
-        loadCloudData(user);
+    const unsubscribe = onAuthStateChange((newUser) => {
+      setCurrentUser(newUser);
+      if (newUser) {
+        loadCloudData(newUser);
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [loadCloudData]);
 
@@ -345,10 +340,7 @@ export const App: React.FC = () => {
 
   // Sign out handler
   const handleSignOut = async () => {
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    await signOut();
     setCurrentUser(null);
   };
 
@@ -1019,14 +1011,10 @@ export const App: React.FC = () => {
           setAuthErrorNotice(null);
         }}
         onAuthSuccess={() => {
-          const supabase = getSupabaseClient();
-          if (supabase) {
-            supabase.auth.getUser().then(({ data: { user } }) => {
-              if (user) {
-                setCurrentUser(user);
-                loadCloudData(user);
-              }
-            });
+          const user = getCurrentUser();
+          if (user) {
+            setCurrentUser(user);
+            loadCloudData(user);
           }
         }}
       />

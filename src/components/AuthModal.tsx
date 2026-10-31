@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { getSupabaseClient } from '../utils/supabase';
+import { 
+  signInWithGoogle, 
+  signInWithPassword, 
+  signUpWithPassword,
+  getPocketBaseClient 
+} from '../utils/pocketbase';
 import { 
   X, 
   Mail, 
@@ -31,22 +36,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     }
   }, [initialError]);
 
-  // Helper to compute clean redirect URL
-  const getCleanRedirectUrl = () => {
-    const origin = window.location.origin;
-    let pathname = window.location.pathname.replace(/\/index\.html$/, '');
-    if (!pathname.endsWith('/')) {
-      pathname += '/';
-    }
-    return origin + pathname;
-  };
-
   if (!isOpen) return null;
 
   // Sign in with Google
   const handleGoogleSignIn = async () => {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
+    const pb = getPocketBaseClient();
+    if (!pb) {
       setErrorMsg('Cloud database connection not configured yet.');
       return;
     }
@@ -54,16 +49,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     setLoading(true);
     setErrorMsg(null);
 
-    const redirectUrl = getCleanRedirectUrl();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-      },
-    });
-
-    if (error) {
-      setErrorMsg(error.message);
+    try {
+      await signInWithGoogle();
+      setSuccessMsg('Signed in with Google!');
+      onAuthSuccess();
+      setTimeout(onClose, 800);
+    } catch (err: any) {
+      console.error('Google sign in error:', err);
+      setErrorMsg(err.message || 'Google sign in failed.');
+    } finally {
       setLoading(false);
     }
   };
@@ -71,8 +65,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
   // Sign in / Sign up with Email & Password
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = getSupabaseClient();
-    if (!supabase) {
+    const pb = getPocketBaseClient();
+    if (!pb) {
       setErrorMsg('Cloud database connection not configured yet.');
       return;
     }
@@ -81,44 +75,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (authMode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (error) {
-        setErrorMsg(error.message);
+    try {
+      if (authMode === 'signup') {
+        await signUpWithPassword(email, password);
+        setSuccessMsg('Account created & signed in!');
+        onAuthSuccess();
+        setTimeout(onClose, 800);
       } else {
-        if (data.session) {
-          setSuccessMsg('Account created & signed in!');
-          onAuthSuccess();
-          setTimeout(onClose, 800);
-        } else {
-          setSuccessMsg('Verification email sent! Check your inbox to confirm.');
-        }
-      }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        setErrorMsg(error.message);
-      } else if (data.session) {
+        await signInWithPassword(email, password);
         setSuccessMsg('Signed in successfully!');
         onAuthSuccess();
         setTimeout(onClose, 800);
       }
+    } catch (err: any) {
+      console.error('Email auth error:', err);
+      setErrorMsg(err.message || 'Authentication failed.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Sign in with Magic Link
+  // Sign in with Magic Link / Reset
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = getSupabaseClient();
-    if (!supabase) {
+    const pb = getPocketBaseClient();
+    if (!pb) {
       setErrorMsg('Cloud database connection not configured yet.');
       return;
     }
@@ -127,20 +108,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuc
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const redirectUrl = getCleanRedirectUrl();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      setSuccessMsg('Magic login link sent! Check your email to sign in.');
+    try {
+      await pb.collection('users').requestPasswordReset(email);
+      setSuccessMsg('Password reset / access link sent! Check your email.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to send reset link.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

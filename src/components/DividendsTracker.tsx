@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
+import { AuthUser as User } from '../utils/pocketbase';
 import { 
   DividendHolding, 
   DividendFrequency, 
