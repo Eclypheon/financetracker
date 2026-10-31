@@ -159,11 +159,13 @@ export const fetchCloudCards = async (): Promise<FinanceCardData[] | null> => {
 
   try {
     const records = await pb.collection('finance_cards').getFullList({
-      filter: 'card_id != "entry_card_template"',
+      filter: 'card_id != "entry_card_template" && card_id != "dividends_store" && card_id != "expenses_store"',
       sort: '-created_at_ms',
     });
 
-    return records.map((row) => {
+    return records
+      .filter((row) => row.card_id !== 'entry_card_template' && row.card_id !== 'dividends_store' && row.card_id !== 'expenses_store')
+      .map((row) => {
       const cardData = (row.data || {}) as FinanceCardData;
       return {
         ...cardData,
@@ -292,7 +294,9 @@ export const syncAllCardsToCloud = async (cards: FinanceCardData[], user: AuthUs
   const pb = getPocketBaseClient();
   if (!pb || !pb.authStore.isValid || cards.length === 0) return false;
 
-  const validCards = cards.filter((c) => c.id !== 'entry_card_template');
+  const validCards = cards.filter(
+    (c) => c.id !== 'entry_card_template' && c.id !== 'dividends_store' && c.id !== 'expenses_store'
+  );
   if (validCards.length === 0) return false;
 
   let allOk = true;
